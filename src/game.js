@@ -1,4 +1,5 @@
 import { ensureFlightUnlocked, explorationSnapshot } from './flight-unlock.js'
+import { registerActivities } from './handlers/activities.js'
 import { repairSavedPetPuzzleVisibility } from './pet-puzzles.js'
 import { repairSavedElevatorVisibility } from './handlers/world-elevator.js'
 import { hiddenTaskPetGuids, taskPetPresentation } from './task-pet-presentation.js'
@@ -313,6 +314,7 @@ export class Game {
         registerChat(on, store, { runGM })
         registerPlayableEnemies(on, tables, store)
         registerWorldEvents(on, tables)
+        this.activities = registerActivities(on, tables)
         registerKiboDuel(on, tables, protocol)
         registerEntrust(on, tables)
         registerStoryCampaign(on, tables)
@@ -856,6 +858,14 @@ export class Game {
                         .map((task) => task.task_id)
                     context.push('CSProtoTaskSync', { ...taskSnapshot(this.tables, state), new_task_ids: newlyVisible })
                 }
+                if (
+                    !battleReport &&
+                    /^(CSProtoTask|CSProtoGMCommand|CSProtoAddChat|CSProtoLvUp|CSProtoEnterEntrust|CSProtoQuitEntrust|CSProtoCatchPet|CSProtoProductFinish)/.test(
+                        e.name,
+                    )
+                ) {
+                    this.activities.notify(context)
+                }
                 if (state.home?.technology && state.player.basic_info.lv !== playerLevelBefore)
                     state.homeRevision = (state.homeRevision || 0) + 1
                 if (!battleReport && prepareTaskScenes(this.tables, state)) {
@@ -1001,12 +1011,19 @@ export class Game {
             current = this.store.load(id).state,
             homeDue = productionDue(current, now),
             simpleDue = simpleProductionDue(current, now),
-            dormDue = dormDayDue(this.tables, current, now)
-        if (!homeDue && !simpleDue && !dormDue) return []
+            dormDue = dormDayDue(this.tables, current, now),
+            activityDue = this.activities.due(current, now)
+        if (!homeDue && !simpleDue && !dormDue && !activityDue) return []
         return this.store.transact(id, 0, (state) => {
             const packets = [],
                 eggRevision = state.eggRevision || 0,
                 petRevision = state.petRevision || 0
+            if (activityDue)
+                this.activities.notify({
+                    state,
+                    now,
+                    pushBefore: (name, value) => packets.push(this.packet(name, value)),
+                })
             if (dormDue) {
                 packets.push(this.packet('SCProtoHomeHeroStoryInfoNtf', dormTopics(this.tables, state, now)))
                 packets.push(
@@ -1144,6 +1161,11 @@ export class Game {
                 ? [this.packet('CSProtoCampaignInfoSync', storyCampaignSnapshot(state))]
                 : []),
             this.packet('CSProtoTaskSync', taskSnapshot(this.tables, state)),
+            this.packet('CSProtoSyncCommonTimeConf', this.activities.commonTimes(now)),
+            this.packet('CSProtoActivitySync', this.activities.snapshot(state, now)),
+            ...(this.activities.nday(state, now)
+                ? [this.packet('SCProtoNDayInfoSync', this.activities.nday(state, now))]
+                : []),
             this.packet('CSProtoMailSync', { mails: state.mail }),
             this.packet('CSProtoStorySync', { infos: { infos: state.storyIds || [] } }),
             this.packet('CSProtoHomeSync', homePayload(this.tables, state)),

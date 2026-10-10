@@ -2,5 +2,7 @@
     "taskComplete": 26,
     "taskNodeComplete": 88,
     "worldObjectInteract": 84,
-    "staminaChest": 86
+    "staminaChest": 86,
+    "activityDailySign": 96,
+    "activityReward": 111
 }
