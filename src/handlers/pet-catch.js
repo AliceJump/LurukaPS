@@ -28,17 +28,29 @@ function reserveKey(state) {
     return key
 }
 
-function target(c, value) {
+function target(c, value, preview = false) {
     const id = String(value ?? '0')
     ensure(/^\d+$/.test(id) && BigInt(id) > 0n, 'Invalid catch target')
-    const enemy = enemyDefinition(c.tables, c.state, id),
-        petId = c.tables.find('enemy', enemy?.config_id)?.petId
+    const enemy = enemyDefinition(c.tables, c.state, id)
+    ensure(enemy, 'Target is not a catchable pet')
+    const config = c.tables.find('enemy', enemy.config_id),
+        pack = c.tables.find('enemy_pack', enemy.pack_id),
+        petId = config?.petId
+    // Aiming is an information probe, not permission to consume a catch card.
+    // Known noncatchable monsters (including puzzle/challenge variants) have
+    // no preview rows. Unknown entities and malformed pet configuration still fail.
+    if (
+        preview &&
+        (pack?.uncatchableType === 1 ||
+            petId === 0 ||
+            (config?.petId_id === 0 && !(Number.isSafeInteger(petId) && petId > 0)))
+    )
+        return null
+    ensure(pack?.uncatchableType !== 1, 'Pet cannot be caught')
     ensure(
-        enemy && petId && c.tables.find('pet', petId) && c.tables.find('template_value', petId),
+        petId && c.tables.find('pet', petId) && c.tables.find('template_value', petId),
         'Target is not a catchable pet',
     )
-    const pack = c.tables.find('enemy_pack', enemy.pack_id)
-    ensure(pack?.uncatchableType !== 1, 'Pet cannot be caught')
     return { id, enemy, petId }
 }
 function info(c, id, petId, len = 0) {
@@ -72,9 +84,9 @@ export function registerPetCatch(on) {
         const ids = r.tar_id ?? []
         ensure(ids.length > 0 && ids.length <= 64, 'Invalid catch target list')
         ensure(Number.isInteger(r.day_weather) && r.day_weather >= 0 && r.day_weather <= 100, 'Invalid catch weather')
-        const rows = [...new Set(ids)].map((id) => {
-            const resolved = target(c, id)
-            return info(c, resolved.id, resolved.petId, r.pet_len_id ?? 0)
+        const rows = [...new Set(ids)].flatMap((id) => {
+            const resolved = target(c, id, true)
+            return resolved ? [info(c, resolved.id, resolved.petId, r.pet_len_id ?? 0)] : []
         })
         c.pushBefore('CSProtoSyncCatchPetInfo', { pets: rows, reason: r.reason ?? 0 })
         return {}

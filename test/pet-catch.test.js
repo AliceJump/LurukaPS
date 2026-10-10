@@ -1,3 +1,5 @@
+import { WorldObjectCatalog } from '../src/world-objects.js'
+import { enemyDefinition } from '../src/enemy-state.js'
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { configuration } from '../src/config.js'
@@ -232,6 +234,60 @@ test('successful capture unlocks the acquired species in 6517 before the catch r
         assert.ok(packets.findIndex((p) => p.id === 6517) < packets.findIndex((p) => p.id === 10714))
         f.call('CatchPet', request)
         assert.deepEqual(f.state().recordPets, [500297])
+    } finally {
+        f.store.close()
+    }
+})
+
+test('logged new-map puzzle noncatchable target can be aimed at without enabling its capture', () => {
+    const f = fixture(),
+        target = '504403166855430276'
+    try {
+        f.store.transact(f.session.id, 0, (s) => {
+            s.world.map_id = 101
+            s.tasks = []
+            s.taskRecords = tables
+                .get('task')
+                .filter((r) => r.type === 1)
+                .map((r) => ({ task_id: r.id, count: 1, time: 1 }))
+            s.playableEnemies = {
+                '101:1200054:20061': {
+                    entities: [{ uuid: target, config_id: 310606, container: 132, index: 0, slot: 2 }],
+                },
+            }
+        })
+        const state = f.state(),
+            world = new WorldObjectCatalog(tables)
+        const valid = world
+            .get('worldmap_101')
+            .map((row) => ((3n << 56n) | BigInt(row.id)).toString())
+            .find((id) => {
+                const def = enemyDefinition(tables, state, id)
+                const petId = def && tables.find('enemy', def.config_id)?.petId
+                return (
+                    Number.isSafeInteger(petId) &&
+                    petId > 0 &&
+                    tables.find('pet', petId) &&
+                    tables.find('enemy_pack', def.pack_id)?.uncatchableType !== 1
+                )
+            })
+        assert.ok(valid)
+        const mixed = f.call('GetCatchPetInfo', { tar_id: [target, valid], day_weather: 8, reason: 1 })
+        assert.deepEqual(
+            mixed[0].data.pets.map((p) => p.uuid),
+            [valid],
+        )
+        const before = f.state()
+        const packets = f.call('GetCatchPetInfo', { tar_id: [target], day_weather: 8, reason: 1, pet_len_id: 0 })
+        assert.equal(packets[0].id, 11031)
+        assert.deepEqual(packets[0].data.pets, [])
+        assert.equal(packets[0].data.reason, 1)
+        assert.deepEqual(f.state().pets, before.pets)
+        assert.deepEqual(f.state().player.sbag_infos, before.player.sbag_infos)
+        assert.throws(
+            () => f.call('CatchPet', { tar_id: target, item_id: 1000001, catch_key: 1 }),
+            /Pet cannot be caught/,
+        )
     } finally {
         f.store.close()
     }
