@@ -1,3 +1,4 @@
+import { recordResourceAcquisition } from './item-acquisition.js'
 import { createPets, createCustomizedPets } from './pets.js'
 import { ensureHome, addHomeBuildings, refreshAutoCropShortcut } from './home.js'
 import { ensureHomeDormitories, grantDormStyle } from './home-dorm.js'
@@ -57,6 +58,7 @@ export function grantRewards(tables, state, rewards, depth = 0) {
         }
         if (itemtype === 3) {
             ensure(tables.find('common_item', itemid), 'Unknown reward item', 1007)
+            recordResourceAcquisition(state, itemtype, itemid, itemnum)
             addItems(state, [reward])
             if (state.home) refreshAutoCropShortcut(tables, state, itemid)
         } else if (itemtype === 20) {
@@ -97,6 +99,7 @@ export function grantRewards(tables, state, rewards, depth = 0) {
             granted.push({ itemtype, itemid, itemnum: 1 })
             continue
         } else if (itemtype === 13) {
+            recordResourceAcquisition(state, itemtype, itemid, itemnum)
             addHomeBuildings(tables, state, itemid, itemnum)
         } else if (itemtype === 14) {
             const eggs = createEggs(tables, state, itemid, itemnum)

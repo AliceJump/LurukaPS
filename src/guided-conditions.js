@@ -1,3 +1,4 @@
+import { acquiredResourceCount } from './item-acquisition.js'
 import fs from 'node:fs'
 import path from 'node:path'
 import { configuration } from './config.js'
@@ -42,9 +43,26 @@ export function guidedKillRule(id) {
         return null
     return { sceneType: parts[1], monsterType: parts[2], groupId: parts[3], monsterId: parts[4], count: parts[5] }
 }
+export function guidedCollectRule(id) {
+    const parts = String(conditions.get(id)?.condition ?? '')
+        .split('|')
+        .map(Number)
+    if (
+        parts.length !== 4 ||
+        parts[0] !== 12029 ||
+        ![3, 13].includes(parts[1]) ||
+        !parts.every(Number.isSafeInteger) ||
+        parts[2] <= 0 ||
+        parts[3] <= 0
+    )
+        return null
+    return { type: parts[1], id: parts[2], count: parts[3] }
+}
 export function guidedRequirement(id) {
     const kill = guidedKillRule(id)
     if (kill) return kill.count
+    const collect = guidedCollectRule(id)
+    if (collect) return collect.count
     const param = Number(conditions.get(id)?.param)
     return Number.isInteger(param) && param > 0 ? param : 1
 }
@@ -52,6 +70,8 @@ export function guidedRequirement(id) {
 export function guidedConditionValue(id, state, context) {
     const row = conditions.get(id)
     if (!row) return 0
+    const collect = guidedCollectRule(id)
+    if (collect) return Math.min(collect.count, acquiredResourceCount(state, collect.type, collect.id))
     const parts = String(row.condition || '')
         .split('|')
         .map(Number)
