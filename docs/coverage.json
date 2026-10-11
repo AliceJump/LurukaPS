@@ -345,7 +345,7 @@
     "req": "cs.CSUint64",
     "rsp": "cs.Rewards",
     "desc": "获得某个英雄的全部好感度奖励",
-    "status": "unsupported"
+    "status": "implemented-local"
   },
   {
     "id": 6013,
@@ -1193,7 +1193,7 @@
     "req": "cs.CSChangeHeroBackGround",
     "rsp": "cs.ProtoNullRsp",
     "desc": "家园角色宿舍切换场景",
-    "status": "unsupported"
+    "status": "implemented-local"
   },
   {
     "id": 6210,
@@ -1201,7 +1201,7 @@
     "req": "cs.CSHomeDormCheckInfo",
     "rsp": "cs.ProtoNullRsp",
     "desc": "宿舍角色入住",
-    "status": "unsupported"
+    "status": "implemented-local"
   },
   {
     "id": 6211,
@@ -1209,7 +1209,7 @@
     "req": "cs.CSHomeDormName",
     "rsp": "cs.ProtoNullRsp",
     "desc": "宿舍改名",
-    "status": "unsupported"
+    "status": "implemented-local"
   },
   {
     "id": 6212,
@@ -1217,7 +1217,7 @@
     "req": "cs.CSHomeDormEnter",
     "rsp": "cs.ProtoNullRsp",
     "desc": "进入宿舍",
-    "status": "unsupported"
+    "status": "implemented-local"
   },
   {
     "id": 6213,
@@ -1225,7 +1225,7 @@
     "req": "",
     "rsp": "cs.ProtoNullRsp",
     "desc": "退出宿舍",
-    "status": "unsupported"
+    "status": "implemented-local"
   },
   {
     "id": 6214,
@@ -1233,7 +1233,7 @@
     "req": "",
     "rsp": "cs.SCHomeFurnitureRecommend",
     "desc": "家具推荐",
-    "status": "unsupported"
+    "status": "implemented-local"
   },
   {
     "id": 6215,
@@ -1248,7 +1248,7 @@
     "req": "cs.CSHomeHeroStoryReward",
     "rsp": "cs.SCHomeHeroStoryReward",
     "desc": "家园角色话题结束奖励",
-    "status": "unsupported"
+    "status": "implemented-local"
   },
   {
     "id": 6217,
@@ -1263,7 +1263,7 @@
     "req": "cs.CSRoleDormDressUp",
     "rsp": "cs.ProtoNullRsp",
     "desc": "家园角色换装 废弃",
-    "status": "unsupported"
+    "status": "implemented-local"
   },
   {
     "id": 6219,
@@ -1573,7 +1573,7 @@
     "req": "cs.CSPetStationed",
     "rsp": "cs.ProtoNullRsp",
     "desc": "派驻宠物",
-    "status": "unsupported"
+    "status": "implemented-local"
   },
   {
     "id": 6533,
@@ -1940,7 +1940,7 @@
     "req": "cs.CSSendHeroGift",
     "rsp": "cs.SCSendHeroGift",
     "desc": "向英雄赠送礼物/家具",
-    "status": "unsupported"
+    "status": "implemented-local"
   },
   {
     "id": 6700,
@@ -2276,7 +2276,7 @@
     "req": "cs.CSRepeatedUint32",
     "rsp": "cs.CSRepeatedUint32",
     "desc": "大世界 worldobj 首次发现 参数是obj id",
-    "status": "unsupported"
+    "status": "implemented-local"
   },
   {
     "id": 9138,
@@ -2284,7 +2284,7 @@
     "req": "cs.CSWorldMapTakeElevator",
     "rsp": "cs.SCWorldMapTakeElevator",
     "desc": "乘坐电梯",
-    "status": "unsupported"
+    "status": "implemented-local"
   },
   {
     "id": 9139,
@@ -2292,7 +2292,7 @@
     "req": "cs.CSWorldMapCommonRepair",
     "rsp": "cs.SCWorldMapCommonRepair",
     "desc": "大世界 worldobj 通用修复",
-    "status": "unsupported"
+    "status": "implemented-local"
   },
   {
     "id": 9140,
@@ -2301,6 +2301,14 @@
     "rsp": "cs.ProtoNullRsp",
     "desc": "大世界 检查区域buff",
     "status": "unsupported"
+  },
+  {
+    "id": 9141,
+    "name": "CSWorldObjAIHeroInfo",
+    "req": "cs.CSWorldObjAIHeroInfoReq",
+    "rsp": "cs.SCWorldObjAIHeroInfoRsp",
+    "desc": "世界 AI 角色信息（C# 协议枚举，Lua 导出遗漏）",
+    "status": "implemented-local"
   },
   {
     "id": 9142,
@@ -3114,7 +3122,7 @@
     "req": "cs.CSEnterCultTrial",
     "rsp": "cs.ProtoNullRsp",
     "desc": "进入试炼副本",
-    "status": "unsupported"
+    "status": "implemented-local"
   },
   {
     "id": 9611,
@@ -3122,7 +3130,7 @@
     "req": "cs.CSEnterCultTrial",
     "rsp": "cs.ProtoNullRsp",
     "desc": "重进入试炼副本",
-    "status": "unsupported"
+    "status": "implemented-local"
   },
   {
     "id": 9612,
@@ -3130,7 +3138,7 @@
     "req": "cs.CSEnterCultTrial",
     "rsp": "cs.ProtoNullRsp",
     "desc": "结局选择【选择试炼副本】",
-    "status": "unsupported"
+    "status": "implemented-local"
   },
   {
     "id": 9613,
@@ -3169,7 +3177,7 @@
     "req": "cs.CSCultTrialSwitchStep",
     "rsp": "cs.ProtoNullRsp",
     "desc": "试炼关卡打完切入下个阶段",
-    "status": "unsupported"
+    "status": "implemented-local"
   },
   {
     "id": 9700,
@@ -3247,7 +3255,7 @@
     "req": "cs.WardrobeInfo",
     "rsp": "cs.ProtoNullRsp",
     "desc": "捏脸数据上传",
-    "status": "unsupported"
+    "status": "implemented-local"
   },
   {
     "id": 9807,
@@ -3286,7 +3294,7 @@
     "req": "",
     "rsp": "cs.ProtoNullRsp",
     "desc": "退出拍照场景",
-    "status": "unsupported"
+    "status": "implemented-local"
   },
   {
     "id": 9812,
@@ -3309,7 +3317,7 @@
     "req": "cs.WardrobeInfo",
     "rsp": "cs.ProtoNullRsp",
     "desc": "捏脸信息上传",
-    "status": "unsupported"
+    "status": "implemented-local"
   },
   {
     "id": 9850,
@@ -4014,7 +4022,7 @@
     "req": "",
     "rsp": "cs.SCActivityGet",
     "desc": "获取活动配置",
-    "status": "unsupported"
+    "status": "implemented-local"
   },
   {
     "id": 10402,
@@ -4022,7 +4030,7 @@
     "req": "cs.CSUint32",
     "rsp": "cs.ProtoNullRsp",
     "desc": "签到完成显示 参数是活动id game_events.csv",
-    "status": "unsupported"
+    "status": "implemented-local"
   },
   {
     "id": 10403,
@@ -4030,7 +4038,7 @@
     "req": "cs.CSUint32",
     "rsp": "cs.Rewards",
     "desc": "签到完成显示 参数是活动id game_events.csv",
-    "status": "unsupported"
+    "status": "implemented-local"
   },
   {
     "id": 10404,
@@ -4046,7 +4054,7 @@
     "req": "cs.CSActivityReward",
     "rsp": "cs.Rewards",
     "desc": "活动奖励领取",
-    "status": "unsupported"
+    "status": "implemented-local"
   },
   {
     "id": 10406,
@@ -4054,7 +4062,7 @@
     "req": "cs.CSActivitySubmitItem",
     "rsp": "cs.Rewards",
     "desc": "活动提交道具",
-    "status": "unsupported"
+    "status": "implemented-local"
   },
   {
     "id": 10407,
@@ -4086,7 +4094,7 @@
     "req": "cs.CSActivityGrowUpStartSelectReq",
     "rsp": "cs.ProtoNullRsp",
     "desc": "开启训练开局选择请求",
-    "status": "unsupported"
+    "status": "implemented-local"
   },
   {
     "id": 10411,
@@ -4094,7 +4102,7 @@
     "req": "cs.CSActivityGrowUpEventSelectReq",
     "rsp": "cs.SCActivityGrowUpEventSelectRsp",
     "desc": "游历事件选择请求",
-    "status": "unsupported"
+    "status": "implemented-local"
   },
   {
     "id": 10412,
@@ -4102,7 +4110,7 @@
     "req": "cs.CSActivityGrowUpRestReq",
     "rsp": "cs.CSActivityGrowUpRestRsp",
     "desc": "养成行动训练休息请求",
-    "status": "unsupported"
+    "status": "implemented-local"
   },
   {
     "id": 10413,
@@ -4110,7 +4118,7 @@
     "req": "cs.CSActivityGrowUpTrainReq",
     "rsp": "cs.SCActivityGrowUpTrainRsp",
     "desc": "养成行动训练请求",
-    "status": "unsupported"
+    "status": "implemented-local"
   },
   {
     "id": 10414,
@@ -4118,7 +4126,7 @@
     "req": "cs.CSActivityGrowUpResetReq",
     "rsp": "cs.ProtoNullRsp",
     "desc": "养成行动放弃养成请求",
-    "status": "unsupported"
+    "status": "implemented-local"
   },
   {
     "id": 10415,
@@ -4149,7 +4157,7 @@
     "req": "cs.CSActivityGrowUpEndQueryReq",
     "rsp": "cs.SCActivityGrowUpEndQueryRsp",
     "desc": "养成结局图鉴请求",
-    "status": "unsupported"
+    "status": "implemented-local"
   },
   {
     "id": 10419,
@@ -4157,7 +4165,7 @@
     "req": "cs.CSActivityGrowUpRestInteractSubmitReq",
     "rsp": "cs.CSActivityGrowUpRestRsp",
     "desc": "养成行动休息交互结果提交请求",
-    "status": "unsupported"
+    "status": "implemented-local"
   },
   {
     "id": 10420,
@@ -4215,7 +4223,7 @@
     "req": "cs.CSActivityGrowUpEventFinishReq",
     "rsp": "cs.ProtoNullRsp",
     "desc": "养成行动游历事件提前结束请求",
-    "status": "unsupported"
+    "status": "implemented-local"
   },
   {
     "id": 10428,
@@ -4223,7 +4231,7 @@
     "req": "cs.CSActivityGrowUpEventInfoReq",
     "rsp": "cs.SCActivityGrowUpEventInfoRsp",
     "desc": "养成行动游历断线重连请求",
-    "status": "unsupported"
+    "status": "implemented-local"
   },
   {
     "id": 10500,
@@ -4628,7 +4636,7 @@
     "req": "cs.CSUint32",
     "rsp": "cs.SCAnnounceSync",
     "desc": "主动获取公告信息 参数没用",
-    "status": "unsupported"
+    "status": "implemented-local"
   },
   {
     "id": 10705,
@@ -5011,7 +5019,7 @@
     "req": "cs.CSNDayRewardReq",
     "rsp": "cs.Rewards",
     "desc": "领取NDay活跃奖励",
-    "status": "unsupported"
+    "status": "implemented-local"
   },
   {
     "id": 10772,
@@ -5692,7 +5700,7 @@
     "req": "cs.CSWorldObjSearchReq",
     "rsp": "cs.SCWorldObjSearchRsp",
     "desc": "大世界物件搜索",
-    "status": "unsupported"
+    "status": "implemented-local"
   },
   {
     "id": 11100,
@@ -7113,7 +7121,7 @@
     "name": "CSProtoSetClientCustomOptions",
     "req": "cs.ClientCustomOptions",
     "desc": "前端自定义数据保存",
-    "status": "unsupported"
+    "status": "implemented-local"
   },
   {
     "id": 11832,
@@ -7464,7 +7472,7 @@
     "req": "cs.CSUpdateSkin",
     "rsp": "cs.ProtoNullRsp",
     "desc": "英雄更换皮肤",
-    "status": "unsupported"
+    "status": "implemented-local"
   },
   {
     "id": 11904,
