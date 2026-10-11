@@ -6,8 +6,16 @@ export function retireTrialActors(state, actors) {
 export function isRetiredTrialActor(state, id) {
     return (
         !!state.retiredTrialActors?.includes(String(id)) &&
-        ![...(state.trialGroup?.heroes ?? []), ...(state.trialGroup?.pets ?? [])].some(
-            (actor) => actor.guid === String(id),
-        )
+        ![...temporaryHeroes(state), ...temporaryPets(state)].some((actor) => actor.guid === String(id))
     )
+}
+export function temporaryHeroes(state) {
+    return [...(state.trialGroup?.heroes ?? []), ...(state.cultTrial?.heroes ?? [])]
+}
+export function temporaryPets(state) {
+    return [...(state.trialGroup?.pets ?? []), ...(state.cultTrial?.pets ?? [])]
+}
+export function activeFormationManager(state) {
+    const type = state.cultTrial && state.cultTrial.map_id === state.world.map_id ? 8 : 1
+    return state.player.group_mgrs.find((manager) => manager.type === type)
 }

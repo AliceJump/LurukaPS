@@ -1,0 +1,171 @@
+{
+  "version": "2451868",
+  "manifest": "\\\\vmware-host\\Shared Folders\\AzurPromilia_Game\\AzurPromilia_Data\\.res\\raw_base_package\\ManifestFiles\\30_raw_base_package_2451868.bytes",
+  "resources": [
+    {
+      "name": "rd_assets_resourcesassets_config_vstring_vstring_bytes",
+      "source": "\\\\vmware-host\\Shared Folders\\AzurPromilia_Game\\AzurPromilia_Data\\.res\\raw_base_package\\BundleFiles\\nvhebgwzftpy2jav9cujtg.r",
+      "sha256": "0f032fbbdedc5f758fd17f08882695fb8952d6c6910a73fdf2e66f9f614e3b41",
+      "crc32": 2855464684
+    },
+    {
+      "name": "rs_assets_resourcesassets_config_newtablemmap_table_data_bytes",
+      "source": "\\\\vmware-host\\Shared Folders\\AzurPromilia_Game\\AzurPromilia_Data\\.res\\raw_streaming_package\\BundleFiles\\vo2kachbxcjtbtmcmmia.r",
+      "sha256": "032bd31939acf6b253e62364abac8bb8bdaf4077b12c5621d5b42b7f5c696d35",
+      "crc32": 2542945056
+    }
+  ],
+  "basis": "Equal victory, wave objects and population; exact roster preferred, unique majority fallback is local compatibility pending official route verification",
+  "compatibility_policy": {
+    "minimum_overlap": 0.6,
+    "minimum_margin": 0.3
+  },
+  "routes": [
+    {
+      "trial_id": 101,
+      "dungeon_id": 32210,
+      "group_id": 429,
+      "scene_id": 6550,
+      "point_id": 655001,
+      "object_ids": [
+        5,
+        6,
+        7
+      ],
+      "match": "exact-roster",
+      "overlap": 1,
+      "roster_differences": []
+    },
+    {
+      "trial_id": 201,
+      "dungeon_id": 32220,
+      "group_id": 430,
+      "scene_id": 6551,
+      "point_id": 655101,
+      "object_ids": [
+        5,
+        6,
+        7
+      ],
+      "match": "unique-majority-roster",
+      "overlap": 0.6,
+      "roster_differences": [
+        {
+          "enemy_id": 310863,
+          "dungeon_count": 4,
+          "scene_count": 8
+        },
+        {
+          "enemy_id": 310864,
+          "dungeon_count": 8,
+          "scene_count": 0
+        },
+        {
+          "enemy_id": 300071,
+          "dungeon_count": 0,
+          "scene_count": 4
+        }
+      ]
+    },
+    {
+      "trial_id": 301,
+      "dungeon_id": 32230,
+      "group_id": 431,
+      "scene_id": 6552,
+      "point_id": 655201,
+      "object_ids": [
+        5,
+        6,
+        7
+      ],
+      "match": "unique-majority-roster",
+      "overlap": 0.9090909090909091,
+      "roster_differences": [
+        {
+          "enemy_id": 310327,
+          "dungeon_count": 2,
+          "scene_count": 0
+        },
+        {
+          "enemy_id": 310152,
+          "dungeon_count": 0,
+          "scene_count": 2
+        }
+      ]
+    },
+    {
+      "trial_id": 302,
+      "dungeon_id": 32240,
+      "group_id": 432,
+      "scene_id": 6553,
+      "point_id": 655301,
+      "object_ids": [
+        5,
+        6,
+        7
+      ],
+      "match": "unique-majority-roster",
+      "overlap": 0.8181818181818182,
+      "roster_differences": [
+        {
+          "enemy_id": 310787,
+          "dungeon_count": 12,
+          "scene_count": 8
+        },
+        {
+          "enemy_id": 310786,
+          "dungeon_count": 0,
+          "scene_count": 4
+        }
+      ]
+    },
+    {
+      "trial_id": 303,
+      "dungeon_id": 32250,
+      "group_id": 433,
+      "scene_id": 6554,
+      "point_id": 655401,
+      "object_ids": [
+        5,
+        6,
+        7
+      ],
+      "match": "exact-roster",
+      "overlap": 1,
+      "roster_differences": []
+    },
+    {
+      "trial_id": 304,
+      "dungeon_id": 32260,
+      "group_id": 434,
+      "scene_id": 6555,
+      "point_id": 655501,
+      "object_ids": [
+        5,
+        6,
+        7
+      ],
+      "match": "exact-roster",
+      "overlap": 1,
+      "roster_differences": []
+    },
+    {
+      "trial_id": 305,
+      "dungeon_id": 32270,
+      "group_id": 435,
+      "scene_id": 6556,
+      "point_id": 655601,
+      "object_ids": [
+        5,
+        6,
+        7
+      ],
+      "match": "exact-roster",
+      "overlap": 1,
+      "roster_differences": []
+    }
+  ],
+  "missing": [
+    306
+  ]
+}

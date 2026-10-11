@@ -1,0 +1,166 @@
+import { ensure } from './common.js'
+import { worldSync } from './world.js'
+import { syncBattle } from '../battle.js'
+import { cultTrialRoute, cultTrialSnapshot, ensureCultTrialScene, publishCultTrialResult } from '../cult-trial.js'
+import { ensureCultFormation, publishCultFormation, clearCultFormation } from '../cult-formation.js'
+import { trialPayload } from './trial-groups.js'
+export function enterCultTrialScene(c, r = {}) {
+    const run = c.state.cultTrial
+    ensure(
+        run && c.state.world.map_id === run.map_id && (!r.scene_id || r.scene_id === run.map_id),
+        'Cultivation trial scene is not active',
+    )
+    ensureCultTrialScene(c.tables, c.state, c.now)
+    ensureCultFormation(c.tables, c.activityCatalog, c.state, c.id)
+    publishCultFormation(c)
+    c.pushBefore('CSProtoCampaignInfoSync', cultTrialSnapshot(c.state, { entering: true }))
+    worldSync({ ...c, push: c.pushBefore })
+    syncBattle({ ...c, push: c.pushBefore })
+    return {}
+}
+export function exitCultTrial(c) {
+    const run = c.state.cultTrial
+    ensure(run, 'No active cultivation trial')
+    c.pushBefore('CSProtoCampaignInfoSync', { ...cultTrialSnapshot(c.state), status: 1 })
+    Object.assign(c.state.world, run.return_world)
+    const restored = clearCultFormation(c.state)
+    delete c.state.cultTrial
+    delete c.state.combat
+    worldSync({ ...c, push: c.pushBefore })
+    c.pushBefore('CSProtoOnlineModeChange', { mode: 1 })
+    syncBattle({ ...c, push: c.pushBefore })
+    c.pushBefore('CSProtoTrialDatas', trialPayload(c.state))
+    if (restored) c.pushBefore('CSProtoSyncPlayerData', { group_mgrs: [restored] })
+    return {}
+}
+export function endCultTrialScene(c, r) {
+    ensure(c.state.cultTrial && [1, 3, 4].includes(r.result), 'Invalid cultivation trial result')
+    ensure(r.result !== 3 || c.state.cultTrial.battle_complete, 'Cultivation trial enemies are still alive')
+    ensureCultTrialScene(c.tables, c.state, c.now)
+    if (r.result !== 3) c.state.cultTrial.status = r.result
+    publishCultTrialResult(c)
+    c.pushBefore('CSProtoCampaignInfoSync', cultTrialSnapshot(c.state))
+    return {}
+}
+export function registerCultTrial(on, tables, catalog) {
+    const start = (c, r, restart = false) => {
+        if (restart && !r.activity_id && !r.trial_id) {
+            const run = c.state.cultTrial
+            ensure(run && run.map_id === c.state.world.map_id, 'No active cultivation trial to restart')
+            r = { ...r, activity_id: run.activity_id, trial_id: run.trial_id }
+        }
+        const { row, entry } = catalog.require(c.state, c.now, r.activity_id, [60])
+        ensure(!row.guideTaskId || catalog.taskDone(c.state, row.guideTaskId), 'Complete cultivation guide first')
+        const g = catalog.growup.ensure(entry, row.systemId),
+            { trial, route, dungeon, point } = cultTrialRoute(tables, catalog, r.activity_id, r.trial_id)
+        ensure(!r.archive_id, 'Archived cultivation trials are not implemented', 1007)
+        ensure(
+            g.cur_starting_id > 0 && g.cur_stage === trial.phase && g.cur_growup_trail_stage === trial.phase,
+            'Cultivation examination is not ready',
+        )
+        ensure(catalog.growup.condition(trial.condition, g), 'Cultivation trial condition is locked')
+        ensure(!c.state.entrust?.run && !c.state.storyCampaign && !c.state.multiCampaign, 'Another dungeon is active')
+        const old = c.state.cultTrial
+        if (old && !restart) {
+            ensure(
+                old.activity_id === r.activity_id && old.trial_id === r.trial_id,
+                'Another cultivation trial is active',
+            )
+            return enterCultTrialScene(c)
+        }
+        if (old)
+            ensure(
+                old.activity_id === r.activity_id && old.trial_id === r.trial_id,
+                'Cannot restart another cultivation trial',
+            )
+        if (old) clearCultFormation(c.state)
+        const w = c.state.world
+        c.state.cultTrial = {
+            activity_id: r.activity_id,
+            trial_id: r.trial_id,
+            dungeon_id: dungeon.id,
+            group_id: dungeon.groupId,
+            map_id: route.scene_id,
+            object_ids: route.object_ids,
+            status: 2,
+            start_time: c.now,
+            instance_id: c.state.nextCultTrialInstanceId ?? 1,
+            return_world: old?.return_world ?? {
+                map_id: w.map_id,
+                point_id: w.point_id,
+                area_id: w.area_id,
+                pos: { ...w.pos },
+                angle: w.angle,
+            },
+        }
+        c.state.nextCultTrialInstanceId = c.state.cultTrial.instance_id + 1
+        g.select_trail_id = trial.trialId
+        Object.assign(w, tables.position(point))
+        ensureCultFormation(tables, catalog, c.state, c.id)
+        publishCultFormation(c)
+        ensureCultTrialScene(tables, c.state, c.now)
+        catalog.notify(c, true)
+        c.pushBefore('CSProtoCampaignInfoSync', cultTrialSnapshot(c.state))
+        worldSync(
+            { ...c, push: c.pushBefore },
+            { campaign_start: { group_id: dungeon.groupId, difficulty: dungeon.dungeonGroupOrder } },
+        )
+        syncBattle({ ...c, push: c.pushBefore })
+        return {}
+    }
+    on('EnterCultTrial', (c, r) => start(c, r))
+    on('ReEnterCultTrial', (c, r) => start(c, r, true))
+    on('CultTrialSwitchStep', (c, r) => {
+        const { row, entry } = catalog.require(c.state, c.now, r.activity_id, [60]),
+            g = catalog.growup.ensure(entry, row.systemId),
+            run = c.state.cultTrial
+        const receipt = g.guid + ':' + r.trial_id
+        if (
+            c.state.acceptedCultTrials?.[receipt] &&
+            (!run || (run.activity_id === r.activity_id && run.trial_id === r.trial_id))
+        )
+            return {}
+        ensure(
+            run?.activity_id === r.activity_id &&
+                run.trial_id === r.trial_id &&
+                run.battle_complete &&
+                run.status === 3,
+            'Cultivation trial is not successfully completed',
+        )
+        const { trial } = cultTrialRoute(tables, catalog, r.activity_id, r.trial_id)
+        ensure(g.cur_stage === trial.phase && trial.phase < 3, 'Final cultivation ending is not implemented', 1007)
+        for (const change of run.attr_changes ?? []) {
+            const target = g.growup_train_attr.find((x) => x.attr_id === change.attr_id)
+            target.attr_value = Math.min(
+                catalog.growup.config(row.systemId).maxAttr,
+                target.attr_value + change.attr_value,
+            )
+        }
+        c.state.acceptedCultTrials = { ...c.state.acceptedCultTrials, [receipt]: true }
+        const finalBonus = Number(String(trial.finalscore).split('|')[run.star - 1])
+        ensure(Number.isSafeInteger(finalBonus) && finalBonus >= 0, 'Missing cultivation trial final score', 1007)
+        g.final_score = String(BigInt(g.final_score ?? '0') + BigInt(finalBonus))
+        g.cur_stage++
+        g.action_count = 0
+        catalog.growup.populateEvents(g, row.systemId)
+        catalog.notify(c, true)
+        // OnClickExitSuccess's ACK callback calls RequestTransfer. Keep the
+        // trial context until that transfer arrives rather than disposing the
+        // client's ScenarioStage while it is still constructing the request.
+        return {}
+    })
+    on('SelectCultTrial', (c, r) => {
+        const { entry, row } = catalog.require(c.state, c.now, r.activity_id, [60]),
+            g = catalog.growup.ensure(entry, row.systemId),
+            { trial } = cultTrialRoute(tables, catalog, r.activity_id, r.trial_id)
+        ensure(
+            g.cur_stage === trial.phase &&
+                g.cur_growup_trail_stage === trial.phase &&
+                catalog.growup.condition(trial.condition, g),
+            'Cultivation trial is not selectable',
+        )
+        g.select_trail_id = trial.trialId
+        catalog.notify(c, true)
+        return {}
+    })
+}

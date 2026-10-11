@@ -6,6 +6,8 @@ import { spendCurrency, spend } from '../inventory.js'
 import { WorldObjectCatalog } from '../world-objects.js'
 import { worldSync } from './world.js'
 import { enterStoryCampaignScene, endStoryCampaignScene, exitStoryCampaign } from './story-campaign.js'
+import { enterCultTrialScene, exitCultTrial, endCultTrialScene } from './cult-trial.js'
+import { startCultTrialBattle } from '../cult-trial.js'
 import {
     getEntrustCatalog,
     entrustInfoSnapshot,
@@ -316,6 +318,7 @@ export function registerEntrust(on, tables) {
     on('EnterEntrust', (c, r) => start(c, r.entrust_id))
     on('ReEnterEntrust', (c, r) => start(c, r.entrust_id, true))
     on('EnterDungeonScene', (c, r) => {
+        if (c.state.cultTrial) return enterCultTrialScene(c, r)
         if (c.state.storyCampaign) return enterStoryCampaignScene(c, r)
         const run = c.state.entrust?.run
         ensure(
@@ -330,6 +333,11 @@ export function registerEntrust(on, tables) {
         return {}
     })
     on('MultiCampaignPlayerLoadFinish', (c) => {
+        if (c.state.cultTrial) {
+            c.pushBefore('CSProtoMultiCampaignPlayerLoadingPageCompleteNtf', { u32: c.id })
+            startCultTrialBattle(c)
+            return
+        }
         const run = c.state.entrust?.run
         if (!run) {
             ensure(
@@ -350,6 +358,7 @@ export function registerEntrust(on, tables) {
         syncEntrustEnemyBattle(c)
     })
     on('EndDungeonScene', (c, r) => {
+        if (c.state.cultTrial) return endCultTrialScene(c, r)
         if (c.state.storyCampaign) return endStoryCampaignScene(c, r)
         const entrust = c.state.entrust,
             run = entrust?.run
@@ -370,7 +379,9 @@ export function registerEntrust(on, tables) {
         sync(c, run)
         return {}
     })
-    on('CampaignQuit', (c) => (c.state.storyCampaign ? exitStoryCampaign(c) : exitEntrust(c)))
+    on('CampaignQuit', (c) =>
+        c.state.cultTrial ? exitCultTrial(c) : c.state.storyCampaign ? exitStoryCampaign(c) : exitEntrust(c),
+    )
     on('StaminaBoxGet', (c, r) => {
         const run = c.state.entrust?.run
         ensure(run && r.box_id === catalog.chest(run.entrust_id).id, 'Invalid entrust chest claim')

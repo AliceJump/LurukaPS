@@ -21,6 +21,9 @@ import {
 import { taskSnapshot } from '../tasks.js'
 import { beginSceneTransition, isPreviousSceneMovement, endSceneTransition } from '../scene-transition.js'
 import { playableSnapshot } from './playable-lifecycle.js'
+import { cultTrialSnapshot } from '../cult-trial.js'
+import { exitCultTrial } from './cult-trial.js'
+import { clearCultFormation } from '../cult-formation.js'
 import {
     addWorldMark,
     deleteWorldMarks,
@@ -34,7 +37,7 @@ export const WORLD_MAP_CMD_ENTER = 256
 function mapPlayer(c) {
     const s = c.state,
         w = s.world,
-        g = group(s),
+        g = group(s, s.cultTrial?.map_id === s.world.map_id ? 8 : 1),
         ids = g.heros.filter((h) => h.hero_id && h.hero_id !== '0').map((h) => h.hero_id)
     const move = { pos: w.pos, angle: w.angle, area_id: w.area_id, move_status: 1, timestamp: String(c.now * 1000) }
     return {
@@ -175,6 +178,14 @@ export function worldSync(c, r = {}, cmd = WORLD_MAP_CMD_ENTER, includeMarks = t
         delete s.storyCampaign
         delete s.combat
     }
+    if (s.cultTrial && s.cultTrial.map_id !== w.map_id) {
+        c.push('CSProtoCampaignInfoSync', { ...cultTrialSnapshot(s), status: 1 })
+        const clearedManager = clearCultFormation(s)
+        delete s.cultTrial
+        delete s.combat
+        c.push('CSProtoTrialDatas', trialPayload(s))
+        if (clearedManager) c.push('CSProtoSyncPlayerData', { group_mgrs: [clearedManager] })
+    }
     c.push('CSProtoWorldMapPointSync', { u32s: w.points })
     if (includeMarks) c.push('CSProtoWorldMapMarkListSync', worldMarkPayload(s))
     c.push('CSProtoWorldMapSync', {
@@ -217,6 +228,10 @@ export function worldSync(c, r = {}, cmd = WORLD_MAP_CMD_ENTER, includeMarks = t
         c.push('CSProtoOnlineModeChange', { mode: 5 })
         c.push('CSProtoCampaignInfoSync', storyCampaignSnapshot(s))
     }
+    if ([WORLD_MAP_CMD_ENTER, 49].includes(cmd) && s.cultTrial?.map_id === w.map_id) {
+        c.push('CSProtoOnlineModeChange', { mode: 5 })
+        c.push('CSProtoCampaignInfoSync', cultTrialSnapshot(s, { entering: true }))
+    }
 }
 export function rememberMap(c, destination) {
     const w = c.state.world
@@ -226,6 +241,39 @@ export function rememberMap(c, destination) {
     if (history.length > 8) history.shift()
 }
 export function registerWorld(on) {
+    on('QuitPhotoGraphScene', (c) => {
+        // LeaveScenario sends 9811 without a callback. SceneService only calls
+        // EnterScene/CutWorld for cmd 49/256; a bare ACK cannot dismiss the UI.
+        const type = c.tables.find('world_city', c.state.world.map_id)?.type
+        if (![20, 29].includes(type)) return {} // already returned / local photo UI
+        ensure(
+            !c.state.entrust?.run && !c.state.multiCampaign && !c.state.storyCampaign,
+            'Quit the active dungeon before leaving this presentation scene',
+        )
+        const history = c.state.worldHistory ?? []
+        let previous
+        while (history.length) {
+            const candidate = history.pop()
+            const city = c.tables.find('world_city', candidate.map_id)
+            const point = c.tables.find('world_borthpos', candidate.point_id)
+            // Do not return into an old instance, dorm or story presentation.
+            if (![1, 3, 4].includes(city?.type) || point?.cityId !== candidate.map_id) continue
+            ensure(
+                candidate.pos && ['x', 'y', 'z'].every((key) => Number.isFinite(candidate.pos[key])),
+                'Invalid saved presentation entrance',
+            )
+            previous = candidate
+            break
+        }
+        ensure(previous, 'Photo/cultivation return context unavailable', 1007)
+        Object.assign(c.state.world, previous)
+        delete c.state.combat
+        worldSync({ ...c, push: c.pushBefore })
+        syncBattle({ ...c, push: c.pushBefore })
+        // The cultivation run stays resumable. Actual trial exit (type27)
+        // requires its own instance settlement, not this presentation return.
+        return {}
+    })
     on('WorldMapExtraStatus', (c, r) => {
         const status = r.status ?? 0
         ensure(Number.isInteger(status) && status >= 0 && status < 6, 'Invalid extra player status')
@@ -275,6 +323,27 @@ export function registerWorld(on) {
         return {}
     })
     on('WorldPoint', (c, r) => {
+        const run = c.state.cultTrial
+        if (run?.map_id === c.state.world.map_id && (!r.point_id || r.point_id === run.return_world.point_id)) {
+            const destination = c.tables.find('world_borthpos', run.return_world.point_id)
+            ensure(destination?.cityId === run.return_world.map_id, 'Invalid cultivation return point', 1007)
+            return exitCultTrial(c)
+        }
+        if (!r.point_id && c.tables.find('world_city', c.state.world.map_id)?.type === 29) {
+            const returned = c.activityCatalog.rows
+                    .filter((row) => row.type === 60)
+                    .some((row) => {
+                        const g = c.state.activities?.[row.id]?.growup
+                        return (
+                            g?.cur_starting_id > 0 &&
+                            Object.keys(c.state.acceptedCultTrials ?? {}).some((key) => key.startsWith(g.guid + ':'))
+                        )
+                    }),
+                point = c.tables.find('world_borthpos', c.state.world.point_id)
+            // Compatibility for the previous server's premature exit: the
+            // account is already back in its verified cultivation scene.
+            if (returned && point?.cityId === c.state.world.map_id) return {}
+        }
         const p = c.tables.find('world_borthpos', r.point_id)
         ensure(p && c.state.world.points.includes(p.id), 'Point is not unlocked')
         rememberMap(c, p.cityId)

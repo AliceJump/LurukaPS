@@ -1,7 +1,7 @@
 import { ensure } from './common.js'
 import { actor } from './combat.js'
 import { u64, combatState, boundedSet } from '../combat-state.js'
-import { isRetiredTrialActor } from '../trial-actors.js'
+import { isRetiredTrialActor, temporaryPets } from '../trial-actors.js'
 import { completedEnemyGroup } from '../enemy-group-completion.js'
 import { inactiveCampaignEnemyGroup } from '../inactive-campaign-enemies.js'
 function runtime(c) {
@@ -116,7 +116,7 @@ export function registerWorldCombat(on) {
             type = r.type ?? 0
         if (isRetiredTrialActor(c.state, uuid)) return
         ensure(
-            c.state.pets.some((p) => p.guid === uuid) || c.state.trialGroup?.pets?.some((p) => p.guid === uuid),
+            c.state.pets.some((p) => p.guid === uuid) || temporaryPets(c.state).some((p) => p.guid === uuid),
             'Pet not owned',
         )
         // Remote presentation only. Echoing this to the owner sets remoteSwitch locally.

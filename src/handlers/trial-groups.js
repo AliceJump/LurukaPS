@@ -3,10 +3,10 @@ import { TaskGraphs, asList, nodeConditions } from '../tasks.js'
 import { ensure, manager, group } from './common.js'
 import { syncBattle, pairs } from '../battle.js'
 import { petData } from '../pets.js'
-import { retireTrialActors } from '../trial-actors.js'
+import { retireTrialActors, temporaryHeroes, temporaryPets } from '../trial-actors.js'
 import { mainHeroConfigId } from '../main-hero.js'
 export function trialPayload(state) {
-    return { trial_heros: state.trialGroup?.heroes ?? [], trial_pets: state.trialGroup?.pets ?? [] }
+    return { trial_heros: temporaryHeroes(state), trial_pets: temporaryPets(state) }
 }
 export function refreshTrialPetBindings(state) {
     const heroes = [...state.player.heros_info.heros, ...(state.trialGroup?.heroes ?? [])],

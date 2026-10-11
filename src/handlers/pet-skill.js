@@ -1,5 +1,5 @@
 import { ensure, pet } from './common.js'
-import { isRetiredTrialActor } from '../trial-actors.js'
+import { isRetiredTrialActor, temporaryPets } from '../trial-actors.js'
 export function skillFailureRate(tables, state, p) {
     const suppression = p.suppress_lv ?? 0,
         force = BigInt(state.player.attr_infos.attrs.find((a) => a.attr_id === 22)?.attr_val ?? '0')
@@ -16,7 +16,7 @@ export function skillFailureRate(tables, state, p) {
 export function registerPetSkill(on) {
     on('SkillFailVec', (c, r) => {
         if (isRetiredTrialActor(c.state, r.unit_id)) return
-        const p = c.state.trialGroup?.pets?.find((p) => p.guid === r.unit_id) ?? pet(c.state, r.unit_id),
+        const p = temporaryPets(c.state).find((p) => p.guid === r.unit_id) ?? pet(c.state, r.unit_id),
             rate = skillFailureRate(c.tables, c.state, p),
             records = (c.state.petSkillRolls ??= {})
         let record = records[p.guid]

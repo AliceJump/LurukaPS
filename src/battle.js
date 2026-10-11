@@ -1,3 +1,4 @@
+import { temporaryHeroes, temporaryPets, activeFormationManager } from './trial-actors.js'
 import { heroTrialSoulEssence } from './trial-equipment.js'
 import { soulEssenceGrade } from './equipment.js'
 import { soulSkillsAtGrade } from './skills.js'
@@ -151,7 +152,7 @@ export function heroBattleLimits(info) {
     return { hp, sp }
 }
 export function refreshBattleState(tables, state) {
-    const heros = [...state.player.heros_info.heros, ...(state.trialGroup?.heroes ?? [])].map((hero) =>
+    const heros = [...state.player.heros_info.heros, ...temporaryHeroes(state)].map((hero) =>
         heroModules(tables, state, hero),
     )
     const previous = new Map((state.player.heros_info.battle_infos || []).map((x) => [x.hero_id, x]))
@@ -173,11 +174,11 @@ export function syncBattle(c) {
         delete c.state.combat.energySpecs
     }
     const heros = refreshBattleState(c.tables, c.state)
-    const pets = [...c.state.pets, ...(c.state.trialGroup?.pets ?? [])]
+    const pets = [...c.state.pets, ...temporaryPets(c.state)]
         .filter((p) => c.tables.find('template_value', p.config_id))
         .map((p) => petModules(c.tables, c.state, p, heros))
     c.push('CSProtoHeroAttrInfoSync', { heros: [...heros, ...pets] })
-    const active = c.state.player.group_mgrs.find((manager) => manager.type === 1),
+    const active = activeFormationManager(c.state),
         formation = active?.groups.find((entry) => entry.id === active.cur_group),
         heroIds = new Set((formation?.heros ?? []).map((entry) => entry.hero_id)),
         petSp = c.state.combat?.map_id === c.state.world.map_id ? (c.state.combat.petSp ?? {}) : {}
@@ -190,7 +191,7 @@ export function syncBattle(c) {
                 alive_state: h.alive_state,
                 reason: 1,
             })),
-            ...[...c.state.pets, ...(c.state.trialGroup?.pets ?? [])]
+            ...[...c.state.pets, ...temporaryPets(c.state)]
                 .filter((pet) => heroIds.has(pet.hero_id))
                 .map((pet) => ({ uuid: pet.guid, sp: petSp[pet.guid] ?? 0, reason: 1 })),
         ],

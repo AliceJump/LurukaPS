@@ -4,6 +4,7 @@ import { configTime } from './shops.js'
 import { taskNodeCompleted, TaskGraphs, nodeConditions, asList, acceptTask, taskUnlocked } from './tasks.js'
 import { ensure } from './handlers/common.js'
 import { activityTables } from './activity-tables.js'
+import { GrowupSystem } from './growup.js'
 
 const policy = JSON.parse(fs.readFileSync(new URL('../configs/activity-policy.json', import.meta.url)))
 export class ActivityCatalog {
@@ -12,6 +13,7 @@ export class ActivityCatalog {
         this.graphs = new TaskGraphs(tables)
         tables = activityTables(tables)
         this.tables = tables
+        this.growup = new GrowupSystem(tables)
         this.rows = tables.get('game_events')
         this.rewards = tables.get('game_events_reward')
         this.resetHour = Number(tables.get('game').find((r) => r.title === 'DAILY_REFRESH_TIME')?.value ?? 4)
@@ -214,6 +216,7 @@ export class ActivityCatalog {
                     data_list: (entry.submissions ?? []).map((id) => ({ id, state: 2 })),
                 }
             } else if (row.type === 40) data.double_drop = { data: [], reset_time: String(now) }
+            else if (row.type === 60) data.grow_up = this.growup.ensure(entry, row.systemId)
             // Complex activities don't receive made-up grow-up/party/tour state.
             // Their configuration is visible; gameplay awaits its own implementation.
             const rewards = this.rewards
@@ -229,7 +232,7 @@ export class ActivityCatalog {
                     }
                 })
             // Do not dereference null subtype data in the client's specialized stores.
-            if (![8, 20, 40, 50, 60, 130].includes(row.type))
+            if (![8, 20, 40, 50, 130].includes(row.type))
                 activitys.push({ id: row.id, time: entry.opened, data, rewards })
         }
         return { confs, activitys }

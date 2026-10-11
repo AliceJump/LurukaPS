@@ -25,6 +25,110 @@
       "rows": 11
     },
     {
+      "name": "game_events_cul",
+      "rows": 1
+    },
+    {
+      "name": "game_events_cul_assist",
+      "rows": 45
+    },
+    {
+      "name": "game_events_cul_assistlevel",
+      "rows": 137
+    },
+    {
+      "name": "game_events_cul_attr",
+      "rows": 4
+    },
+    {
+      "name": "game_events_cul_attrRate",
+      "rows": 6
+    },
+    {
+      "name": "game_events_cul_commoneffect",
+      "rows": 25
+    },
+    {
+      "name": "game_events_cul_commontrigger",
+      "rows": 52
+    },
+    {
+      "name": "game_events_cul_credit",
+      "rows": 3
+    },
+    {
+      "name": "game_events_cul_dialogue",
+      "rows": 4
+    },
+    {
+      "name": "game_events_cul_effect",
+      "rows": 851
+    },
+    {
+      "name": "game_events_cul_end",
+      "rows": 5
+    },
+    {
+      "name": "game_events_cul_event",
+      "rows": 67
+    },
+    {
+      "name": "game_events_cul_eventoption",
+      "rows": 277
+    },
+    {
+      "name": "game_events_cul_eventstep",
+      "rows": 796
+    },
+    {
+      "name": "game_events_cul_excultivation",
+      "rows": 72
+    },
+    {
+      "name": "game_events_cul_finalrecord",
+      "rows": 7
+    },
+    {
+      "name": "game_events_cul_mood",
+      "rows": 3
+    },
+    {
+      "name": "game_events_cul_rank",
+      "rows": 7
+    },
+    {
+      "name": "game_events_cul_rest",
+      "rows": 3
+    },
+    {
+      "name": "game_events_cul_serverrank",
+      "rows": 4
+    },
+    {
+      "name": "game_events_cul_skill_tree",
+      "rows": 29
+    },
+    {
+      "name": "game_events_cul_starting",
+      "rows": 5
+    },
+    {
+      "name": "game_events_cul_status",
+      "rows": 63
+    },
+    {
+      "name": "game_events_cul_train",
+      "rows": 20
+    },
+    {
+      "name": "game_events_cul_trial",
+      "rows": 8
+    },
+    {
+      "name": "game_events_cul_trial_wave",
+      "rows": 61
+    },
+    {
       "name": "game_events_day_attendance",
       "rows": 7
     },
@@ -51,6 +155,14 @@
     {
       "name": "seven_day_target_reward",
       "rows": 1
+    },
+    {
+      "name": "hero_interim",
+      "rows": 138
+    },
+    {
+      "name": "pet_interim",
+      "rows": 20
     }
   ]
 }

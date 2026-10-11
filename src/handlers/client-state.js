@@ -3,6 +3,7 @@ import { ensure, group } from './common.js'
 import { recordTaskBehaviour } from '../task-events.js'
 import { storyCampaignSnapshot, traceStoryCampaignTask } from '../story-campaign.js'
 import { endSceneTransition } from '../scene-transition.js'
+import { startCultTrialBattle } from '../cult-trial.js'
 export function registerClientState(on) {
     on('GamePause', (c, r) => {
         const gameTime = String(r.game_time ?? '0')
@@ -19,6 +20,8 @@ export function registerClientState(on) {
         endSceneTransition(c.state)
         c.state.world.client_loaded = true
         c.state.world.loaded_at = c.now
+        if (c.state.cultTrial?.map_id === c.state.world.map_id && [2, 3, 4].includes(c.state.cultTrial.status))
+            startCultTrialBattle(c)
         const run = c.state.storyCampaign
         if (
             run?.status === 2 &&
@@ -41,7 +44,7 @@ export function registerClientState(on) {
         }
     })
     on('SwitchGroupControlEnd', (c, r) => {
-        const g = group(c.state)
+        const g = group(c.state, c.state.cultTrial?.map_id === c.state.world.map_id ? 8 : 1)
         if (!g.heros.some((h) => h.hero_id === r.uuid) && isPreviousTrialActor(c.state, r.uuid)) return
         ensure(
             g.heros.some((h) => h.hero_id === r.uuid),

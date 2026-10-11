@@ -1,5 +1,9 @@
 import { ensureFlightUnlocked, explorationSnapshot } from './flight-unlock.js'
 import { registerActivities } from './handlers/activities.js'
+import { registerGrowup } from './handlers/growup.js'
+import { registerCultTrial } from './handlers/cult-trial.js'
+import { cultTrialSnapshot, ensureCultTrialScene, recordCultTrialResult } from './cult-trial.js'
+import { ensureCultFormation } from './cult-formation.js'
 import { repairSavedPetPuzzleVisibility } from './pet-puzzles.js'
 import { repairSavedElevatorVisibility } from './handlers/world-elevator.js'
 import { hiddenTaskPetGuids, taskPetPresentation } from './task-pet-presentation.js'
@@ -226,6 +230,7 @@ function forkBattleReport(base) {
         ...(base.storyCampaign
             ? { storyCampaign: { ...base.storyCampaign, completed_scenes: [...base.storyCampaign.completed_scenes] } }
             : {}),
+        ...(base.cultTrial ? { cultTrial: { ...base.cultTrial } } : {}),
     }
 }
 function forkFastCombat(base, name, request) {
@@ -315,6 +320,8 @@ export class Game {
         registerPlayableEnemies(on, tables, store)
         registerWorldEvents(on, tables)
         this.activities = registerActivities(on, tables)
+        registerGrowup(on, this.activities)
+        registerCultTrial(on, tables, this.activities)
         registerKiboDuel(on, tables, protocol)
         registerEntrust(on, tables)
         registerStoryCampaign(on, tables)
@@ -515,7 +522,7 @@ export class Game {
                 if (state.storyCampaign) delete state.storyCampaign.task_context_loaded_map
                 repairPendingDuelEntry(state)
                 this.activities.ensureGuideTasks(state, now)
-                if (!state.storyCampaign && !state.entrust?.run && !state.multiCampaign) {
+                if (!state.storyCampaign && !state.entrust?.run && !state.multiCampaign && !state.cultTrial) {
                     const point = this.activities.guideReturnPoint(state, now)
                     if (point) Object.assign(state.world, this.tables.position(point))
                 }
@@ -565,6 +572,9 @@ export class Game {
                 prepareTaskScenes(this.tables, state, { login: true })
                 ensureEntrustSceneObjects(this.tables, state, now)
                 ensureStoryCampaignScene(this.tables, state, now)
+                ensureCultTrialScene(this.tables, state, now)
+                recordCultTrialResult(this.tables, state)
+                ensureCultFormation(this.tables, this.activities, state, session.id)
                 recoverInitialDungeonKills(this.tables, state)
                 refreshTaskProgress(this.tables, state)
                 beginSceneTransition(state, previousMapId, now, 256)
@@ -1121,7 +1131,9 @@ export class Game {
                 },
                 { seq: frame.seq, pushSeq: frame.pushSeq },
             ),
-            ...(state.trialGroup ? [this.packet('CSProtoTrialDatas', trialPayload(state))] : []),
+            ...(state.trialGroup || state.cultTrial?.heroes?.length
+                ? [this.packet('CSProtoTrialDatas', trialPayload(state))]
+                : []),
             this.packet('CSProtoPetInfoSync', {
                 ...releaseFields(state, 'pet', now, this.releaseResetHour),
                 record_pets: state.recordPets ?? [],
@@ -1173,6 +1185,9 @@ export class Game {
             this.packet('CSProtoTaskSync', taskSnapshot(this.tables, state)),
             this.packet('CSProtoSyncCommonTimeConf', this.activities.commonTimes(now)),
             this.packet('CSProtoActivitySync', this.activities.snapshot(state, now)),
+            ...(state.cultTrial?.map_id === state.world.map_id
+                ? [this.packet('CSProtoCampaignInfoSync', cultTrialSnapshot(state, { entering: true }))]
+                : []),
             ...(this.activities.nday(state, now)
                 ? [this.packet('SCProtoNDayInfoSync', this.activities.nday(state, now))]
                 : []),

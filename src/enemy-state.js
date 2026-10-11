@@ -91,7 +91,9 @@ export function enemyDefinition(tables, state, uuid) {
             ? state.entrust.run.dungeon_id
             : state.storyCampaign?.map_id === state.world.map_id
               ? state.storyCampaign.dungeon_id
-              : null
+              : state.cultTrial?.map_id === state.world.map_id
+                ? state.cultTrial.dungeon_id
+                : null
     const dungeon = dungeonId ? tables.find('dungeon', dungeonId) : null
     const configured =
         pack?.levelPolicy === 3 && dungeon

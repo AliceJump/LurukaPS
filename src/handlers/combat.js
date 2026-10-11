@@ -4,7 +4,8 @@ import { finishEnemyGroupRelations, pruneInactiveCampaignRelations } from './wor
 import { isPlayerDamageSource } from '../damage-owner.js'
 import { advanceEntrustCombat } from './entrust.js'
 import { settleStoryCampaignScene } from './story-campaign.js'
-import { isRetiredTrialActor } from '../trial-actors.js'
+import { advanceCultTrialCombat } from '../cult-trial.js'
+import { isRetiredTrialActor, temporaryHeroes, temporaryPets, activeFormationManager } from '../trial-actors.js'
 import { ensure } from './common.js'
 import { heroModules, heroBattleLimits, heroBattleConfig, petModules, pairs } from '../battle.js'
 import { u64, expandBattleReport, combatState, boundedSet } from '../combat-state.js'
@@ -19,7 +20,7 @@ export function actor(c, value) {
         )
     if (kind === 5)
         ensure(
-            (c.state.trialGroup?.heroes ?? []).some((h) => h.guid === id),
+            temporaryHeroes(c.state).some((h) => h.guid === id),
             'Trial hero not active',
         )
     if (kind === 2)
@@ -29,17 +30,17 @@ export function actor(c, value) {
         )
     if (kind === 9)
         ensure(
-            (c.state.trialGroup?.pets ?? []).some((p) => p.guid === id),
+            temporaryPets(c.state).some((p) => p.guid === id),
             'Trial pet not active',
         )
     return id
 }
 const itemSkillCatalogs = new WeakMap()
 function isFormationPassive(c, skillId) {
-    const manager = c.state.player.group_mgrs.find((m) => m.type === 1),
+    const manager = activeFormationManager(c.state),
         formation = manager?.groups.find((g) => g.id === manager.cur_group)
     const active = new Set((formation?.heros ?? []).map((h) => h.hero_id))
-    return [...c.state.player.heros_info.heros, ...(c.state.trialGroup?.heroes ?? [])].some(
+    return [...c.state.player.heros_info.heros, ...temporaryHeroes(c.state)].some(
         (hero) =>
             active.has(hero.guid) &&
             String(c.tables.find('hero', hero.conf_id)?.passiveSkillList ?? '')
@@ -73,19 +74,19 @@ function skillActorKey(c, request, skillId, stopping = false) {
     return passive ? `local-passive:${skillId}:${index}` : `local-item:${index}`
 }
 function limits(c, id) {
-    const hero = [...c.state.player.heros_info.heros, ...(c.state.trialGroup?.heroes ?? [])].find((h) => h.guid === id)
+    const hero = [...c.state.player.heros_info.heros, ...temporaryHeroes(c.state)].find((h) => h.guid === id)
     return hero ? heroBattleLimits(heroModules(c.tables, c.state, hero)) : null
 }
 function energyActors(c, battle) {
-    const active = c.state.player.group_mgrs.find((manager) => manager.type === 1),
+    const active = activeFormationManager(c.state),
         formation = active?.groups.find((entry) => entry.id === active.cur_group),
         heroIds = new Set((formation?.heros ?? []).map((entry) => entry.hero_id).filter((id) => id && id !== '0')),
-        activePets = [...c.state.pets, ...(c.state.trialGroup?.pets ?? [])].filter(
+        activePets = [...c.state.pets, ...temporaryPets(c.state)].filter(
             (pet) => heroIds.has(pet.hero_id) && c.tables.find('template_value', pet.config_id),
         ),
         key = [...heroIds, ...activePets.map((pet) => pet.guid)].join(':')
     if (battle.energyActorKey === key && battle.energySpecs) return new Map(Object.entries(battle.energySpecs))
-    const heroes = [...c.state.player.heros_info.heros, ...(c.state.trialGroup?.heroes ?? [])].filter((hero) =>
+    const heroes = [...c.state.player.heros_info.heros, ...temporaryHeroes(c.state)].filter((hero) =>
             heroIds.has(hero.guid),
         ),
         modules = heroes.map((hero) => heroModules(c.tables, c.state, hero)),
@@ -161,9 +162,7 @@ export function registerCombat(on) {
             { unit_id: u64(r.unit_id), skill: structuredClone(r.skill), op_time: u64(r.op_time), updated_at: c.now },
             256,
         )
-        const hero = [...c.state.player.heros_info.heros, ...(c.state.trialGroup?.heroes ?? [])].find(
-                (h) => h.guid === id,
-            ),
+        const hero = [...c.state.player.heros_info.heros, ...temporaryHeroes(c.state)].find((h) => h.guid === id),
             config = hero && (heroBattleConfig(c.tables, hero) || c.tables.find('hero', hero.conf_id))
         if (config && pairs(config.skillList).get(4) === r.skill.skill_id) {
             const value = c.state.player.heros_info.battle_infos.find((h) => h.hero_id === id)
@@ -175,7 +174,7 @@ export function registerCombat(on) {
                 })
             }
         }
-        const p = [...c.state.pets, ...(c.state.trialGroup?.pets ?? [])].find((pet) => pet.guid === id)
+        const p = [...c.state.pets, ...temporaryPets(c.state)].find((pet) => pet.guid === id)
         if (p) {
             const signature = String(c.tables.find('pet', p.config_id)?.signatureSkillList ?? '')
                 .split('|')[0]
@@ -215,6 +214,7 @@ export function registerCombat(on) {
         if (active && String(active.skill.skill_id) === u64(r.skill_id)) delete battle.skills[id]
     })
     on('CreateBullet', (c, r) => {
+        if (isRetiredTrialActor(c.state, r.unit_id)) return
         const unit = actor(c, r.unit_id),
             items = r.bullet_info ?? []
         if (c.state.petCaptureResults?.[unit]) return
@@ -238,6 +238,7 @@ export function registerCombat(on) {
         ensure(actions.length <= 256, 'Too many bullet actions')
         const battle = combatState(c.state, c.now)
         for (const action of actions) {
+            if (isRetiredTrialActor(c.state, action.unit_id)) continue
             const id = u64(action.bullet_id),
                 unit = actor(c, action.unit_id),
                 bullet = battle.bullets[id]
@@ -458,6 +459,7 @@ export function registerCombat(on) {
             })
         for (const id of deadGroups) finishEnemyGroupRelations(c, id)
         if (deadGroups.size) pruneInactiveCampaignRelations(c)
+        if (deadGroups.size) advanceCultTrialCombat(c)
         advanceEntrustCombat(c)
         settleStoryCampaignScene(c)
         if (entrustDamageChanged && entrustRun.last_damage_sync_at !== c.now) {
