@@ -5,7 +5,7 @@ import { Protocol } from '../src/protocol.js'
 import { Tables } from '../src/player.js'
 import { Store } from '../src/store.js'
 import { Game } from '../src/game.js'
-import { TaskGraphs, makeNode } from '../src/tasks.js'
+import { TaskGraphs, makeNode, conditionValue, nodeConditions } from '../src/tasks.js'
 import { grantRewards } from '../src/rewards.js'
 const c = configuration(),
     p = new Protocol(c.base),
@@ -282,7 +282,7 @@ test('canceling and restarting the choice does not create a second pet', () => {
         store.close()
     }
 })
-test('later playable62102 completion satisfies its configured quest condition', () => {
+test('mount challenge62102 requires a real same-scene finish before main quest advances', () => {
     const store = new Store(':memory:'),
         game = new Game(p, store, t),
         session = {}
@@ -312,9 +312,29 @@ test('later playable62102 completion satisfies its configured quest condition', 
                 },
             ]
         })
+        const condition = nodeConditions(graph.nodes.get(167))[0]
+        const context = { taskId: 106010, nodeId: 167, index: 0 }
+        assert.equal(store.load(session.id).state.tasks[0].nodes[0].node_values[0], 0)
+        assert.equal(conditionValue(condition, store.load(session.id).state, context), 0)
+        assert.throws(
+            () => call('TaskClientCondAfter', { task_id: 106010, node_id: 167, indexes: [0] }),
+            /condition not complete/,
+        )
         call('PlayableStart', { u32: 62102 })
+        assert.throws(() => call('PlayableFinish', { playId: 62102, index: 0, score: 0 }), /completed its steps/)
+        assert.equal(conditionValue(condition, store.load(session.id).state, context), 0)
         call('PlayableStep', { playId: 62102, is_step: true, finish_step: 10 })
+        assert.equal(conditionValue(condition, store.load(session.id).state, context), 0)
         call('PlayableFinish', { playId: 62102, index: 0, score: 0 })
+        const completed = store.load(session.id).state
+        assert.equal(conditionValue(condition, completed, context), 1)
+        assert.equal(
+            conditionValue(condition, { ...completed, playableFinishes: { 62102: { map_id: 101 } } }, context),
+            0,
+        )
+        const receipt = structuredClone(completed.playableFinishes[62102])
+        call('PlayableFinish', { playId: 62102, index: 0, score: 0 })
+        assert.deepEqual(store.load(session.id).state.playableFinishes[62102], receipt)
         assert.equal(store.load(session.id).state.tasks[0].nodes[0].node_values[0], 1)
         call('TaskClientCondAfter', { task_id: 106010, node_id: 167, indexes: [0] })
         call('TaskClientAfter', { task_id: 106010, node_id: 167 })
