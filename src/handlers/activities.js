@@ -17,6 +17,17 @@ export function registerActivities(on, tables) {
         return rewards
     }
     on('ActivityGet', (c) => {
+        for (const row of catalog.rows.filter((x) => x.type === 60)) {
+            const entry = c.state.activities?.[row.id]
+            if (entry?.growup?.cur_starting_id && catalog.active(row, c.state, c.now)) {
+                catalog.growup.prepare(entry, row.systemId, c.randomInt)
+                c.pushBefore('CSProtoSyncGrowupTrainAssistCharData', {
+                    activity_id: row.id,
+                    starting_id: entry.growup.cur_starting_id,
+                    train_datas: entry.growup.assist_chars,
+                })
+            }
+        }
         const snapshot = catalog.snapshot(c.state, c.now)
         c.pushBefore('CSProtoSyncCommonTimeConf', catalog.commonTimes(c.now))
         c.pushBefore('CSProtoActivitySync', snapshot)

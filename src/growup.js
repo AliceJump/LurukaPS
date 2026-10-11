@@ -1,4 +1,6 @@
 import { ensure } from './handlers/common.js'
+import { randomInt as secureRandomInt } from 'node:crypto'
+import { assistantLevel, prepareGrowupCycle, populateGrowupEvents, growupCommonTriggers } from './growup-cycle.js'
 const ids = (value) =>
     String(value ?? '')
         .split('|')
@@ -63,7 +65,28 @@ export class GrowupSystem {
         }
     }
     ensure(entry, id) {
-        return (entry.growup ??= this.fresh(id))
+        const g = (entry.growup ??= this.fresh(id))
+        this.normalizeTrialSelection(g, id)
+        if (g.cur_starting_id && entry.growupRuntime?.expeditionRemainingVersion !== 1) {
+            const runtime = (entry.growupRuntime ??= {})
+            const maximum = this.config(id).expeditionCount
+            // Legacy server stored spent points. CBT3 TravalCount reads this
+            // field directly as remaining points and uses >0 to enter travel.
+            g.cur_cost_expedition_count =
+                g.cur_stage > 3 || g.cur_growup_trail_stage === g.cur_stage
+                    ? 0
+                    : Math.max(0, maximum - Math.max(0, Math.min(maximum, g.cur_cost_expedition_count ?? 0)))
+            runtime.expeditionRemainingVersion = 1
+        }
+        return g
+    }
+    normalizeTrialSelection(g, id) {
+        if (!g.cur_starting_id || g.cur_stage < 1 || g.cur_stage > 3) return
+        const candidates = ids(this.config(id)[`trial${g.cur_stage}`])
+        // CBT3 GetCurTrialID reads selectTrailId directly on the final day.
+        // A previous phase's ID must not survive into the ending-selection page.
+        // Zero means pending selection; preserve any valid explicit selection.
+        if (!candidates.includes(g.select_trail_id)) g.select_trail_id = candidates.length === 1 ? candidates[0] : 0
     }
     condition(rule, g) {
         if (!rule) return true
@@ -101,11 +124,29 @@ export class GrowupSystem {
                 )
             } else if (row.type === 3) {
                 for (const [attr, value, mode = 0] of pairs(row.param)) {
-                    ensure(mode === 0, 'Cultivation relative attribute effect is not implemented', 1007)
+                    ensure([0, 1, 2, 3].includes(mode), 'Unknown cultivation attribute change source', 1007)
                     const target = g.growup_train_attr.find((x) => x.attr_id === attr)
                     ensure(target, 'Unknown cultivation attribute', 1007)
                     target.attr_value = Math.max(0, Math.min(config.maxAttr, target.attr_value + value))
                 }
+            } else if (row.type === 13) {
+                for (const [assistantId, points] of pairs(row.param)) {
+                    ensure(
+                        this.tables
+                            .get('game_events_cul_assist')
+                            .some((x) => x.assistId === assistantId && x.systemId === id),
+                        'Unknown cultivation assistant',
+                        1007,
+                    )
+                    let assistant = g.assist_chars.find((x) => x.assist_char_id === assistantId)
+                    if (!assistant)
+                        g.assist_chars.push(
+                            (assistant = { assist_char_id: assistantId, bond: 0, is_bond_train: false }),
+                        )
+                    assistant.bond = Math.max(0, assistant.bond + points)
+                }
+            } else if (row.type === 0) {
+                continue
             } else if (row.type === 5 || row.type === 6) {
                 ensure(!row.param, 'Parameterized cultivation mood effect is not implemented', 1007)
                 // Empty-param MoodLevel/MoodDown are one-step effects. This is a
@@ -139,28 +180,41 @@ export class GrowupSystem {
             } else ensure(false, `Cultivation effect ${effectId} type ${row.type} is not implemented`, 1007)
         }
     }
-    populateEvents(g, id) {
-        const records = new Map(g.evt_records.map((x) => [x.id, x.complete_cnt]))
-        const eligible = this.tables
-            .get('game_events_cul_event')
-            .filter(
-                (x) =>
-                    x.systemId === id &&
-                    x.eventType === 2 &&
-                    this.condition(x.unlockCondition, g) &&
-                    (records.get(x.id) ?? 0) < x.repeattime,
-            )
-        g.event_datas = eligible.map((x) => ({
-            event_id: x.id,
-            cur_step: 0,
-            finish: false,
-            event_option_ids: [],
-            duration: x.duration,
-        }))
-        // TODO: commontrigger/commoneffect mandatory events and per-day random
-        // encounters need their exact timing graph; don't invent event chances.
+    populateEvents(g, id, randomInt = secureRandomInt) {
+        populateGrowupEvents(this, g, id, randomInt)
     }
-    start(entry, id, request, accountId) {
+    prepare(entry, id, randomInt) {
+        const g = this.ensure(entry, id)
+        if (!g.cur_starting_id || g.cur_stage > 3) return
+        const runtime = (entry.growupRuntime ??= {})
+        if (runtime.eventsDay === undefined) {
+            // Recover guaranteed day unlocks only; never reroll historical rare events.
+            for (let day = 1; day <= g.cur_growup_stage; day++)
+                growupCommonTriggers(this, g, id, { kind: 2, variant: 2, result: 1, detail: day }, (max) => max - 1)
+            runtime.eventsDay = g.cur_growup_stage
+        }
+        prepareGrowupCycle(this, entry, id, randomInt)
+        if (runtime.eventsCycle !== runtime.cycle) {
+            this.populateEvents(g, id, randomInt)
+            runtime.eventsCycle = runtime.cycle
+        }
+    }
+    afterAction(entry, id, dayChanged, randomInt) {
+        const g = entry.growup,
+            runtime = (entry.growupRuntime ??= {})
+        if (dayChanged) {
+            for (const event of g.event_datas) event.duration = Math.max(0, event.duration - 1)
+            for (const status of g.growup_status)
+                if (status.cur_duration_time < 999) status.cur_duration_time = Math.max(0, status.cur_duration_time - 1)
+            g.growup_status = g.growup_status.filter((x) => x.cur_duration_time > 0)
+            growupCommonTriggers(this, g, id, { kind: 2, variant: 2, result: 1, detail: g.cur_growup_stage }, randomInt)
+            runtime.eventsDay = g.cur_growup_stage
+        }
+        prepareGrowupCycle(this, entry, id, randomInt)
+        this.populateEvents(g, id, randomInt)
+        runtime.eventsCycle = runtime.cycle
+    }
+    start(entry, id, request, accountId, randomInt = secureRandomInt) {
         const old = this.ensure(entry, id)
         const starting = this.tables
             .get('game_events_cul_starting')
@@ -210,9 +264,11 @@ export class GrowupSystem {
             ),
         ].map((train_option_id) => ({ train_option_id, train_lv: 1, train_exp: 0, assist_char_ids: [] }))
         this.effects(g, id, starting.effect)
-        this.populateEvents(g, id)
         g.day_start_snapshot = { train_attrs: structuredClone(g.growup_train_attr), statuses: [] }
         entry.growup = g
+        g.cur_cost_expedition_count = this.config(id).expeditionCount
+        entry.growupRuntime = { expeditionRemainingVersion: 1 }
+        this.prepare(entry, id, randomInt)
         return g
     }
     requireRun(entry, id) {
@@ -277,15 +333,15 @@ export class GrowupSystem {
         if (g.action_count < config.actionCount) return false
         g.action_count = 0
         g.cur_growup_stage++
-        g.cur_cost_expedition_count = 0
+        g.cur_cost_expedition_count = config.expeditionCount
         const last = Array.from({ length: g.cur_stage }, (_, i) => config[`trainingDayNum${i + 1}`]).reduce(
             (n, x) => n + x,
             0,
         )
         if (g.cur_growup_stage > last) {
             g.cur_growup_trail_stage = g.cur_stage
-            const trials = ids(config[`trial${g.cur_stage}`])
-            if (trials.length === 1) g.select_trail_id = trials[0]
+            g.cur_cost_expedition_count = 0
+            this.normalizeTrialSelection(g, id)
         }
         g.day_start_snapshot = {
             train_attrs: structuredClone(g.growup_train_attr),
@@ -303,47 +359,81 @@ export class GrowupSystem {
             .find((x) => x.systemId === id && x.trainOption === optionId && x.trainLevel === option.train_lv)
         ensure(row, 'Missing cultivation training level', 1007)
         ensure(!row.cost, 'Paid cultivation training is not implemented', 1007)
+        this.prepare(entry, id, randomInt)
         const assigned = option.assist_char_ids.map((x) => g.assist_chars.find((a) => a.assist_char_id === x))
-        // Bond/assist placement is not ported yet. Known status percentages
-        // below follow the client arithmetic; other modifiers are rejected.
-        ensure(!assigned.length, 'Cultivation assist training modifiers are not implemented', 1007)
+        ensure(assigned.every(Boolean), 'Cultivation training assistant is unavailable')
+        let assistModifier = 10000,
+            bondModifier = 10000n,
+            staminaModifier = 10000,
+            staminaAddition = 0,
+            failureModifier = 10000,
+            bondPointsModifier = 10000,
+            moodBoost = 0
+        const additions = new Map()
+        for (const assistant of assigned) {
+            const data = assistantLevel(this, assistant)
+            assistModifier += data.assistTrainModifier
+            if (assistant.is_bond_train) bondModifier = (bondModifier * BigInt(data.bondTrainModifier)) / 10000n
+            const [attr, amount] = String(data.assistTrainAdd).split('|').map(Number)
+            additions.set(attr, (additions.get(attr) ?? 0) + amount)
+            staminaModifier += data.assistStaminacost > 0 ? data.assistStaminacost - 10000 : 0
+            moodBoost += data.assistmoodModifieradd
+        }
         const statusModifiers = new Map(g.growup_train_attr.map((x) => [x.attr_id, 10000]))
         for (const status of g.growup_status) {
             const source = this.tables.get('game_events_cul_status').find((x) => x.statusID === status.status_id)
             ensure(source, 'Unknown cultivation status', 1007)
             for (const effectId of ids(source.effect)) {
                 const effect = this.tables.get('game_events_cul_effect').find((x) => x.Id === effectId)
-                ensure(
-                    effect && [15, 28].includes(effect.type),
-                    'Cultivation status training effect is not implemented',
-                    1007,
-                )
+                ensure(effect, 'Cultivation status training effect missing', 1007)
                 if (effect.type === 15)
                     for (const [attr, bonus] of pairs(effect.param))
                         statusModifiers.set(attr, (statusModifiers.get(attr) ?? 10000) + bonus)
-                else
+                else if (effect.type === 28)
                     for (const attr of statusModifiers.keys())
                         statusModifiers.set(attr, statusModifiers.get(attr) + Number(effect.param))
+                else if (effect.type === 23) failureModifier += Number(effect.param) - 10000
+                else if (effect.type === 24) staminaModifier += Number(effect.param) - 10000
+                else if (effect.type === 25) bondPointsModifier += Number(effect.param.split('#').at(-1))
+                else if (effect.type === 1 || effect.type === 2)
+                    staminaAddition += Number(effect.param) * (effect.type === 1 ? 1 : -1)
+                else if (effect.type === 3)
+                    for (const [attr, amount] of pairs(effect.param))
+                        additions.set(attr, (additions.get(attr) ?? 0) + amount)
+                else {
+                    const unknown = (entry.growupRuntime.unimplementedStatusTypes ??= [])
+                    if (!unknown.includes(effect.type)) {
+                        unknown.push(effect.type)
+                        console.warn(`Cultivation status effect ${effect.type} is not applied to training`)
+                    }
+                }
             }
         }
-        const remaining = g.growup_stamina.stamina - row.costStamina
-        const failure = trainingFailureRate(remaining)
+        const remaining =
+            g.growup_stamina.stamina + Math.trunc(((-row.costStamina + staminaAddition) * staminaModifier) / 10000)
+        const failure = Math.min(
+            10000,
+            Math.max(0, Math.trunc((trainingFailureRate(remaining) * failureModifier) / 10000)),
+        )
         // ModuleRaisingResult.OnTrainResult subtracts one before indexing
         // fail/success/bond artwork. The wire values are 1/2/3, not 0/1/2.
-        const result = randomInt(10000) < failure ? 1 : 2
+        const result = randomInt(10000) < failure ? 1 : assigned.some((x) => x.is_bond_train) ? 3 : 2
         const mood = this.tables
             .get('game_events_cul_mood')
             .find((x) => x.systemId === id && x.moodLevel === g.growup_mood.mood_level)
         ensure(mood, 'Unknown cultivation mood', 1007)
-        const modifier = result === 1 ? config.failModifier : config.successModifier
+        const modifier =
+            result === 1 ? config.failModifier : result === 3 ? config.greatSuccessModifier : config.successModifier
         const changes = []
         for (const [attr, value] of pairs(row.addTrainAttr)) {
             const target = g.growup_train_attr.find((x) => x.attr_id === attr)
             ensure(target, 'Unknown cultivation training attribute', 1007)
-            let amount = BigInt(value) * 10000n
+            let amount = BigInt(value + (additions.get(attr) ?? 0)) * 10000n
             amount = (amount * BigInt(modifier)) / 10000n
             amount = (amount * BigInt(statusModifiers.get(attr))) / 10000n
-            amount = (amount * BigInt(mood.moodModifier)) / 10000n
+            amount = (amount * BigInt(mood.moodModifier + moodBoost)) / 10000n
+            amount = (amount * BigInt(assistModifier)) / 10000n
+            amount = (amount * bondModifier) / 10000n
             const before = target.attr_value
             target.attr_value = Math.min(config.maxAttr, before + Number(amount / 10000n))
             changes.push({ attr_id: attr, attr_value: target.attr_value - before })
@@ -361,11 +451,21 @@ export class GrowupSystem {
             option.train_lv = next.trainLevel
         }
         g.growup_train_exp += row.addEXP
-        return { result, changes, dayChanged: this.advance(g, id), failure }
+        for (const assistant of assigned) {
+            const previous = assistantLevel(this, assistant).bondLevel
+            assistant.bond += Math.trunc((row.addBond * bondPointsModifier) / 10000)
+            const next = assistantLevel(this, assistant)
+            if (next.bondLevel > previous) this.effects(g, id, next.lvlupeffect)
+        }
+        growupCommonTriggers(this, g, id, { kind: 1, variant: optionId, result, detail: 0 }, randomInt)
+        const dayChanged = this.advance(g, id)
+        this.afterAction(entry, id, dayChanged, randomInt)
+        return { result, changes, dayChanged, failure }
     }
     rest(entry, id, randomInt) {
         const g = this.requireRun(entry, id),
             config = this.config(id)
+        this.prepare(entry, id, randomInt)
         const row = this.weighted(
             this.tables.get('game_events_cul_rest').filter((x) => x.systemId === id),
             'weight',
@@ -373,8 +473,11 @@ export class GrowupSystem {
         )
         g.growup_stamina.stamina = Math.min(config.maxStamina, g.growup_stamina.stamina + row.addStamina)
         this.effects(g, id, row.effect)
+        growupCommonTriggers(this, g, id, { kind: 2, variant: 1, result: 0, detail: 0 }, randomInt)
         if (row.type === 3) g.rest_interact_pending_id = row.rest
-        return { row, dayChanged: row.type !== 3 && this.advance(g, id) }
+        const dayChanged = row.type !== 3 && this.advance(g, id)
+        if (row.type !== 3) this.afterAction(entry, id, dayChanged, randomInt)
+        return { row, dayChanged }
     }
     eventInfo(g, id) {
         return g.cur_event_data ?? { activity_id: id, event_id: 0, cur_step: 0, event_option_infos: [] }
@@ -390,9 +493,16 @@ export class GrowupSystem {
         ensure(event, 'Cultivation event was not offered')
         const steps = this.tables.get('game_events_cul_eventstep').filter((x) => x.systemId === request.event_id)
         if (!g.cur_event_data?.event_id) {
-            ensure(!request.optional_id, 'Begin the cultivation event before selecting an option')
+            ensure(g.cur_cost_expedition_count > 0, 'No cultivation expedition points remain')
             const first = steps.find((x) => x.isFirstStep === 1)
             ensure(first, 'Missing cultivation event first step', 1007)
+            // ModuleTravelPanel sends the first step's entrance option directly;
+            // there is no mandatory optional_id=0 handshake in the CBT3 UI.
+            if (request.optional_id)
+                ensure(
+                    ids(first.option).includes(request.optional_id),
+                    'Option does not belong to current cultivation step',
+                )
             g.cur_event_data = {
                 activity_id: id,
                 event_id: event.event_id,
@@ -400,12 +510,14 @@ export class GrowupSystem {
                 event_option_infos: [],
             }
             event.cur_step = first.step
-            return { activity_id: id, event_id: event.event_id, optional_id: 0, is_identify_success: true }
+            if (!request.optional_id)
+                return { activity_id: id, event_id: event.event_id, optional_id: 0, is_identify_success: true }
         }
         ensure(g.cur_event_data.event_id === event.event_id, 'Another cultivation event is active')
         const step = steps.find((x) => x.step === g.cur_event_data.cur_step)
         ensure(step, 'Missing cultivation event step', 1007)
         let next = step.nextStep
+        let identified = true
         let selected = request.optional_id ?? 0
         if (!selected && step.option) {
             const options = this.tables
@@ -423,15 +535,23 @@ export class GrowupSystem {
             ensure(ids(step.option).includes(selected), 'Option does not belong to current cultivation step')
             const option = this.tables.get('game_events_cul_eventoption').find((x) => x.optionId === selected)
             ensure(option && this.condition(option.unlockCondition, g), 'Cultivation event option is locked')
-            ensure(!option.checkType, 'Cultivation dice checks are not implemented', 1007)
-            ensure(
-                g.cur_cost_expedition_count + option.costPoints <= config.expeditionCount,
-                'No cultivation expedition points remain',
-            )
-            this.effects(g, id, option.effect)
-            g.cur_cost_expedition_count += option.costPoints
-            next = option.nextStep
-            g.cur_event_data.event_option_infos.push({ optional_id: option.optionId, is_identify_success: true })
+            ensure(option.costPoints <= g.cur_cost_expedition_count, 'No cultivation expedition points remain')
+            if (option.checkType) {
+                const attr = g.growup_train_attr.find((x) => x.attr_id === option.checkType)
+                ensure(attr, 'Unknown cultivation check attribute', 1007)
+                const rank = this.tables
+                    .get('game_events_cul_attrRate')
+                    .filter((x) => x.eventid === id && attr.attr_value >= x.needAttr)
+                    .sort((a, b) => b.needAttr - a.needAttr)[0]
+                // TODO: verify the server-only checklevel adjustment with a real
+                // event callback. Compatibility uses the client's six-sided die
+                // plus the table's rank bonus against table checkDifficulty.
+                identified = randomInt(6) + 1 + (rank?.ACBonus ?? 0) >= option.checkDifficulty
+            }
+            this.effects(g, id, identified ? option.effect : option.effectFail)
+            g.cur_cost_expedition_count -= option.costPoints
+            next = identified ? option.nextStep : option.nextStepFail
+            g.cur_event_data.event_option_infos.push({ optional_id: option.optionId, is_identify_success: identified })
         } else ensure(!step.option, 'Select an offered cultivation event option')
         if (next > 0) {
             ensure(
@@ -446,7 +566,7 @@ export class GrowupSystem {
             activity_id: id,
             event_id: event.event_id,
             optional_id: selected,
-            is_identify_success: true,
+            is_identify_success: identified,
         }
     }
     finishEvent(g, event) {

@@ -7,6 +7,11 @@ export function registerGrowup(on, catalog) {
         return { row, entry, g: system.ensure(entry, row.systemId) }
     }
     const publish = (c, id, g, result) => {
+        c.pushBefore('CSProtoSyncGrowupTrainAssistCharData', {
+            activity_id: id,
+            starting_id: g.cur_starting_id,
+            train_datas: g.assist_chars,
+        })
         catalog.notify(c, true)
         if (result?.dayChanged)
             c.pushBefore('CSProtoActivityGrowUpDayChangeSync', {
@@ -16,13 +21,8 @@ export function registerGrowup(on, catalog) {
     }
     on('ActivityGrowUpStartSelectReq', (c, r) => {
         const { entry, row } = context(c, r)
-        const g = system.start(entry, row.systemId, r, c.id)
+        const g = system.start(entry, row.systemId, r, c.id, c.randomInt)
         publish(c, row.id, g)
-        c.pushBefore('CSProtoSyncGrowupTrainAssistCharData', {
-            activity_id: row.id,
-            starting_id: g.cur_starting_id,
-            train_datas: g.assist_chars,
-        })
         return {}
     })
     on('ActivityGrowUpTrainReq', (c, r) => {
@@ -48,7 +48,7 @@ export function registerGrowup(on, catalog) {
         return { activity_id: row.id, rest_id: result.row.rest }
     })
     on('ActivityGrowUpRestInteractSubmitReq', (c, r) => {
-        const { row, g } = context(c, r)
+        const { entry, row, g } = context(c, r)
         ensure(
             g.rest_interact_pending_id > 0 && r.rest_id === g.rest_interact_pending_id,
             'Cultivation rest interaction is not pending',
@@ -67,7 +67,9 @@ export function registerGrowup(on, catalog) {
         const before = structuredClone(g.day_start_snapshot)
         g.growup_mood.mood_level = Math.min(Math.max(...moods), g.growup_mood.mood_level + r.add_mood_val)
         g.rest_interact_pending_id = 0
-        publish(c, row.id, g, { dayChanged: system.advance(g, row.systemId), daySnapshot: before })
+        const dayChanged = system.advance(g, row.systemId)
+        system.afterAction(entry, row.systemId, dayChanged, c.randomInt)
+        publish(c, row.id, g, { dayChanged, daySnapshot: before })
         return { activity_id: row.id, rest_id: r.rest_id }
     })
     on('ActivityGrowUpResetReq', (c, r) => {
@@ -75,12 +77,23 @@ export function registerGrowup(on, catalog) {
             fresh = system.fresh(row.systemId)
         for (const key of ['final_wins', 'end_data', 'outside_datas', 'outside_score']) fresh[key] = g[key]
         entry.growup = fresh
+        entry.growupRuntime = {}
         publish(c, row.id, fresh)
         return {}
     })
     on('ActivityGrowUpEventSelectReq', (c, r) => {
         const { entry, row } = context(c, r)
+        const before = new Map(entry.growup.growup_train_attr.map((x) => [x.attr_id, x.attr_value]))
         const reply = system.selectEvent(entry, row.systemId, r, c.randomInt)
+        const changes = entry.growup.growup_train_attr
+            .map((x) => ({ attr_id: x.attr_id, attr_value: x.attr_value - before.get(x.attr_id) }))
+            .filter((x) => x.attr_value !== 0)
+        if (changes.length)
+            c.pushBefore('CSProtoActivityGrowUpAttrChangeSync', {
+                activity_id: row.id,
+                change_type: 2,
+                growup_attr_change: changes,
+            })
         publish(c, row.id, entry.growup)
         return reply
     })
@@ -90,13 +103,17 @@ export function registerGrowup(on, catalog) {
     })
     on('ActivityGrowUpEventFinishReq', (c, r) => {
         const { row, g } = context(c, r)
-        if (!g.cur_event_data?.event_id) return {}
-        const event = g.event_datas.find((x) => x.event_id === g.cur_event_data.event_id)
-        ensure(event, 'No active cultivation event')
-        // Cancel the visit without awarding an ending or bypassing its options.
-        delete g.cur_event_data
-        event.cur_step = 0
-        event.event_option_ids = []
+        // StateTravelReady.OnTravelEnd sends this even when no event is active.
+        // Leaving the travel page abandons today's remaining visits, not a day
+        // of training; never grant an unfinished event's effects here.
+        if (g.cur_event_data?.event_id) {
+            const event = g.event_datas.find((x) => x.event_id === g.cur_event_data.event_id)
+            ensure(event, 'No active cultivation event')
+            event.cur_step = 0
+            event.event_option_ids = []
+            delete g.cur_event_data
+        }
+        g.cur_cost_expedition_count = 0
         publish(c, row.id, g)
         return {}
     })

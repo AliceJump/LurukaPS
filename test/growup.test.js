@@ -10,6 +10,78 @@ import { cultTrialStarMask, cultTrialRoute } from '../src/cult-trial.js'
 const cfg = configuration(),
     tables = new Tables(cfg.tables),
     p = new Protocol(cfg.base)
+test('old final-day selection is repaired in the client snapshot and explicit final selection can enter its configured scene', () => {
+    const f = fixture()
+    try {
+        f.start()
+        f.store.transact(f.session.id, 0, (s) => {
+            const g = s.activities[60001].growup
+            Object.assign(g, {
+                cur_stage: 3,
+                cur_growup_stage: 13,
+                cur_growup_trail_stage: 3,
+                select_trail_id: 201,
+                final_score: '1000',
+            })
+            g.trails = [
+                { trail_id: 101, star: 2, score: '4500' },
+                { trail_id: 201, star: 2, score: '4840' },
+            ]
+            s.tasks = []
+            s.taskRecords = tables.get('task').map((x) => ({ task_id: x.id, count: 1 }))
+            Object.assign(s.world, tables.position(tables.find('world_borthpos', 10100101)))
+        })
+        const history = structuredClone(f.g().trails)
+        const wire = f.decode(f.call('ActivityGet'), 'CSProtoActivitySync').activitys.find((x) => x.id === 60001)
+            .data.grow_up
+        assert.equal(wire.select_trail_id, 0)
+        assert.equal(wire.cur_growup_trail_stage, 3)
+        assert.throws(() => f.call('EnterCultTrial', { activity_id: 60001, trial_id: 201 }), /not ready/)
+        f.call('SelectCultTrial', { activity_id: 60001, trial_id: 301 })
+        f.call('ActivityGet')
+        assert.equal(f.g().select_trail_id, 301)
+        assert.deepEqual(f.g().trails, history)
+        assert.equal(f.g().final_score, '1000')
+        f.call('EnterCultTrial', { activity_id: 60001, trial_id: 301 })
+        assert.equal(f.state().world.map_id, 6552)
+        assert.equal(f.state().cultTrial.trial_id, 301)
+    } finally {
+        f.store.close()
+    }
+})
+test('CBT3 travel entrance sends its first option directly and cannot skip steps or charge it twice', () => {
+    const f = fixture()
+    try {
+        f.start()
+        const before = f.g()
+        assert.throws(
+            () => f.call('ActivityGrowUpEventSelectReq', { activity_id: 60001, event_id: 1001, optional_id: 100101 }),
+            /does not belong/,
+        )
+        assert.deepEqual(f.g(), before, 'A later-step option must not create an active event')
+        const request = { activity_id: 60001, event_id: 1005, optional_id: 100500 }
+        const packets = f.call('ActivityGrowUpEventSelectReq', request)
+        const reply = f.decode(packets, 'CSProtoActivityGrowUpEventSelectReq')
+        assert.equal(reply.optional_id, 100500)
+        assert.equal(reply.is_identify_success, true)
+        assert.equal(f.g().cur_event_data.cur_step, 50102)
+        assert.equal(f.g().cur_cost_expedition_count, 1)
+        const after = f.g()
+        assert.throws(() => f.call('ActivityGrowUpEventSelectReq', request), /does not belong/)
+        assert.deepEqual(f.g(), after)
+        f.call('EnterGame', { open_id: 'growup-test' }, {})
+        assert.equal(
+            f.decode(f.call('ActivityGrowUpEventInfoReq', { activity_id: 60001 }), 'CSProtoActivityGrowUpEventInfoReq')
+                .cur_step,
+            50102,
+        )
+        f.call('ActivityGrowUpEventSelectReq', { activity_id: 60001, event_id: 1005, optional_id: 0 })
+        assert.equal(f.g().cur_event_data.cur_step, 50103)
+        assert.equal(f.g().cur_cost_expedition_count, 1)
+    } finally {
+        f.store.close()
+    }
+})
 test('campaign score goals use independent bits while cultivation rewards retain star counts', () => {
     for (const [score, mask] of [
         [2999, 0],
@@ -22,6 +94,38 @@ test('campaign score goals use independent bits while cultivation rewards retain
     ])
         assert.equal(cultTrialStarMask('3000|4500|6000', score), mask)
     assert.equal(cultTrialStarMask('6000|3000|4500', 4500), 6, 'bits follow table order, not a numeric rank')
+})
+test('ordinary days expose remaining travel points and exiting an unopened travel page clears them without advancing training', () => {
+    const f = fixture()
+    try {
+        const packet = f.start()
+        const wire = f.decode(packet, 'CSProtoActivitySync').activitys.find((x) => x.id === 60001).data.grow_up
+        assert.equal(wire.cur_cost_expedition_count, 2, 'CBT3 StateMain tests TravalCount > 0 before opening travel')
+        assert.ok(wire.event_datas.some((x) => x.event_id === 1001 && !x.finish))
+        const before = f.g()
+        const leave = f.call('ActivityGrowUpEventFinishReq', { activity_id: 60001 })
+        assert.equal(
+            f.decode(leave, 'CSProtoActivitySync').activitys.find((x) => x.id === 60001).data.grow_up
+                .cur_cost_expedition_count,
+            0,
+        )
+        assert.equal(f.g().action_count, before.action_count)
+        assert.equal(f.g().cur_growup_stage, before.cur_growup_stage)
+        assert.deepEqual(f.g().growup_train_attr, before.growup_train_attr)
+        f.call('ActivityGrowUpEventFinishReq', { activity_id: 60001 })
+        assert.equal(f.g().cur_cost_expedition_count, 0)
+        assert.throws(
+            () => f.call('ActivityGrowUpEventSelectReq', { activity_id: 60001, event_id: 1001, optional_id: 0 }),
+            /No cultivation expedition points/,
+        )
+        for (let i = 0; i < 3; i++) f.call('ActivityGrowUpRestReq', { activity_id: 60001 })
+        assert.equal(f.g().cur_growup_stage, 2)
+        assert.equal(f.g().cur_cost_expedition_count, 2)
+        while (f.g().cur_growup_trail_stage !== 1) f.call('ActivityGrowUpRestReq', { activity_id: 60001 })
+        assert.equal(f.g().cur_cost_expedition_count, 0, 'Trial days must not reopen travel')
+    } finally {
+        f.store.close()
+    }
 })
 function fixture() {
     const store = new Store(':memory:'),
@@ -135,6 +239,13 @@ test('training uses the client stamina failure formula and actual table gains; r
     const f = fixture()
     try {
         f.start()
+        // Isolate base training arithmetic; assistant bonuses are covered separately.
+        f.store.transact(f.session.id, 0, (s) => {
+            const g = s.activities[60001].growup
+            g.assist_chars = []
+            for (const option of g.train_options) option.assist_char_ids = []
+        })
+        f.game.rng = (maximum) => (maximum === 10000 ? 9999 : 0)
         assert.equal(trainingFailureRate(80), 0)
         assert.equal(trainingFailureRate(0), 10000)
         assert.ok(trainingFailureRate(10) > trainingFailureRate(20))
@@ -188,15 +299,14 @@ test('100 percent cultivation success remains successful at both random draw bou
                 s.activities[60001].growup.growup_stamina.stamina = 100
             })
             f.game.rng = (maximum) => {
-                assert.equal(maximum, 10000)
-                return draw
+                return draw % maximum
             }
             const before = f.g().growup_train_attr[0].attr_value
             const packets = f.call('ActivityGrowUpTrainReq', { activity_id: 60001, train_option_id: 1 })
             const code = f.decode(packets, 'CSProtoActivityGrowUpTrainReq').train_prob_result
-            assert.equal(code, 2)
+            assert.ok(code === 2 || code === 3)
             // Independent CBT3 UI semantics, verified in OnTrainResult IL.
-            assert.equal(['failure', 'success', 'bond'][code - 1], 'success')
+            assert.notEqual(['failure', 'success', 'bond'][code - 1], 'failure')
             assert.ok(f.g().growup_train_attr[0].attr_value > before)
         }
     } finally {

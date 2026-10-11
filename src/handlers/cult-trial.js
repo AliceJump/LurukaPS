@@ -144,7 +144,13 @@ export function registerCultTrial(on, tables, catalog) {
         else {
             g.cur_stage++
             g.action_count = 0
-            catalog.growup.populateEvents(g, row.systemId)
+            g.cur_cost_expedition_count = catalog.growup.config(row.systemId).expeditionCount
+            catalog.growup.prepare(entry, row.systemId, c.randomInt)
+            c.pushBefore('CSProtoSyncGrowupTrainAssistCharData', {
+                activity_id: row.id,
+                starting_id: g.cur_starting_id,
+                train_datas: g.assist_chars,
+            })
         }
         catalog.notify(c, true)
         // OnClickExitSuccess's ACK callback calls RequestTransfer. Keep the
