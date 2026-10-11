@@ -225,6 +225,52 @@ export class GrowupSystem {
         )
         return g
     }
+    finish(g, id, trial) {
+        const ending = this.tables
+            .get('game_events_cul_end')
+            .find((x) => x.systemId === id && x.endingId === trial.ending && x.trial === trial.trialId)
+        ensure(ending && this.condition(ending.condition, g), 'Cultivation ending configuration unavailable', 1007)
+        ensure(
+            [1, 2, 3].every((phase) => {
+                const result = g.trails[phase - 1],
+                    row = this.tables
+                        .get('game_events_cul_trial')
+                        .find((x) => x.systemId === id && x.trialId === result?.trail_id)
+                return row?.phase === phase && result.star > 0
+            }),
+            'Cultivation examinations are incomplete',
+        )
+        // Keep the existing staged final_score accumulation unchanged. This
+        // protocol fix records completion; it does not introduce a score formula.
+        const snapshot = {
+            id: ending.endingId,
+            top_rating: g.final_score,
+            chrs: structuredClone(g.assist_chars),
+            attrs: structuredClone(g.growup_train_attr),
+            trails: structuredClone(g.trails),
+            starting_ids: [g.cur_starting_id],
+        }
+        const book = g.end_data.complete_end,
+            old = book.find((x) => x.id === ending.endingId)
+        if (!old) book.push(snapshot)
+        else {
+            const starts = [...new Set([...(old.starting_ids ?? []), g.cur_starting_id])]
+            if (BigInt(snapshot.top_rating) > BigInt(old.top_rating)) Object.assign(old, snapshot)
+            old.starting_ids = starts
+        }
+        let win = g.final_wins.find((x) => x.starting_id === g.cur_starting_id)
+        if (!win)
+            g.final_wins.push((win = { starting_id: g.cur_starting_id, score: '0', assist_chars: [], finish_ends: [] }))
+        if (BigInt(g.final_score) > BigInt(win.score)) {
+            win.score = g.final_score
+            win.assist_chars = structuredClone(g.assist_chars)
+        }
+        win.finish_ends = [...new Set([...win.finish_ends, ending.endingId])]
+        g.cur_stage = 4
+        g.cur_growup_trail_stage = 4 // RuntimeData.PlayDone checks this field.
+        g.action_count = 0
+        return snapshot
+    }
     advance(g, id) {
         const config = this.config(id)
         g.action_count++

@@ -227,6 +227,7 @@ function cultTrialWaves(tables, run) {
 export function syncCultTrialWave(c) {
     const run = c.state.cultTrial
     ensureCultTrialScene(c.tables, c.state, c.now)
+    pushCultTrialLiveScore(c)
     if (run.attr_changes?.length)
         c.push('CSProtoActivityGrowUpAttrChangeSync', {
             activity_id: run.activity_id,
@@ -249,6 +250,11 @@ export function syncCultTrialWave(c) {
         infos.push(...monsters.map((x) => ({ uuid: x.uid, hp: x.hp, sp: 0, alive_state: 0, reason: 1 })))
     }
     if (infos.length) c.push('CSProtoObjBattleInfoSync', { infos })
+}
+function pushCultTrialLiveScore(c) {
+    const run = c.state.cultTrial
+    if (run.status === 2)
+        c.push('CSProtoCampaignChallengeTagsNtf', { tags_list: [{ tag_progress: String(run.score ?? 0) }] })
 }
 
 export function startCultTrialBattle(c) {
@@ -277,7 +283,10 @@ export function advanceCultTrialCombat(c) {
         !wave ||
         !wave.object_ids.every((id) => completedEnemyGroup(c.tables, c.state, ((3n << 56n) | BigInt(id)).toString()))
     ) {
-        if (refreshCultTrialResult(c.tables, c.state)) c.push('CSProtoCampaignInfoSync', cultTrialSnapshot(c.state))
+        if (refreshCultTrialResult(c.tables, c.state)) {
+            pushCultTrialLiveScore(c)
+            c.push('CSProtoCampaignInfoSync', cultTrialSnapshot(c.state))
+        }
         return false
     }
     // Fork only the few scene records on a completed wave. Ordinary hits keep

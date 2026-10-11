@@ -128,7 +128,7 @@ export function registerCultTrial(on, tables, catalog) {
             'Cultivation trial is not successfully completed',
         )
         const { trial } = cultTrialRoute(tables, catalog, r.activity_id, r.trial_id)
-        ensure(g.cur_stage === trial.phase && trial.phase < 3, 'Final cultivation ending is not implemented', 1007)
+        ensure(g.cur_stage === trial.phase, 'Cultivation trial does not match current phase')
         for (const change of run.attr_changes ?? []) {
             const target = g.growup_train_attr.find((x) => x.attr_id === change.attr_id)
             target.attr_value = Math.min(
@@ -140,9 +140,12 @@ export function registerCultTrial(on, tables, catalog) {
         const finalBonus = Number(String(trial.finalscore).split('|')[run.star - 1])
         ensure(Number.isSafeInteger(finalBonus) && finalBonus >= 0, 'Missing cultivation trial final score', 1007)
         g.final_score = String(BigInt(g.final_score ?? '0') + BigInt(finalBonus))
-        g.cur_stage++
-        g.action_count = 0
-        catalog.growup.populateEvents(g, row.systemId)
+        if (trial.phase === 3) catalog.growup.finish(g, row.systemId, trial)
+        else {
+            g.cur_stage++
+            g.action_count = 0
+            catalog.growup.populateEvents(g, row.systemId)
+        }
         catalog.notify(c, true)
         // OnClickExitSuccess's ACK callback calls RequestTransfer. Keep the
         // trial context until that transfer arrives rather than disposing the

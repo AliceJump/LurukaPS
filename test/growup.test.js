@@ -57,6 +57,50 @@ function fixture() {
             call('ActivityGrowUpStartSelectReq', { activity_id: 60001, starting_id: 101, select_assist_char_ids: [] }),
     }
 }
+test('live cultivation score notification does not change the existing terminal score or settlement packets', () => {
+    const f = fixture()
+    try {
+        f.start()
+        while (f.g().cur_growup_trail_stage !== 1) f.call('ActivityGrowUpRestReq', { activity_id: 60001 })
+        f.store.transact(f.session.id, 0, (s) => {
+            s.tasks = []
+            s.taskRecords = tables.get('task').map((x) => ({ task_id: x.id, count: 1 }))
+            Object.assign(s.world, tables.position(tables.find('world_borthpos', 10100101)))
+        })
+        f.call('EnterCultTrial', { activity_id: 60001, trial_id: 101 })
+        const loaded = f.call('MultiCampaignPlayerLoaded')
+        assert.equal(f.decode(loaded, 'CSProtoCampaignChallengeTagsNtf').tags_list[0].tag_progress, '0')
+        let finalPackets
+        for (const objectId of [5, 6, 7]) {
+            const s = f.state(),
+                enemies = Object.values(s.combat.entities).filter((x) => x.object_id === objectId)
+            const hurt = (targets) =>
+                f.call('BattleInfoReduce', {
+                    uint64_dic: [s.cultTrial.heroes[0].guid, ...targets.map((x) => x.uuid)],
+                    battle_info: targets.map((x, i) => ({
+                        hurt_info: { from_id: '1', tar_id: String(i + 2), hp_change: -x.hp },
+                    })),
+                    base_time: '0',
+                })
+            if (objectId === 5) {
+                const update = hurt(enemies.slice(0, 1))
+                assert.equal(f.decode(update, 'CSProtoCampaignChallengeTagsNtf').tags_list[0].tag_progress, '150')
+                assert.equal(f.decode(update, 'CSProtoCampaignInfoSync').score, 150)
+                finalPackets = hurt(enemies.slice(1))
+            } else finalPackets = hurt(enemies)
+        }
+        assert.equal(f.state().cultTrial.score, 4500)
+        assert.equal(f.state().cultTrial.star_mask, 3)
+        assert.equal(f.state().cultTrial.status, 3)
+        assert.ok(
+            !finalPackets.some((x) => x.id === p.byName.get('CSProtoCampaignChallengeTagsNtf').id),
+            'terminal notifications remain on the staged path',
+        )
+        assert.equal(f.decode(finalPackets, 'CSProtoCampaignInfoSync').score, 4500)
+    } finally {
+        f.store.close()
+    }
+})
 test('current cultivation snapshot initializes the client, applies starting effects and persists through reconnect without touching real formations', () => {
     const f = fixture()
     try {
