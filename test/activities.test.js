@@ -96,6 +96,46 @@ test('current client getIdByType can find the attendance page using its own time
         f.store.close()
     }
 })
+test('activity guide is accepted once from its table; verified guide dungeon return repairs the configured scene without completing the task', () => {
+    const f = setup()
+    try {
+        f.mutate(unlock)
+        f.call('EnterGame', { open_id: 'activity-tests' }, {})
+        assert.equal(f.state().tasks.filter((x) => x.task_id === 404002).length, 1)
+        assert.equal(f.state().tasks.find((x) => x.task_id === 404002).nodes[0].node_id, 5)
+        f.call('EnterGame', { open_id: 'activity-tests' }, {})
+        assert.equal(f.state().tasks.filter((x) => x.task_id === 404002).length, 1)
+        f.mutate((s) => {
+            const task = s.tasks.find((x) => x.task_id === 404002)
+            task.nodes = [{ node_id: 3, node_values: [0], client_before: true, client_cond_after: [false] }]
+            task.finish_nodes = [2, 5]
+            s.world.map_id = 100
+            s.storyCampaignClears = { 905: { count: 1, time: 1 } } // no authoritative task proof
+        })
+        f.call('EnterGame', { open_id: 'activity-tests' }, {})
+        assert.equal(f.state().world.map_id, 100)
+        f.mutate((s) => {
+            s.storyCampaignClears[905].task_proof = { victory_task_id: 404001, task_ids: [404001] }
+        })
+        const login = f.call('EnterGame', { open_id: 'activity-tests' }, {})
+        assert.equal(f.state().world.map_id, 200)
+        assert.equal(f.state().world.point_id, 20005)
+        assert.equal(f.state().tasks.find((x) => x.task_id === 404002).nodes[0].node_id, 3)
+        assert.ok(!f.state().taskRecords.some((x) => x.task_id === 404002))
+        assert.ok(f.decode(login, 'CSProtoTaskSync').tasks.some((x) => x.task_id === 404002))
+        // Let the existing configured client callbacks acknowledge return and page action.
+        const r = { task_id: 404002, node_id: 3 }
+        f.call('TaskClientBefore', r)
+        f.call('TaskClientCondAfter', { ...r, indexes: [0] })
+        f.call('TaskClientAfter', r)
+        f.call('TaskFinish', { u32: 404002 })
+        assert.ok(f.state().taskRecords.some((x) => x.task_id === 404002 && x.count === 1))
+        f.call('EnterGame', { open_id: 'activity-tests' }, {})
+        assert.ok(!f.state().tasks.some((x) => x.task_id === 404002))
+    } finally {
+        f.store.close()
+    }
+})
 test('attendance grants real inventory once per login day; skipped calendar days and reconnect do not duplicate rewards', () => {
     const f = setup()
     try {

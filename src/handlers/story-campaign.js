@@ -302,6 +302,13 @@ export function exitStoryCampaign(c) {
     const final = run.status === 3 ? 5 : 1
     c.pushBefore('CSProtoCampaignInfoSync', { ...storyCampaignSnapshot(c.state), status: final })
     Object.assign(c.state.world, storyCampaignReturnWorld(c.tables, c.state, run))
+    // An activity guide can explicitly wait for a configured exterior scene
+    // after its dungeon condition. Respect that return point only after a
+    // verified clear; a manual/failed exit still returns to its entrance.
+    if (run.status === 3) {
+        const point = c.activityCatalog?.guideReturnPoint(c.state, c.now, run.dungeon_id)
+        if (point) Object.assign(c.state.world, c.tables.position(point))
+    }
     delete c.state.storyCampaign
     const reset = resetCampaignTasks(c.tables, c.state, run)
     if (reset) {

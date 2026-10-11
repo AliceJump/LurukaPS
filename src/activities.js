@@ -1,13 +1,15 @@
 import fs from 'node:fs'
 import { createHash } from 'node:crypto'
 import { configTime } from './shops.js'
-import { taskNodeCompleted } from './tasks.js'
+import { taskNodeCompleted, TaskGraphs, nodeConditions, asList, acceptTask, taskUnlocked } from './tasks.js'
 import { ensure } from './handlers/common.js'
 import { activityTables } from './activity-tables.js'
 
 const policy = JSON.parse(fs.readFileSync(new URL('../configs/activity-policy.json', import.meta.url)))
 export class ActivityCatalog {
     constructor(tables) {
+        this.external = tables
+        this.graphs = new TaskGraphs(tables)
         tables = activityTables(tables)
         this.tables = tables
         this.rows = tables.get('game_events')
@@ -41,6 +43,62 @@ export class ActivityCatalog {
     }
     taskDone(state, id) {
         return (state.taskRecords ?? []).some((r) => r.task_id === id && r.count > 0)
+    }
+    ensureGuideTasks(state, now) {
+        const added = []
+        for (const row of this.rows) {
+            if (
+                !row.guideTaskId ||
+                !this.active(row, state, now) ||
+                this.taskDone(state, row.guideTaskId) ||
+                (state.tasks ?? []).some((t) => t.task_id === row.guideTaskId)
+            )
+                continue
+            const graph = this.graphs.get(row.guideTaskId)
+            if (!taskUnlocked(graph, state)) continue
+            acceptTask(graph, state, now)
+            added.push(row.guideTaskId)
+        }
+        return added
+    }
+    guideReturnPoint(state, now, dungeonId) {
+        for (const row of this.rows) {
+            if (!row.guideTaskId || !this.active(row, state, now)) continue
+            const task = state.tasks?.find((x) => x.task_id === row.guideTaskId)
+            if (!task || this.taskDone(state, row.guideTaskId)) continue
+            const graph = this.graphs.get(row.guideTaskId)
+            for (const current of task.nodes) {
+                const node = graph.nodes.get(current.node_id)
+                const cleared = asList(node.prevNodeIdList).some(
+                    (id) =>
+                        task.finish_nodes.includes(id) &&
+                        nodeConditions(graph.nodes.get(id)).some((condition) => {
+                            const required = condition.__type_TaskConditionBaseData?.__type_TaskCondDungeonData
+                            const receipt = state.storyCampaignClears?.[required?.dungeonId]
+                            return (
+                                required?.isOver === 1 &&
+                                (!dungeonId || required.dungeonId === dungeonId) &&
+                                receipt?.count >= Math.max(1, required.count ?? 1) &&
+                                receipt.task_proof
+                            )
+                        }),
+                )
+                if (!cleared) continue
+                for (const condition of nodeConditions(node)) {
+                    const base = condition.__type_TaskConditionBaseData
+                    const target = base?.__type_TaskCondInSceneData?.sceneId
+                    const point = this.external.find('world_borthpos', base?.mapData?.birthId)
+                    if (
+                        condition.conditionId === 2519 &&
+                        point?.cityId === target &&
+                        target === base.mapData.sceneId &&
+                        target !== state.world.map_id
+                    )
+                        return point
+                }
+            }
+        }
+        return null
     }
     active(row, state, now) {
         const w = this.window(row, now)

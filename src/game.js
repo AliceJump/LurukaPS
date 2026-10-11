@@ -514,6 +514,11 @@ export class Game {
                 delete state.pendingTaskStorySync
                 if (state.storyCampaign) delete state.storyCampaign.task_context_loaded_map
                 repairPendingDuelEntry(state)
+                this.activities.ensureGuideTasks(state, now)
+                if (!state.storyCampaign && !state.entrust?.run && !state.multiCampaign) {
+                    const point = this.activities.guideReturnPoint(state, now)
+                    if (point) Object.assign(state.world, this.tables.position(point))
+                }
                 unlockAutomaticTasks(this.tables, state, now)
                 repairMainTaskTrace(this.tables, state)
                 repairCharacterCreationMarker(state)
@@ -796,6 +801,7 @@ export class Game {
                     previousMapId: state.world.map_id,
                     combatSessionId: session.token,
                     requestKey: frame.seq ? session.token + ':' + frame.id + ':' + frame.seq : null,
+                    activityCatalog: this.activities,
                     state,
                     now,
                     randomInt: this.rng,
@@ -835,7 +841,11 @@ export class Game {
                 )
                 if (visibleUpdates.length) context.push('CSProtoTaskSync', { tasks: visibleUpdates })
                 const levelChanged = state.player.basic_info.lv !== playerLevelBefore
-                const newTasks = battleReport && !levelChanged ? [] : unlockAutomaticTasks(this.tables, state, now)
+                const activityGuides = battleReport ? [] : this.activities.ensureGuideTasks(state, now)
+                const newTasks =
+                    battleReport && !levelChanged
+                        ? []
+                        : [...activityGuides, ...unlockAutomaticTasks(this.tables, state, now)]
                 if (newTasks.length)
                     context.push('CSProtoTaskSync', { ...taskSnapshot(this.tables, state), new_task_ids: newTasks })
                 else if (levelChanged) {
