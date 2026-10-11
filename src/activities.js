@@ -3,10 +3,12 @@ import { createHash } from 'node:crypto'
 import { configTime } from './shops.js'
 import { taskNodeCompleted } from './tasks.js'
 import { ensure } from './handlers/common.js'
+import { activityTables } from './activity-tables.js'
 
 const policy = JSON.parse(fs.readFileSync(new URL('../configs/activity-policy.json', import.meta.url)))
 export class ActivityCatalog {
     constructor(tables) {
+        tables = activityTables(tables)
         this.tables = tables
         this.rows = tables.get('game_events')
         this.rewards = tables.get('game_events_reward')

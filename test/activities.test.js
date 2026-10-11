@@ -48,9 +48,9 @@ test('CBT3 activity and common time windows agree; expired events extend through
     try {
         const packets = f.call('ActivityGet')
         const activity = f.decode(packets, 'CSProtoActivityGet').confs.find((x) => x.activity_id === 2001)
-        assert.equal(activity.start_time, configTime(tables.find('common_timelimit', 10001).startTime))
+        assert.equal(activity.start_time, 0) // current 998003 is a server-controlled time ID, absent from the fixed-date table.
         assert.equal(activity.end_time, configTime('20301231-235959'))
-        const time = f.decode(packets, 'CSProtoSyncCommonTimeConf').data_list.find((x) => x.time_id === 10001)
+        const time = f.decode(packets, 'CSProtoSyncCommonTimeConf').data_list.find((x) => x.time_id === 998003)
         assert.equal(Number(time.end_time), activity.end_time)
         const before = f.state().player.sbag_infos
         assert.throws(() => f.call('ActivityDailySign', { u32: 2001 }), /locked/)
@@ -60,6 +60,38 @@ test('CBT3 activity and common time windows agree; expired events extend through
             f.decode(packets, 'CSProtoActivityGet').confs.find((x) => x.activity_id === 4001).end_time,
             configTime('20301231-235959'),
         )
+    } finally {
+        f.store.close()
+    }
+})
+test('current client getIdByType can find the attendance page using its own time ID; every activity has a matching public window', () => {
+    const f = setup()
+    try {
+        f.mutate(unlock)
+        const packets = f.call('EnterGame', { open_id: 'activity-tests' }, {})
+        const snapshot = f.decode(packets, 'CSProtoActivitySync')
+        const windows = f.decode(packets, 'CSProtoSyncCommonTimeConf').data_list
+        const now = Date.UTC(2026, 9, 11, 4) / 1000
+        const currentRows = f.game.activities.rows
+        assert.equal(currentRows.find((x) => x.id === 2001).timelimit, 998003)
+        const candidates = currentRows
+            .filter((row) => row.type === 3 && f.game.activities.unlocked(row, f.state()))
+            .filter((row) => {
+                const time = windows.find((x) => x.time_id === row.timelimit)
+                return time && Number(time.start_time) <= now && Number(time.end_time) >= now
+            })
+        assert.deepEqual(
+            candidates.map((x) => x.id),
+            [2001],
+        )
+        assert.ok(snapshot.activitys.find((x) => x.id === 2001)?.data.daily_sign)
+        for (const row of currentRows) {
+            const time = windows.find((x) => x.time_id === row.timelimit)
+            const conf = snapshot.confs.find((x) => x.activity_id === row.id)
+            assert.ok(time, `missing client time ID ${row.timelimit}`)
+            assert.equal(Number(time.start_time), conf.start_time)
+            assert.equal(Number(time.end_time), conf.end_time)
+        }
     } finally {
         f.store.close()
     }

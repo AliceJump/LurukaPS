@@ -8,6 +8,7 @@ import { rewardSource } from '../reward-source.js'
 export function registerActivities(on, tables) {
     const catalog = new ActivityCatalog(tables),
         drops = new WorldObjectCatalog(tables)
+    const activityTables = catalog.tables
     const publish = (c) => catalog.notify(c, true)
     const grant = (c, items) => {
         const rewards = grantRewards(tables, c.state, items)
@@ -32,7 +33,7 @@ export function registerActivities(on, tables) {
         const rewards = []
         // Missed claims may be collected together, but only actual login days count.
         for (let day = entry.sign.reward_count + 1; day <= entry.sign.count; day++) {
-            const reward = tables
+            const reward = activityTables
                 .get('game_events_day_attendance')
                 .find((x) => x.eventId === row.systemId && x.date === day)
             ensure(reward, 'Missing attendance reward configuration', 1007)
@@ -78,7 +79,7 @@ export function registerActivities(on, tables) {
     })
     on('ActivitySubmitItem', (c, r) => {
         const { row, entry } = catalog.require(c.state, c.now, r.activity_id, [30])
-        const submission = tables.find('game_events_subitem', r.submit_id)
+        const submission = activityTables.find('game_events_subitem', r.submit_id)
         ensure(submission?.groupId === row.systemId, 'Submission does not belong to activity')
         if (entry.submissions?.includes(submission.id)) return { rewards: [] }
         ensure(catalog.day(c.now) - catalog.day(entry.opened) + 1 >= submission.unlockTime, 'Submission day is locked')
@@ -105,18 +106,18 @@ export function registerActivities(on, tables) {
         const rewards = []
         if (r.reward_type === 0) {
             // Current client ReqNDayReward encodes the target's GROUP DAY, not its ID.
-            const group = tables
+            const group = activityTables
                 .get('seven_day_target_group')
                 .find((x) => x.event_id === row.id && x.day === r.reward_param)
             ensure(group && group.day <= snapshot.unlock_day, 'Seven-day group is locked')
-            for (const target of tables.get('seven_day_target').filter((x) => x.group === group.group)) {
+            for (const target of activityTables.get('seven_day_target').filter((x) => x.group === group.group)) {
                 if (snapshot.target_infos.find((x) => x.id === target.id)?.state !== 1) continue
                 rewards.push(...grant(c, parseRewards(target.reward)))
                 entry.nday_claims.push(target.id)
             }
         } else {
             ensure(r.reward_type === 1, 'Unknown seven-day reward type')
-            const reward = tables.find('seven_day_target_reward', r.reward_param)
+            const reward = activityTables.find('seven_day_target_reward', r.reward_param)
             ensure(reward, 'Unknown seven-day total reward')
             if (!entry.nday_totals.includes(reward.id)) {
                 ensure(snapshot.total_count >= reward.count, 'Seven-day total requirement not reached')
