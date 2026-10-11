@@ -17,6 +17,9 @@ export function registerActivities(on, tables) {
         return rewards
     }
     on('ActivityGet', (c) => {
+        // GlobalData's ending book is a separate client cache used by 80003/4/6.
+        // Resend on explicit initialization even if this account synced before.
+        catalog.syncGrowupHistory(c, true)
         for (const row of catalog.rows.filter((x) => x.type === 60)) {
             const entry = c.state.activities?.[row.id]
             if (entry?.growup?.cur_starting_id && catalog.active(row, c.state, c.now)) {

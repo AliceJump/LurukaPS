@@ -115,6 +115,17 @@ export class ActivityCatalog {
     }
     condition(text, state) {
         const [kind, a, b] = String(text).split('|').map(Number)
+        if ([80003, 80004, 80006, 80008].includes(kind)) {
+            const row = this.rows.find((x) => x.type === 60 && x.systemId === a)
+            const g = row && state.activities?.[row.id]?.growup
+            const ends = g?.end_data?.complete_end ?? []
+            if (kind === 80003) return new Set(ends.map((x) => x.id)).size
+            if (kind === 80004) return Number(ends.some((x) => x.id === b))
+            if (kind === 80006) return Math.max(0, ...ends.map((x) => Number(x.top_rating ?? 0)))
+            // 80008 is the endless archive score, not normal cultivation score.
+            // Endless archives are not implemented; never unlock from final_wins.
+            return 0
+        }
         if (kind === 2004) return state.player.basic_info.lv
         if (kind === 2007) return Number(this.taskDone(state, a))
         if (kind === 12045) return Number(taskNodeCompleted(state, a, b))
@@ -241,6 +252,7 @@ export class ActivityCatalog {
         return !!state.activities && state.activityDay !== this.day(now)
     }
     notify(c, force = false) {
+        this.syncGrowupHistory(c)
         const activity = this.snapshot(c.state, c.now),
             nday = this.nday(c.state, c.now)
         const signature = createHash('sha256')
@@ -250,6 +262,21 @@ export class ActivityCatalog {
             c.state.activitySyncSignature = signature
             c.pushBefore('CSProtoActivitySync', activity)
             if (nday) c.pushBefore('SCProtoNDayInfoSync', nday)
+        }
+    }
+    growupHistorySnapshots(state, now) {
+        return this.rows
+            .filter((x) => x.type === 60 && this.active(x, state, now))
+            .map((row) => this.growup.endQuery(this.growup.ensure(this.entry(state, row.id), row.systemId), row.id))
+    }
+    syncGrowupHistory(c, force = false) {
+        for (const payload of this.growupHistorySnapshots(c.state, c.now)) {
+            const entry = this.entry(c.state, payload.activity_id)
+            const signature = createHash('sha256').update(JSON.stringify(payload)).digest('hex')
+            if (force || entry.growupHistorySyncSignature !== signature) {
+                entry.growupHistorySyncSignature = signature
+                c.pushBefore('CSProtoActivityGrowUpEndQuerySync', payload)
+            }
         }
     }
     nday(state, now) {

@@ -1,0 +1,5 @@
+{
+  "version": 1,
+  "attributeMultiplier": 2,
+  "description": "Local compatibility score: twice the sum of final attributes plus table assistant bond scores and examination star bonuses. This is not the official CBT3 formula."
+}

@@ -119,17 +119,6 @@ export function registerGrowup(on, catalog) {
     })
     on('ActivityGrowUpEndQueryReq', (c, r) => {
         const { row, g } = context(c, r)
-        return {
-            activity_id: row.id,
-            end_data: g.end_data.complete_end.map((x) => ({
-                id: x.id,
-                state: 1,
-                history_top_rating: x.top_rating,
-                chrs: x.chrs,
-                attrs: x.attrs,
-                trails: x.trails,
-                starting_ids: x.starting_ids,
-            })),
-        }
+        return system.endQuery(g, row.id)
     })
 }

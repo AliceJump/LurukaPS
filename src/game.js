@@ -1184,6 +1184,9 @@ export class Game {
                 : []),
             this.packet('CSProtoTaskSync', taskSnapshot(this.tables, state)),
             this.packet('CSProtoSyncCommonTimeConf', this.activities.commonTimes(now)),
+            ...this.activities
+                .growupHistorySnapshots(state, now)
+                .map((data) => this.packet('CSProtoActivityGrowUpEndQuerySync', data)),
             this.packet('CSProtoActivitySync', this.activities.snapshot(state, now)),
             ...(state.cultTrial?.map_id === state.world.map_id
                 ? [this.packet('CSProtoCampaignInfoSync', cultTrialSnapshot(state, { entering: true }))]

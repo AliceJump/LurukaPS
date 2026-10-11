@@ -95,6 +95,57 @@ test('campaign score goals use independent bits while cultivation rewards retain
         assert.equal(cultTrialStarMask('3000|4500|6000', score), mask)
     assert.equal(cultTrialStarMask('6000|3000|4500', 4500), 6, 'bits follow table order, not a numeric rank')
 })
+test('final completion syncs the ending book and unlocks table rewards, which survive reset and reconnect', () => {
+    const f = fixture()
+    try {
+        f.start()
+        f.store.transact(f.session.id, 0, (s) => {
+            const g = s.activities[60001].growup
+            Object.assign(g, {
+                cur_stage: 3,
+                cur_growup_stage: 13,
+                cur_growup_trail_stage: 3,
+                select_trail_id: 301,
+                final_score: '1000',
+            })
+            g.trails = [101, 201, 301].map((trail_id) => ({ trail_id, star: 2, score: '4500', guid: g.guid }))
+            s.tasks = []
+            s.taskRecords = tables.get('task').map((x) => ({ task_id: x.id, count: 1 }))
+            Object.assign(s.world, tables.position(tables.find('world_borthpos', 10100101)))
+        })
+        f.call('EnterCultTrial', { activity_id: 60001, trial_id: 301 })
+        f.store.transact(f.session.id, 0, (s) => {
+            Object.assign(s.cultTrial, { status: 3, battle_complete: true, star: 2, attr_changes: [] })
+        })
+        const packets = f.call('CultTrialSwitchStep', { activity_id: 60001, trial_id: 301 })
+        const book = f.decode(packets, 'CSProtoActivityGrowUpEndQuerySync')
+        assert.equal(book.end_data[0].id, 101)
+        assert.equal(book.end_data[0].state, 1)
+        assert.equal(book.end_data[0].history_top_rating, '2330')
+        f.call('CultTrialSwitchStep', { activity_id: 60001, trial_id: 301 })
+        assert.equal(f.g().final_score, '2330', 'Duplicate final confirmation cannot add score twice')
+        const activity = f.decode(packets, 'CSProtoActivitySync').activitys.find((x) => x.id === 60001)
+        const reward = (id) => activity.rewards.find((x) => x.id === id)
+        assert.equal(reward(600010101).state, 1, 'Specified ending reward')
+        assert.equal(reward(600010301).state, 1, 'One distinct ending reward')
+        assert.equal(reward(600010302).state, 0, 'Two distinct endings must remain locked')
+        assert.equal(reward(600010203).state, 0, '2330 is below the 8000-score requirement')
+        const claim = { activity_id: 60001, reward_id_list: [600010101] }
+        assert.ok(f.decode(f.call('ActivityReward', claim), 'CSProtoActivityReward').rewards.length > 0)
+        assert.equal(f.decode(f.call('ActivityReward', claim), 'CSProtoActivityReward').rewards.length, 0)
+        f.call('WorldPoint', { point_id: 0 })
+        f.call('ActivityGrowUpResetReq', { activity_id: 60001 })
+        const relog = f.call('EnterGame', { open_id: 'growup-test' }, {})
+        assert.equal(f.decode(relog, 'CSProtoActivityGrowUpEndQuerySync').end_data[0].id, 101)
+        const initialized = f.call('ActivityGet')
+        assert.equal(f.decode(initialized, 'CSProtoActivityGrowUpEndQuerySync').end_data[0].id, 101)
+        f.call('ActivityGrowUpStartSelectReq', { activity_id: 60001, starting_id: 102, select_assist_char_ids: [] })
+        assert.equal(f.g().cur_starting_id, 102, 'Complete ending 101 unlocks the table-defined next opening')
+        assert.equal(f.g().end_data.complete_end.length, 1)
+    } finally {
+        f.store.close()
+    }
+})
 test('ordinary days expose remaining travel points and exiting an unopened travel page clears them without advancing training', () => {
     const f = fixture()
     try {

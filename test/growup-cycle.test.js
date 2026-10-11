@@ -176,3 +176,19 @@ test('old spent-point saves migrate once to remaining travel points and trial-da
     system.ensure(entry, 60001)
     assert.equal(entry.growup.cur_cost_expedition_count, 0)
 })
+test('ending conditions read distinct ending records rather than opening IDs, and rank gates use table thresholds', () => {
+    const entry = start(),
+        g = entry.growup
+    g.final_wins = [{ starting_id: 102, finish_ends: [101], score: '9000' }]
+    g.end_data.complete_end = [{ id: 101, top_rating: '9000' }]
+    assert.equal(system.condition('80004#60001#101', g), true)
+    assert.equal(system.condition('80004#60001#102', g), false)
+    assert.equal(system.condition('80003#60001#2', g), false)
+    assert.equal(system.condition('80006#60001#9000', g), true)
+    assert.equal(system.condition('80006#60001#9001', g), false)
+    const rank = tables.get('game_events_cul_attrRate').find((x) => x.eventid === 60001 && x.rating === 5)
+    g.growup_train_attr.find((x) => x.attr_id === 102).attr_value = rank.needAttr - 1
+    assert.equal(system.condition('80009#60001#102#5', g), false)
+    g.growup_train_attr.find((x) => x.attr_id === 102).attr_value++
+    assert.equal(system.condition('80009#60001#102#5', g), true)
+})

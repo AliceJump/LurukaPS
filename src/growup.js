@@ -1,6 +1,7 @@
 import { ensure } from './handlers/common.js'
 import { randomInt as secureRandomInt } from 'node:crypto'
 import { assistantLevel, prepareGrowupCycle, populateGrowupEvents, growupCommonTriggers } from './growup-cycle.js'
+import { cultivationScore, growupScoreVersion } from './growup-score.js'
 const ids = (value) =>
     String(value ?? '')
         .split('|')
@@ -66,6 +67,36 @@ export class GrowupSystem {
     }
     ensure(entry, id) {
         const g = (entry.growup ??= this.fresh(id))
+        if (entry.growupHistoryScoreVersion !== growupScoreVersion) {
+            for (const record of g.end_data.complete_end) {
+                try {
+                    const score = cultivationScore(this, id, record)
+                    record.top_rating = String(Math.max(Number(record.top_rating ?? 0), score.total))
+                    // A merged ending snapshot cannot reconstruct each opening's
+                    // independent best run. Only update unambiguous old saves.
+                    if (record.starting_ids?.length === 1) {
+                        const win = g.final_wins.find((x) => x.starting_id === record.starting_ids[0])
+                        if (win) win.score = String(Math.max(Number(win.score ?? 0), score.total))
+                    }
+                } catch (error) {
+                    console.warn(`Cultivation history score migration (${id}/${record.id}): ${error.message}`)
+                }
+            }
+            if (g.cur_stage === 4 && g.cur_growup_trail_stage === 4) {
+                try {
+                    g.final_score = String(
+                        cultivationScore(this, id, {
+                            attrs: g.growup_train_attr,
+                            chrs: g.assist_chars,
+                            trails: g.trails,
+                        }).total,
+                    )
+                } catch (error) {
+                    console.warn(`Cultivation completed score migration (${id}): ${error.message}`)
+                }
+            }
+            entry.growupHistoryScoreVersion = growupScoreVersion
+        }
         this.normalizeTrialSelection(g, id)
         if (g.cur_starting_id && entry.growupRuntime?.expeditionRemainingVersion !== 1) {
             const runtime = (entry.growupRuntime ??= {})
@@ -95,7 +126,16 @@ export class GrowupSystem {
             .every((text) => {
                 const [kind, activity, a, b] = text.split('#').map(Number)
                 if (kind === 80001) return (g.growup_train_attr.find((x) => x.attr_id === a)?.attr_value ?? 0) >= b
-                if (kind === 80004) return g.final_wins.some((x) => x.starting_id === a)
+                if (kind === 80003) return new Set(g.end_data.complete_end.map((x) => x.id)).size >= a
+                if (kind === 80004) return g.end_data.complete_end.some((x) => x.id === a)
+                if (kind === 80006) return g.end_data.complete_end.some((x) => BigInt(x.top_rating ?? 0) >= BigInt(a))
+                if (kind === 80009) {
+                    const rank = this.tables
+                        .get('game_events_cul_attrRate')
+                        .find((x) => x.eventid === activity && x.rating === b)
+                    const attr = g.growup_train_attr.find((x) => x.attr_id === a)
+                    return !!rank && !!attr && attr.attr_value >= rank.needAttr
+                }
                 return false
             })
     }
@@ -296,8 +336,10 @@ export class GrowupSystem {
             }),
             'Cultivation examinations are incomplete',
         )
-        // Keep the existing staged final_score accumulation unchanged. This
-        // protocol fix records completion; it does not introduce a score formula.
+        // Explicitly requested local approximation; never add the intermediate
+        // star accumulator again or modify the battle's score/rate/star mask.
+        const score = cultivationScore(this, id, { attrs: g.growup_train_attr, chrs: g.assist_chars, trails: g.trails })
+        g.final_score = String(score.total)
         const snapshot = {
             id: ending.endingId,
             top_rating: g.final_score,
@@ -481,6 +523,20 @@ export class GrowupSystem {
     }
     eventInfo(g, id) {
         return g.cur_event_data ?? { activity_id: id, event_id: 0, cur_step: 0, event_option_infos: [] }
+    }
+    endQuery(g, id) {
+        return {
+            activity_id: id,
+            end_data: g.end_data.complete_end.map((x) => ({
+                id: x.id,
+                state: 1,
+                history_top_rating: x.top_rating,
+                chrs: x.chrs,
+                attrs: x.attrs,
+                trails: x.trails,
+                starting_ids: x.starting_ids,
+            })),
+        }
     }
     selectEvent(entry, id, request, randomInt) {
         const g = this.ensure(entry, id),
