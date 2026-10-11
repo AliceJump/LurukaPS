@@ -235,7 +235,11 @@ export function registerWorldObjects(on, tables) {
             )
             const record = {
                 ...old,
-                state_data: { ...old.state_data, ...incoming, ...(puzzle ? { children: incoming.children ?? [] } : {}) },
+                state_data: {
+                    ...old.state_data,
+                    ...incoming,
+                    ...(puzzle ? { children: incoming.children ?? [] } : {}),
+                },
                 time: old.complete ? old.time : c.now,
                 pos,
                 complete: old.complete || full,

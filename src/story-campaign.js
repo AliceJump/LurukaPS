@@ -178,8 +178,8 @@ export function storyCampaignConfig(tables, groupId, difficulty) {
         1007,
     )
     const savedRoute = legacyRoutes.get(dungeon.id)
-    const route = savedRoute?.mode === 'table_waves' || !savedRoute
-        ? tableWaveCampaignRoute(tables, dungeon) : savedRoute
+    const route =
+        savedRoute?.mode === 'table_waves' || !savedRoute ? tableWaveCampaignRoute(tables, dungeon) : savedRoute
     ensure(taskMapping || route, 'Campaign group is not implemented', 1021)
     const graphs = taskMapping ? new TaskGraphs(tables) : null
     const transferPoints = taskIds.flatMap((id) =>
