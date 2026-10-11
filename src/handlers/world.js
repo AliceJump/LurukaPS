@@ -24,6 +24,7 @@ import { playableSnapshot } from './playable-lifecycle.js'
 import { cultTrialSnapshot } from '../cult-trial.js'
 import { exitCultTrial } from './cult-trial.js'
 import { clearCultFormation } from '../cult-formation.js'
+import { takePresentationReturn } from '../presentation-return.js'
 import {
     addWorldMark,
     deleteWorldMarks,
@@ -250,22 +251,7 @@ export function registerWorld(on) {
             !c.state.entrust?.run && !c.state.multiCampaign && !c.state.storyCampaign,
             'Quit the active dungeon before leaving this presentation scene',
         )
-        const history = c.state.worldHistory ?? []
-        let previous
-        while (history.length) {
-            const candidate = history.pop()
-            const city = c.tables.find('world_city', candidate.map_id)
-            const point = c.tables.find('world_borthpos', candidate.point_id)
-            // Do not return into an old instance, dorm or story presentation.
-            if (![1, 3, 4].includes(city?.type) || point?.cityId !== candidate.map_id) continue
-            ensure(
-                candidate.pos && ['x', 'y', 'z'].every((key) => Number.isFinite(candidate.pos[key])),
-                'Invalid saved presentation entrance',
-            )
-            previous = candidate
-            break
-        }
-        ensure(previous, 'Photo/cultivation return context unavailable', 1007)
+        const previous = takePresentationReturn(c.tables, c.state)
         Object.assign(c.state.world, previous)
         delete c.state.combat
         worldSync({ ...c, push: c.pushBefore })
@@ -330,6 +316,19 @@ export function registerWorld(on) {
             return exitCultTrial(c)
         }
         if (!r.point_id && c.tables.find('world_city', c.state.world.map_id)?.type === 29) {
+            const completed = c.activityCatalog.rows
+                .filter((row) => row.type === 60)
+                .some((row) => {
+                    const g = c.state.activities?.[row.id]?.growup
+                    return g?.cur_stage === 4 && g.cur_growup_trail_stage === 4
+                })
+            if (completed) {
+                Object.assign(c.state.world, takePresentationReturn(c.tables, c.state))
+                delete c.state.combat
+                worldSync({ ...c, push: c.pushBefore })
+                syncBattle({ ...c, push: c.pushBefore })
+                return {}
+            }
             const returned = c.activityCatalog.rows
                     .filter((row) => row.type === 60)
                     .some((row) => {

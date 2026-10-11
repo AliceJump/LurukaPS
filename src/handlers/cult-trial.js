@@ -4,6 +4,7 @@ import { syncBattle } from '../battle.js'
 import { cultTrialRoute, cultTrialSnapshot, ensureCultTrialScene, publishCultTrialResult } from '../cult-trial.js'
 import { ensureCultFormation, publishCultFormation, clearCultFormation } from '../cult-formation.js'
 import { trialPayload } from './trial-groups.js'
+import { takePresentationReturn } from '../presentation-return.js'
 export function enterCultTrialScene(c, r = {}) {
     const run = c.state.cultTrial
     ensure(
@@ -22,7 +23,13 @@ export function exitCultTrial(c) {
     const run = c.state.cultTrial
     ensure(run, 'No active cultivation trial')
     c.pushBefore('CSProtoCampaignInfoSync', { ...cultTrialSnapshot(c.state), status: 1 })
-    Object.assign(c.state.world, run.return_world)
+    const g = c.state.activities?.[run.activity_id]?.growup
+    const completed = g?.cur_stage === 4 && g.cur_growup_trail_stage === 4
+    const destination =
+        completed && c.tables.find('world_city', run.return_world.map_id)?.type === 29
+            ? takePresentationReturn(c.tables, c.state)
+            : run.return_world
+    Object.assign(c.state.world, destination)
     const restored = clearCultFormation(c.state)
     delete c.state.cultTrial
     delete c.state.combat

@@ -82,6 +82,45 @@ test('CBT3 travel entrance sends its first option directly and cannot skip steps
         f.store.close()
     }
 })
+test('completed legacy cultivation presentation returns to the saved village on WorldPoint', () => {
+    const f = fixture()
+    try {
+        f.start()
+        f.store.transact(f.session.id, 0, (s) => {
+            s.tasks = []
+            s.taskRecords = tables.get('task').map((x) => ({ task_id: x.id, count: 1 }))
+            Object.assign(s.activities[60001].growup, { cur_stage: 4, cur_growup_trail_stage: 4 })
+            Object.assign(s.world, tables.position(tables.find('world_borthpos', 10100101)))
+            const village = tables.position(tables.find('world_borthpos', 20005))
+            village.pos.z += 321
+            s.worldHistory = [village]
+        })
+        const saved = structuredClone(f.state().worldHistory[0])
+        const packets = f.call('WorldPoint', { point_id: 0 })
+        assert.equal(f.decode(packets, 'CSProtoWorldMapSync').map_id, 200)
+        assert.deepEqual(f.state().world.pos, saved.pos)
+        assert.equal(f.g().cur_stage, 4)
+    } finally {
+        f.store.close()
+    }
+})
+test('completed cultivation return without a valid entrance rolls back', () => {
+    const f = fixture()
+    try {
+        f.start()
+        f.store.transact(f.session.id, 0, (s) => {
+            Object.assign(s.activities[60001].growup, { cur_stage: 4, cur_growup_trail_stage: 4 })
+            Object.assign(s.world, tables.position(tables.find('world_borthpos', 10100101)))
+            s.worldHistory = []
+        })
+        const saved = f.state()
+        assert.throws(() => f.call('WorldPoint', { point_id: 0 }), /return context unavailable/)
+        assert.deepEqual(f.state().world, saved.world)
+        assert.deepEqual(f.g(), saved.activities[60001].growup)
+    } finally {
+        f.store.close()
+    }
+})
 test('campaign score goals use independent bits while cultivation rewards retain star counts', () => {
     for (const [score, mask] of [
         [2999, 0],
@@ -109,6 +148,9 @@ test('final completion syncs the ending book and unlocks table rewards, which su
                 final_score: '1000',
             })
             g.trails = [101, 201, 301].map((trail_id) => ({ trail_id, star: 2, score: '4500', guid: g.guid }))
+            const village = tables.position(tables.find('world_borthpos', 20005))
+            village.pos.x += 123
+            s.worldHistory = [village]
             s.tasks = []
             s.taskRecords = tables.get('task').map((x) => ({ task_id: x.id, count: 1 }))
             Object.assign(s.world, tables.position(tables.find('world_borthpos', 10100101)))
@@ -133,7 +175,18 @@ test('final completion syncs the ending book and unlocks table rewards, which su
         const claim = { activity_id: 60001, reward_id_list: [600010101] }
         assert.ok(f.decode(f.call('ActivityReward', claim), 'CSProtoActivityReward').rewards.length > 0)
         assert.equal(f.decode(f.call('ActivityReward', claim), 'CSProtoActivityReward').rewards.length, 0)
-        f.call('WorldPoint', { point_id: 0 })
+        const expectedReturn = f.state().worldHistory.at(-1)
+        assert.equal(f.state().world.map_id, 6552, 'Final confirmation must not interrupt the settlement page')
+        const exit = f.call('CampaignQuit')
+        const destination = f.decode(exit, 'CSProtoWorldMapSync')
+        assert.equal(destination.cmd, 256)
+        assert.equal(destination.map_id, 200)
+        assert.equal(f.state().world.map_id, expectedReturn.map_id)
+        assert.deepEqual(f.state().world.pos, expectedReturn.pos)
+        assert.equal(f.state().cultTrial, undefined)
+        assert.ok(!f.state().player.group_mgrs.some((x) => x.type === 8))
+        const repeated = f.call('QuitPhotoGraphScene')
+        assert.ok(!repeated.some((x) => x.id === p.byName.get('CSProtoWorldMapSync').id))
         f.call('ActivityGrowUpResetReq', { activity_id: 60001 })
         const relog = f.call('EnterGame', { open_id: 'growup-test' }, {})
         assert.equal(f.decode(relog, 'CSProtoActivityGrowUpEndQuerySync').end_data[0].id, 101)
