@@ -111,7 +111,7 @@ test('late duplicate after for finished prologue node is acknowledged without ad
         t.store.close()
     }
 })
-test('replayed node reward returns original receipt without granting a second item', () => {
+test('replayed node reward does not present rewards again or grant a second item', () => {
     const t = setup()
     try {
         const graph = new TaskGraphs(tables).get(106001),
@@ -122,13 +122,16 @@ test('replayed node reward returns original receipt without granting a second it
             s.tasks[0].finish_nodes = [1, 5, 61, 56, 60, 57, 65, 58, 59, 8, 62]
         })
         const first = t.call('TaskClientAfter', q).find((x) => x.id === 9862)
+        assert((protocol.decode('cs.Rewards', first.payload).rewards ?? []).length > 0)
         const state = t.state(),
             count = state.player.sbag_infos.items.find((i) => i.itemid === 1000001)?.itemnum
         assert(count > 0)
-        assert.deepEqual(t.call('TaskClientAfter', q).find((x) => x.id === 9862).payload, first.payload)
+        const retry = t.call('TaskClientAfter', q).find((x) => x.id === 9862)
+        assert.deepEqual(protocol.decode('cs.Rewards', retry.payload).rewards ?? [], [])
         assert.equal(t.state().player.sbag_infos.items.find((i) => i.itemid === 1000001).itemnum, count)
         t.login()
-        assert.deepEqual(t.call('TaskClientAfter', q).find((x) => x.id === 9862).payload, first.payload)
+        const relogRetry = t.call('TaskClientAfter', q).find((x) => x.id === 9862)
+        assert.deepEqual(protocol.decode('cs.Rewards', relogRetry.payload).rewards ?? [], [])
     } finally {
         t.store.close()
     }
