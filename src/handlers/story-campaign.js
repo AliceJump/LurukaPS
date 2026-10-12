@@ -1,3 +1,4 @@
+import { visibleEnemySlots } from '../enemy-group-visibility.js'
 import { storyCampaignStagePlan } from '../table-wave-campaign.js'
 import { ensure } from './common.js'
 import { campaignStageSatisfied } from '../campaign-stage-plan.js'
@@ -170,6 +171,14 @@ export function settleStoryCampaignScene(c) {
                 },
             },
         }
+        // This legacy wave path updates HP without calling the scene builder.
+        // Recompute visibility too, rather than copying the previous live list.
+        record.time = run.start_time
+        record.next_time = 0
+        record.expand_data.battle_group.world_indexes = visibleEnemySlots(
+            record.expand_data.battle_group.monsters,
+            c.state.combat.entities,
+        )
         c.state.worldObjects[key] = record
     }
     run.scene_objects = c.tables.get(`worldmap_${run.map_id}`).map((row) => {

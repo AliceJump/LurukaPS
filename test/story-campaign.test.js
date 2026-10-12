@@ -31,7 +31,7 @@ test('chapter 106014 opens its table-matched dungeon and only credits a defeated
         const enemies = Object.values(snapshot.combat.entities).filter(
             (enemy) => enemy.hp > 0 && (!objectId || enemy.object_id === objectId),
         )
-        call('BattleInfoReduce', {
+        return call('BattleInfoReduce', {
             uint64_dic: [source, ...enemies.map((enemy) => enemy.uuid)],
             battle_info: enemies.map((enemy, index) => ({
                 hurt_info: {
@@ -90,7 +90,22 @@ test('chapter 106014 opens its table-matched dungeon and only credits a defeated
                 .groups.find((group) => group.id === 0).heros.length,
             4,
         )
-        defeatScene(1500002)
+        const clearedWave = defeatScene(1500002)
+        const refreshed = clearedWave
+            .filter((packet) => packet.id === 9103)
+            .flatMap((packet) => protocol.decode('WorldMapNotify', packet.payload).map_info?.objs ?? [])
+        const deadGroup = refreshed.find((row) => row.obj_id === 1500002)
+        assert.ok(deadGroup, 'legacy2500 emits the cleared group snapshot')
+        assert.deepEqual(deadGroup.expand_data.battle_group.world_indexes, [])
+        assert.ok(deadGroup.expand_data.battle_group.monsters.every((monster) => monster.hp === 0))
+        assert.equal(deadGroup.time, state().storyCampaign.start_time)
+        assert.equal(deadGroup.next_time, 0)
+        assert.equal(deadGroup.next_time + 10 > deadGroup.time, false)
+        const nextGroup = refreshed.find((row) => row.obj_id === 1500004)
+        assert.deepEqual(
+            nextGroup.expand_data.battle_group.world_indexes,
+            nextGroup.expand_data.battle_group.monsters.map((_, index) => index),
+        )
         assert.equal(state().storyCampaign.stage_index, 1)
         assert.equal(state().worldObjects['6200:1500002'].active, false)
         assert.equal(state().worldObjects['6200:1500004'].active, true)

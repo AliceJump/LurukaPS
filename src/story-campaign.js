@@ -1,3 +1,4 @@
+import { visibleEnemySlots } from './enemy-group-visibility.js'
 import { tableWaveCampaignRoute, storyCampaignStagePlan } from './table-wave-campaign.js'
 import { ensure } from './handlers/common.js'
 import fs from 'node:fs'
@@ -375,10 +376,7 @@ export function ensureStoryCampaignScene(tables, state, now) {
                 monsters,
                 // CBT3 EnemyGroupSync parses these as VisibleEnemies, not the
                 // full configured roster. Never advertise dead/captured slots again.
-                world_indexes: monsters.flatMap((monster, slot) => {
-                    const entity = battle.entities[monster.uid]
-                    return entity.hp > 0 && entity.alive_state !== 1 && !entity.captured ? [slot] : []
-                }),
+                world_indexes: visibleEnemySlots(monsters, battle.entities),
             },
         }
     }

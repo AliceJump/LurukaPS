@@ -1,3 +1,4 @@
+import { visibleEnemySlots } from './enemy-group-visibility.js'
 import { ensure } from './handlers/common.js'
 import { combatState } from './combat-state.js'
 import { enemyDefinition } from './enemy-state.js'
@@ -337,6 +338,12 @@ export function ensureEntrustSceneObjects(tables, state, now) {
         }
         const spawner = tables.find('world_spawner', row.spawnerId)
         if (spawner?.objectType !== 50) continue
+        // An inactive group with omitted times becomes an expired refresh entry
+        // on CBT3 (next_time + 10 > time). Keep its server death/visibility data
+        // for this run; a fresh entry rebuilds the run and monsters separately.
+        if (record.time !== run.start_time || record.next_time !== 0) changed = true
+        record.time = run.start_time
+        record.next_time = 0
         // The client initializes every configured enemy-group unit while the
         // scene loads, including inactive later waves. All slots need their
         // level and pack at entry; active controls visibility, not metadata.
@@ -378,9 +385,19 @@ export function ensureEntrustSceneObjects(tables, state, now) {
                 move: { pos: record.pos, move_status: 1, area_id: state.world.area_id },
             }
         })
+        // VisibleEnemies is independent of the full attribute roster. Keep
+        // dead slots' metadata, but never recreate them as visible monsters.
+        const world_indexes = visibleEnemySlots(monsters, battle.entities)
+        const previousIndexes = record.expand_data?.battle_group?.world_indexes
+        if (
+            !previousIndexes ||
+            previousIndexes.length !== world_indexes.length ||
+            previousIndexes.some((slot, index) => slot !== world_indexes[index])
+        )
+            changed = true
         record.expand_data = {
             ...(record.expand_data ?? {}),
-            battle_group: { monsters, world_indexes: monsters.map((_, slot) => slot) },
+            battle_group: { monsters, world_indexes },
         }
     }
     run.scene_objects = Object.entries(records)

@@ -1,3 +1,4 @@
+import { visibleEnemySlots } from './enemy-group-visibility.js'
 import fs from 'node:fs'
 import { ensure } from './handlers/common.js'
 import { combatState } from './combat-state.js'
@@ -150,6 +151,9 @@ export function ensureCultTrialScene(tables, state, now) {
             time: run.start_time,
             next_time: 0,
         })
+        // Also repair an older cached object, not just a newly-created row.
+        record.time = run.start_time
+        record.next_time = 0
         if (!run.object_ids.includes(row.id)) continue
         const wave = waves.find((x) => x.object_ids.includes(row.id))
         record.complete = !!wave && wave.wave_id <= (run.completed_waves ?? 0)
@@ -184,7 +188,7 @@ export function ensureCultTrialScene(tables, state, now) {
             }
         })
         record.expand_data = {
-            battle_group: { monsters, world_indexes: monsters.flatMap((x, i) => (x.hp > 0 ? [i] : [])) },
+            battle_group: { monsters, world_indexes: visibleEnemySlots(monsters, battle.entities) },
         }
     }
     refreshCultTrialResult(tables, state)

@@ -6,7 +6,7 @@ import { Store } from '../src/store.js'
 import { Game } from '../src/game.js'
 import { Protocol } from '../src/protocol.js'
 import { trainingFailureRate } from '../src/growup.js'
-import { cultTrialStarMask, cultTrialRoute } from '../src/cult-trial.js'
+import { cultTrialStarMask, cultTrialRoute, ensureCultTrialScene } from '../src/cult-trial.js'
 const cfg = configuration(),
     tables = new Tables(cfg.tables),
     p = new Protocol(cfg.base)
@@ -620,6 +620,19 @@ test('table-matched cultivation examination 101 enters a real type27 scene with 
         assert.equal(f.state().worldObjects['6550:5'].complete, true)
         assert.equal(f.state().worldObjects['6550:5'].active, false)
         assert.deepEqual(f.state().worldObjects['6550:5'].expand_data.battle_group.world_indexes, [])
+        const repaired = structuredClone(f.state())
+        const savedGroup = repaired.worldObjects['6550:5']
+        delete savedGroup.time
+        delete savedGroup.next_time
+        const liveGroup = repaired.worldObjects['6550:6'].expand_data.battle_group
+        const retired = liveGroup.monsters[0].uid
+        repaired.combat.entities[retired].captured = true
+        ensureCultTrialScene(tables, repaired, 1800000000)
+        assert.equal(savedGroup.time, repaired.cultTrial.start_time)
+        assert.equal(savedGroup.next_time, 0)
+        assert.equal(savedGroup.next_time + 10 > savedGroup.time, false)
+        assert.ok(!repaired.worldObjects['6550:6'].expand_data.battle_group.world_indexes.includes(0))
+        assert.ok(repaired.combat.entities[retired].hp > 0, 'capture tombstone overrides stale positive HP')
         assert.equal(f.decode(secondWave, 'CSProtoWorldMapSync').map_info.objs.find((x) => x.obj_id === 6).active, true)
         assert.ok(secondWave.every((packet) => !multiplayerIds.has(packet.id)))
         assert.equal(f.decode(secondWave, 'CSProtoCampaignInfoSync').waves, 2)
