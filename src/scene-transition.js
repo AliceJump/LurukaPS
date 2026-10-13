@@ -7,6 +7,7 @@ export function beginSceneTransition(state, previousMapId, now, command) {
     if (!Number.isInteger(previousMapId) || previousMapId <= 0 || previousMapId === world.map_id) return false
     // Never recreate the destination player from the previous scene's ride.
     clearSceneMount(state)
+    delete world.transform
     world.scene_transition = { from_map_id: previousMapId, to_map_id: world.map_id, command, started_at: now }
     world.client_loaded = false
     delete world.loaded_at

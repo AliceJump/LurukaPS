@@ -78,6 +78,7 @@ import {
 } from './handlers/kibo-duel.js'
 import { registerProfileQueries } from './handlers/profile-queries.js'
 import { registerWorldObjects, reconcileWorldCollectionFinalDrops } from './handlers/world-objects.js'
+import { registerTransform } from './handlers/transform.js'
 import { registerWorldCombat } from './handlers/world-combat.js'
 import { registerWorldSearch } from './handlers/world-search.js'
 import { recoverInitialDungeonKills } from './task-kills.js'
@@ -328,6 +329,7 @@ export class Game {
         registerProfileQueries(on, tables, store)
         registerWorldObjects(on, tables)
         registerWorldCombat(on)
+        registerTransform(on, tables, store)
         registerWorldSearch(on, tables)
         registerAIControl(on)
         registerEcology(on, tables)
@@ -528,6 +530,7 @@ export class Game {
                 }
                 unlockAutomaticTasks(this.tables, state, now)
                 repairMainTaskTrace(this.tables, state)
+                delete state.world.transform
                 repairCharacterCreationMarker(state)
                 restoreLegacyHomeFormation(state)
                 repairMainHeroType(this.tables, state)
