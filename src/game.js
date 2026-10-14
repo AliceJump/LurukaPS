@@ -2,6 +2,7 @@ import { npcArenaTickDue, forkNpcArenaRuntime, tickNpcArena } from './npc-kibo-s
 import { npcArenaStatistics } from './npc-kibo-statistics.js'
 import { npcArenaOutcome } from './npc-kibo-result.js'
 import { selectedArenaGroup } from './npc-kibo-duel.js'
+import { arenaTrainer } from './npc-kibo-trainer.js'
 import { ensureFlightUnlocked, explorationSnapshot } from './flight-unlock.js'
 import { registerActivities } from './handlers/activities.js'
 import { registerGrowup } from './handlers/growup.js'
@@ -634,8 +635,11 @@ export class Game {
             if (campaign?.arena_status) {
                 packets.push(this.packet('CSProtoOnlineModeChange', { mode: 9 }))
                 const { duel_id, arena_status, formation_slot, ...wire } = campaign
-                const hero = activeState.player.heros_info.heros.find(
-                    (h) => h.guid === selectedArenaGroup(activeState)?.hero,
+                const hero = arenaTrainer(
+                    this.tables,
+                    activeState,
+                    this.tables.find('kibo_duel', duel_id),
+                    selectedArenaGroup(activeState),
                 )
                 const name = Buffer.from(activeState.player.basic_info.name, 'base64').toString('utf8')
                 packets.push(
@@ -1201,7 +1205,7 @@ export class Game {
                 },
                 { seq: frame.seq, pushSeq: frame.pushSeq },
             ),
-            ...(state.trialGroup || state.cultTrial?.heroes?.length
+            ...(state.trialGroup || state.cultTrial?.heroes?.length || state.npcArenaTrialTrainer
                 ? [this.packet('CSProtoTrialDatas', trialPayload(state))]
                 : []),
             this.packet('CSProtoPetInfoSync', {

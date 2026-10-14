@@ -10,7 +10,14 @@ export function isRetiredTrialActor(state, id) {
     )
 }
 export function temporaryHeroes(state) {
-    return [...(state.trialGroup?.heroes ?? []), ...(state.cultTrial?.heroes ?? [])]
+    const arena = state.npcArenaTrialTrainer
+    return [
+        ...(state.trialGroup?.heroes ?? []),
+        ...(state.cultTrial?.heroes ?? []),
+        ...(arena && arena.map_id === state.world?.map_id && arena.duel_id === state.multiCampaign?.duel_id
+            ? [arena.hero]
+            : []),
+    ]
 }
 export function temporaryPets(state) {
     return [...(state.trialGroup?.pets ?? []), ...(state.cultTrial?.pets ?? [])]

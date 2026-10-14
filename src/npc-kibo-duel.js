@@ -1,4 +1,5 @@
 import { ensure } from './handlers/common.js'
+import { arenaTrainer } from './npc-kibo-trainer.js'
 
 const list = (value) =>
     String(value ?? '')
@@ -32,10 +33,14 @@ export function validateNpcDuelFormation(tables, state, duel, formation) {
         count++
     }
     ensure(count >= duel.minimumKibo, 'Not enough arena pets')
-    ensure(
-        state.player.heros_info.heros.some((hero) => hero.guid === formation.hero),
-        'Arena hero not owned',
-    )
+    const trainer = arenaTrainer(tables, state, duel, formation)
+    if (duel.trialRole)
+        ensure(
+            formation.hero === String(trainer.conf_id) ||
+                formation.hero === trainer.guid ||
+                state.player.heros_info.heros.some((hero) => hero.guid === formation.hero),
+            'Invalid arena trial trainer',
+        )
     return formation
 }
 

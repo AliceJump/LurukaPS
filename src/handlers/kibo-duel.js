@@ -13,7 +13,14 @@ import { arenaPetAttributes } from '../kibo-arena-attributes.js'
 import { selectedArenaGroup, validateNpcDuelFormation, npcDuelEntry } from '../npc-kibo-duel.js'
 import { ensure } from './common.js'
 import { rememberMap, worldSync } from './world.js'
-import { heroModules } from '../battle.js'
+import { heroModules, syncBattle } from '../battle.js'
+import {
+    arenaTrainer,
+    prepareArenaTrainer,
+    clearArenaTrialTrainer,
+    expireArenaTrialTrainer,
+} from '../npc-kibo-trainer.js'
+import { trialPayload } from './trial-groups.js'
 import { petData, petGrade } from '../pets.js'
 import { ensureEntrustSceneObjects } from '../entrust.js'
 import { storyCampaignSnapshot } from '../story-campaign.js'
@@ -59,6 +66,7 @@ function normalizeArenaPets(state, entries) {
     }))
 }
 export function repairPendingDuelEntry(state, now = Math.floor(Date.now() / 1000), tables) {
+    expireArenaTrialTrainer(state)
     const info = state.multiCampaign
     if (!info || state.world.map_id !== info.map_id) return false
     const run = state.combat?.npcDuel
@@ -70,7 +78,17 @@ export function repairPendingDuelEntry(state, now = Math.floor(Date.now() / 1000
         (info.arena_status !== 4 || run.energy)
     ) {
         if (tables) {
-            const { dungeon, map } = npcDuelEntry(tables, info.duel_id)
+            const { duel, dungeon, map } = npcDuelEntry(tables, info.duel_id)
+            if (duel.trialRole) {
+                const hero = prepareArenaTrainer(tables, state, duel, selectedArenaGroup(state))
+                state.combat.npcDuel = { ...run, trainer_guid: hero.guid }
+                for (const actor of Object.values(run.actors))
+                    if (actor.camp === 1 && state.combat.entities[actor.uuid])
+                        state.combat.entities[actor.uuid] = {
+                            ...state.combat.entities[actor.uuid],
+                            owner_id: hero.guid,
+                        }
+            }
             const old = String(dungeon.position || '')
                 .split('|')
                 .map(Number)
@@ -94,6 +112,7 @@ export function repairPendingDuelEntry(state, now = Math.floor(Date.now() / 1000
     Object.assign(state.world, previous)
     delete state.multiCampaign
     delete state.combat
+    clearArenaTrialTrainer(state)
     delete state.kiboDuelLoadingCompleteAt
     delete state.kiboDuelFirstGuid
     delete state.kiboDuelFirstConfirmedAt
@@ -144,7 +163,9 @@ function lockedFormation(tables, state, row) {
                     g.title === (state.player.basic_info.sex === 1 ? 'AVATAR_HERO_ID_MALE' : 'AVATAR_HERO_ID_FEMALE'),
             )?.value,
     )
-    const hero = state.player.heros_info.heros.find((h) => h.conf_id === heroConfig)?.guid ?? '0'
+    const hero = row.trialRole
+        ? String(arenaTrainer(tables, state, row).conf_id)
+        : (state.player.heros_info.heros.find((h) => h.conf_id === heroConfig)?.guid ?? '0')
     const hero_skills = duelSkills(row)
     return {
         slot: lockedDuelSlot,
@@ -158,8 +179,8 @@ function lockedFormation(tables, state, row) {
 export function arenaAttributePayload(tables, state) {
     const group = selectedArenaGroup(state) ?? state.kiboDuelGroups?.[arenaLockedSlot]
     ensure(group?.pet_guids?.length === 8, 'Arena formation unavailable')
-    const hero = state.player.heros_info.heros.find((h) => h.guid === group.hero)
-    ensure(hero, 'Arena hero unavailable')
+    const duel = tables.find('kibo_duel', state.multiCampaign?.duel_id ?? group.duel_id)
+    const hero = arenaTrainer(tables, state, duel, group)
     const heroBase = heroModules(tables, state, hero),
         infos = []
     for (const entry of group.pet_guids) {
@@ -208,7 +229,7 @@ function saveArenaGroup(arena, protocol, group) {
 export function registerKiboDuel(on, tables, protocol) {
     registerNpcArenaSummons(on)
     registerNpcArenaResults(on, tables)
-    on('KiboDuelGetGroup', (c, r) => {
+    const prepare = (c, r) => {
         const row = tables.find('kibo_duel', r.u32)
         ensure(row, 'Unknown Kibo duel')
         for (const id of ids(row.kiboList)) {
@@ -224,7 +245,7 @@ export function registerKiboDuel(on, tables, protocol) {
         const arena = ensureArenaFormationManager(c.state),
             groups = (c.state.kiboDuelGroups ??= {})
         let group = groups[lockedDuelSlot]
-        if (!group || group.duel_id !== row.id || group.pet_guids?.length !== 8)
+        if (!group || group.duel_id !== row.id || group.pet_guids?.length !== 8 || row.levelType === 2)
             group = lockedFormation(tables, c.state, row)
         else if (!group.hero_skills?.length && row.skillList) group = { ...group, hero_skills: duelSkills(row) }
         group = { ...group, pet_guids: normalizeArenaPets(c.state, group.pet_guids) }
@@ -234,6 +255,7 @@ export function registerKiboDuel(on, tables, protocol) {
             groups[arenaLockedSlot]?.duel_id === row.id && groups[arenaLockedSlot].pet_guids?.length === 8
                 ? groups[arenaLockedSlot]
                 : { ...group, slot: arenaLockedSlot }
+        if (row.levelType === 2) arenaGroup = { ...group, slot: arenaLockedSlot }
         if (!arenaGroup.hero_skills?.length && row.skillList)
             arenaGroup = { ...arenaGroup, hero_skills: duelSkills(row) }
         arenaGroup = { ...arenaGroup, pet_guids: normalizeArenaPets(c.state, arenaGroup.pet_guids) }
@@ -245,7 +267,8 @@ export function registerKiboDuel(on, tables, protocol) {
         c.pushBefore('CSProtoSyncPlayerData', { group_mgrs: [arena] })
         c.pushBefore('CSProtoKiboDuelGroupInfoSync', kiboDuelSnapshot(c.state, tables))
         return {}
-    })
+    }
+    on('KiboDuelGetGroup', prepare)
     on('KiboDuelGroupChange', (c, r) => {
         ensure(r.type === 6 && r.group, 'Invalid arena group type')
         const slot = Number(r.group.slot ?? 0)
@@ -268,13 +291,19 @@ export function registerKiboDuel(on, tables, protocol) {
         })
         const existing = c.state.kiboDuelGroups?.[slot],
             hero = String(r.group.hero ?? existing?.hero ?? '0')
-        ensure(hero === '0' || c.state.player.heros_info.heros.some((h) => h.guid === hero), 'Arena hero not owned')
+        const trialTrainer = row.trialRole ? arenaTrainer(tables, c.state, row) : null
+        ensure(
+            hero === '0' ||
+                c.state.player.heros_info.heros.some((h) => h.guid === hero) ||
+                (trialTrainer && [String(trialTrainer.conf_id), trialTrainer.guid].includes(hero)),
+            'Arena hero not owned',
+        )
         const hero_skills = r.group.hero_skills ?? []
         ensure(hero_skills.length <= 8, 'Invalid arena skills')
         const group = {
             slot,
             pet_guids: normalizeArenaPets(c.state, pet_guids),
-            hero,
+            hero: trialTrainer ? String(trialTrainer.conf_id) : hero,
             hero_skills,
             duel_id: row.id,
             index: Number(r.group.index ?? existing?.index ?? 0),
@@ -310,7 +339,10 @@ export function registerKiboDuel(on, tables, protocol) {
         // The generic dungeon.position is reused across different arenas.
         const trainerSpawn = arenaPoint(tables, map, 'nestBorthPos1')
         const arena = ensureArenaFormationManager(c.state),
-            formation = duel.kiboLock ? c.state.kiboDuelGroups?.[arenaLockedSlot] : selectedArenaGroup(c.state)
+            formation =
+                duel.kiboLock || duel.levelType === 2
+                    ? c.state.kiboDuelGroups?.[arenaLockedSlot]
+                    : selectedArenaGroup(c.state)
         ensure(formation, 'Arena formation unavailable')
         if ([arenaLockedSlot, lockedDuelSlot].includes(formation.slot))
             ensure(formation.duel_id === duel.id, 'Locked formation belongs to another duel')
@@ -344,10 +376,14 @@ export function registerKiboDuel(on, tables, protocol) {
             }
         }
         const { duel_id, arena_status, formation_slot, ...info } = c.state.multiCampaign
-        const hero = c.state.player.heros_info.heros.find((h) => h.guid === formation.hero)
-        ensure(hero, 'Arena hero unavailable')
+        const hero = prepareArenaTrainer(tables, c.state, duel, formation)
         if (!petGuids.includes(c.state.kiboDuelFirstGuid)) c.state.kiboDuelFirstGuid = petGuids[0]
         initializeNpcDuelBattle(tables, c.state, arenaAttributePayload(tables, c.state), c.now)
+        c.state.combat.npcDuel = { ...c.state.combat.npcDuel, trainer_guid: hero.guid }
+        if (duel.trialRole) {
+            c.pushBefore('CSProtoTrialDatas', trialPayload(c.state))
+            syncBattle({ ...c, push: c.pushBefore })
+        }
         const name = Buffer.from(c.state.player.basic_info.name, 'base64').toString('utf8')
         c.pushBefore('CSProtoKiboDuelFightingInfoSync', { id: duel.id, status: 2, start_time: c.now })
         c.pushBefore('CSProtoMultiCampaignInfoSync', { camp: [info] })
@@ -387,6 +423,19 @@ export function registerKiboDuel(on, tables, protocol) {
         return {}
     }
     on('MultiCampaignCreate', createNpcArena)
+    // The commission teaching panel directly sends10746, without opening
+    // the arena formation page. Its configured dungeon is still type400;
+    // publish the same native arena state, rather than a fabricated old win.
+    on('KiboDuelStart', (c, r) => {
+        const { duel } = npcDuelEntry(tables, r.u32)
+        ensure(
+            tables.get('train_task').some((row) => row.groupType === 3 && row.dungeonId === duel.id),
+            'Not a configured duel teaching entry',
+            1007,
+        )
+        prepare(c, { u32: duel.id })
+        return createNpcArena(c, { dungeon_id: duel.dungeonId })
+    })
     const restart = (c) => {
         const run = c.state.combat?.npcDuel,
             campaign = c.state.multiCampaign
@@ -474,7 +523,7 @@ export function registerKiboDuel(on, tables, protocol) {
         startNpcArenaRound(c)
         return {}
     })
-    on('MultiCampaignQuit', (c) => {
+    const quit = (c) => {
         if (c.state.entrust?.run) return exitEntrust(c)
         const info = c.state.multiCampaign
         ensure(info && info.status >= 2, 'No active dungeon')
@@ -489,6 +538,10 @@ export function registerKiboDuel(on, tables, protocol) {
         Object.assign(c.state.world, previous)
         retireNpcArenaActors(c.state)
         delete c.state.combat
+        if (clearArenaTrialTrainer(c.state)) {
+            c.pushBefore('CSProtoTrialDatas', trialPayload(c.state))
+            c.pushBefore('CSProtoSyncPlayerData', { heros_info: c.state.player.heros_info })
+        }
         worldSync(c)
         const returnType = tables.find('world_city', c.state.world.map_id)?.type
         c.push('CSProtoOnlineModeChange', { mode: returnType === 4 ? 2 : [2, 13].includes(returnType) ? 5 : 1 })
@@ -497,5 +550,10 @@ export function registerKiboDuel(on, tables, protocol) {
         delete c.state.kiboDuelFirstGuid
         delete c.state.kiboDuelFirstConfirmedAt
         return {}
+    }
+    on('MultiCampaignQuit', quit)
+    on('KiboDuelQuit', (c) => {
+        ensure(c.state.combat?.npcDuel?.map_id === c.state.world.map_id, 'No active NPC arena')
+        return quit(c)
     })
 }

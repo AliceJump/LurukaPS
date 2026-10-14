@@ -1,4 +1,5 @@
 import { recordNpcArenaMovement } from '../npc-kibo-battle.js'
+import { expireArenaTrialTrainer } from '../npc-kibo-trainer.js'
 import { repairSavedPetPuzzleVisibility } from '../pet-puzzles.js'
 import { activeDormVisit } from '../home-dorm.js'
 import { repairSavedElevatorVisibility } from './world-elevator.js'
@@ -7,7 +8,7 @@ import { expireTaskTrialGroup, trialPayload } from './trial-groups.js'
 import { validateTaskTransfer } from '../task-scenes.js'
 import { heroBattleLimits, heroModules, syncBattle } from '../battle.js'
 import { ensure, group, pet, syncGroupControl } from './common.js'
-import { mountPayload, clearSceneMount } from '../mounts.js'
+import { mountPayload, clearSceneMount, clientMountId } from '../mounts.js'
 import { restoreLegacyHomeFormation } from '../home-formation.js'
 import { repairMainHeroType } from '../main-hero.js'
 import { campaignSnapshot, entrustChestSnapshot } from '../entrust.js'
@@ -50,7 +51,7 @@ function mapPlayer(c) {
         name: s.player.basic_info.name,
         face: s.player.basic_info.wardrobe,
         group: { heros: ids, hero_mid: ids, control: g.control },
-        mount: w.mount,
+        mount: clientMountId(s),
         mount_status: w.mount_status ?? 0,
         ...(w.mount && w.mount !== '0' ? { mount_move: move } : {}),
         apparel_info: s.player.basic_info.apparel_info,
@@ -59,7 +60,7 @@ function mapPlayer(c) {
 }
 function playerStatusSync(c, cmd) {
     const w = c.state.world,
-        mount = w.mount,
+        mount = clientMountId(c.state),
         move = { pos: w.pos, angle: w.angle, area_id: w.area_id, move_status: 1, timestamp: String(c.now * 1000) }
     // Status deltas must not resend the formation: that can rebuild the local
     // party and select its first hero during a mount transition.
@@ -131,6 +132,10 @@ export function repairLegacyMountState(state, tables) {
     return true
 }
 export function worldSync(c, r = {}, cmd = WORLD_MAP_CMD_ENTER, includeMarks = true) {
+    if (expireArenaTrialTrainer(c.state)) {
+        c.push('CSProtoTrialDatas', trialPayload(c.state))
+        c.push('CSProtoSyncPlayerData', { heros_info: c.state.player.heros_info })
+    }
     // A task/GM/home transfer may leave a dorm without using protocol 6213.
     if (c.state.home?.dormVisit && !activeDormVisit(c.tables, c.state)) delete c.state.home.dormVisit
     repairSavedElevatorVisibility(c.tables, c.state)
@@ -451,13 +456,14 @@ export function registerWorld(on) {
         if (m.map_id !== w.map_id && isPreviousSceneMovement(c.state, m.map_id)) return
         ensure(m.map_id === w.map_id, 'Wrong map')
         const g = group(c.state),
+            trainer = c.state.combat?.npcDuel?.map_id === w.map_id ? c.state.combat.npcDuel.trainer_guid : undefined,
             activeMount = w.status === 1 ? w.mount : null,
             mounted = activeMount && activeMount !== '0'
         ensure((m.move ?? []).length <= 256, 'Too many movement records')
         let heroMove, mountMove
         for (const item of m.move ?? []) {
             if (recordNpcArenaMovement(c, item)) continue
-            if (item.uuid !== g.control && (!mounted || item.uuid !== activeMount)) continue
+            if (item.uuid !== (trainer ?? g.control) && (!mounted || item.uuid !== activeMount)) continue
             const i = item.info
             ensure(i?.pos, 'Missing movement position')
             const pos = Object.fromEntries(['x', 'y', 'z'].map((k) => [k, i.pos[k] ?? 0]))
@@ -499,6 +505,7 @@ export function registerWorld(on) {
             ensure(!mount.work_status, 'Stationed pet cannot be mounted')
             syncGroupControl(c)
             w.mount = mount.guid
+            w.lastMountMetadata = { guid: mount.guid, map_id: w.map_id }
             if (c.state.mountRideId !== mount.guid) {
                 c.state.mountRideId = mount.guid
                 c.push('CSProtoRideMountInfo', mountPayload(c.tables, c.state))
