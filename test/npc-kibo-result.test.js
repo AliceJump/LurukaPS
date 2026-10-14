@@ -6,6 +6,7 @@ import { Protocol } from '../src/protocol.js'
 import { Store } from '../src/store.js'
 import { Game } from '../src/game.js'
 import { TaskGraphs, makeNode } from '../src/tasks.js'
+import { npcArenaStatistics } from '../src/npc-kibo-statistics.js'
 const cfg = configuration(),
     tables = new Tables(cfg.tables),
     p = new Protocol(cfg.base)
@@ -106,6 +107,79 @@ function fixture() {
         close: () => store.close(),
     }
 }
+
+test('arena damage/healing/kill statistics sync absolute totals, coalesce live updates, and survive result reconnect', () => {
+    const f = fixture()
+    try {
+        f.enter(1001)
+        const run = f.state().combat.npcDuel,
+            self = Object.values(run.actors).find((actor) => actor.camp === 1 && run.in_fight[actor.uuid]),
+            enemy = Object.values(run.actors).find((actor) => actor.camp === 2 && run.in_fight[actor.uuid])
+        const hit = (from, target, delta, invalid = false) =>
+            f.call('BattleInfoReduce', {
+                uint64_dic: [from, target],
+                battle_info: [
+                    { hurt_info: { from_id: '1', tar_id: '2', hp_change: delta } },
+                    ...(invalid ? [{ element_info: { op: 1, tar_id: '2' } }] : []),
+                ],
+            })
+        const record = (uuid) => npcArenaStatistics(f.state()).damage_record.find((row) => row.uuid === uuid)
+        const writes = f.store.db.prepare('SELECT total_changes() AS n').get().n
+        const first = hit(self.uuid, enemy.uuid, -12).find((packet) => packet.id === 10756)
+        assert.ok(first)
+        assert.equal(first.data.damage_record.find((row) => row.uuid === self.uuid).damage, 12)
+        assert.equal(record(enemy.uuid).take_damage, 12)
+        assert.equal(record(self.uuid).owner_id, String(f.state().player.basic_info.id))
+        assert.equal(record(enemy.uuid).owner_id, String(run.npc_id))
+        assert.equal(record(self.uuid).camp, 6)
+        assert.equal(record(enemy.uuid).camp, 5)
+        assert.equal(first.data.damage_record.length, 16)
+        assert.equal(hit(self.uuid, enemy.uuid, -8).filter((packet) => packet.id === 10756).length, 0)
+        assert.equal(record(self.uuid).damage, 20)
+        hit(enemy.uuid, self.uuid, -17)
+        hit(self.uuid, self.uuid, 100000)
+        assert.equal(record(enemy.uuid).damage, 17)
+        assert.equal(record(self.uuid).take_damage, 17)
+        assert.equal(record(self.uuid).heal, 17, 'overheal counts only restored HP')
+        const saved = structuredClone(f.state().combat.npcDuel)
+        assert.throws(() => hit(self.uuid, enemy.uuid, -9, true), /Missing element data/)
+        assert.deepEqual(f.state().combat.npcDuel, saved, 'malformed batch cannot leak a partial stat increment')
+        f.advance(1)
+        const live = f.tick().find((packet) => packet.id === 10756)
+        assert.equal(live.data.damage_record.find((row) => row.uuid === self.uuid).damage, 20)
+        const left = f.state().combat.entities[enemy.uuid].hp
+        hit(self.uuid, enemy.uuid, -100000)
+        const total = 20 + left
+        assert.equal(record(self.uuid).damage, total, 'overkill counts only accepted HP loss')
+        assert.equal(record(self.uuid).kill, 1)
+        hit(self.uuid, enemy.uuid, -100000)
+        assert.equal(record(self.uuid).damage, total)
+        assert.equal(record(self.uuid).kill, 1, 'corpse reports cannot count another kill')
+        assert.equal(f.store.db.prepare('SELECT total_changes() AS n').get().n, writes)
+        const finish = f.call('KiboDuelSurrender')
+        assert.ok(finish.findIndex((packet) => packet.id === 10756) < finish.findIndex((packet) => packet.id === 11806))
+        const expected = npcArenaStatistics(f.state())
+        const login = f.relogin()
+        assert.deepEqual(
+            login.find((packet) => packet.id === 10756).data.damage_record,
+            p.decode('cs.KiboDuelStats', p.encode('cs.KiboDuelStats', expected)).damage_record,
+        )
+        f.call('StartDungeonClientOk')
+        const restored = f.call('MultiCampaignPlayerLoadFinish')
+        assert.deepEqual(
+            restored.find((packet) => packet.id === 10756).data.damage_record,
+            login.find((packet) => packet.id === 10756).data.damage_record,
+        )
+        f.call('MultiCampaignRestart')
+        assert.ok(
+            npcArenaStatistics(f.state()).damage_record.every(
+                (row) => row.damage === 0 && row.kill === 0 && row.heal === 0,
+            ),
+        )
+    } finally {
+        f.close()
+    }
+})
 
 test('real NPC victories grant first/challenge rewards and area progress once, then area rewards are claimable', () => {
     const f = fixture()

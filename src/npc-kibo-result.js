@@ -1,5 +1,6 @@
 import { advanceArenaScores } from './npc-kibo-clock.js'
 import { stopArenaPetAI } from './npc-kibo-pet-ai.js'
+import { publishArenaStatistics } from './npc-kibo-statistics.js'
 import { ensure, syncPlayer, syncPets } from './handlers/common.js'
 import { grantRewards, parseRewards } from './rewards.js'
 import { WorldObjectCatalog } from './world-objects.js'
@@ -52,6 +53,7 @@ export function settleNpcArena(c, outcome) {
     ensure(run && run.map_id === c.state.world.map_id, 'No active NPC arena')
     if (run.result) return run.result
     ensure(outcome && [1, 2, 3].includes(outcome.result), 'NPC arena result is not proven')
+    publishArenaStatistics(c, true)
     const duel = c.tables.find('kibo_duel', run.duel_id)
     const elapsed = Math.max(0, c.now - (run.regular_started_at ?? c.now))
     const remaining = Math.max(0, Number(duel.time) - elapsed)
@@ -104,7 +106,7 @@ export function settleNpcArena(c, outcome) {
     ensure(settlementSeconds > 0, 'NPC settlement duration unavailable', 1007)
     stopArenaPetAI(c)
     c.state.combat.npcDuel = {
-        ...run,
+        ...c.state.combat.npcDuel,
         pet_ai: c.state.combat.npcDuel.pet_ai,
         result,
         finished_at: c.now,

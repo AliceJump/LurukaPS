@@ -1,4 +1,5 @@
 import { npcArenaTickDue, forkNpcArenaRuntime, tickNpcArena } from './npc-kibo-service.js'
+import { npcArenaStatistics } from './npc-kibo-statistics.js'
 import { npcArenaOutcome } from './npc-kibo-result.js'
 import { selectedArenaGroup } from './npc-kibo-duel.js'
 import { ensureFlightUnlocked, explorationSnapshot } from './flight-unlock.js'
@@ -703,6 +704,7 @@ export class Game {
                     }
                 }
                 if (activeState.combat?.npcDuel?.result) {
+                    packets.push(this.packet('CSProtoKiboDuelStatsSync', npcArenaStatistics(activeState)))
                     packets.push(
                         this.packet('SCProtoKiboDuelArenaScoreInfoSync', {
                             score_infos: [1, 2].map((camp) => ({

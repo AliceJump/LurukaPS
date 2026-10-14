@@ -3,6 +3,7 @@ import { advanceArenaEnergy, advanceArenaScores, arenaHand, publishArenaEnergy }
 import { startNpcArenaRound, finishNpcArenaPresentation, processNpcArenaQueue } from './npc-kibo-battle.js'
 import { npcArenaOutcome, settleNpcArena } from './npc-kibo-result.js'
 import { advanceArenaPetAI } from './npc-kibo-pet-ai.js'
+import { publishArenaStatistics } from './npc-kibo-statistics.js'
 
 export function npcArenaTickDue(state, now) {
     const run = state.combat?.npcDuel,
@@ -41,6 +42,7 @@ export function tickNpcArena(c) {
     }
     if (c.state.multiCampaign.arena_status === 4) {
         advanceArenaScores(c)
+        publishArenaStatistics(c)
         if (npcArenaOutcome(c.state, c.now)) {
             settleNpcArena(c)
             return

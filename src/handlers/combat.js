@@ -1,4 +1,5 @@
 import { recordNpcArenaDeaths } from '../npc-kibo-battle.js'
+import { recordArenaHpStatistics, publishArenaStatistics } from '../npc-kibo-statistics.js'
 import { enemyDefinition } from '../enemy-state.js'
 import { recordGuidedKill } from '../task-kills.js'
 import { finishEnemyGroupRelations, pruneInactiveCampaignRelations } from './world-combat.js'
@@ -328,6 +329,8 @@ export function registerCombat(on) {
                         entrustDamageChanged = true
                     }
                     boundedSet(battle.entities, id, value, 512)
+                    if (definition.npc_duel)
+                        recordArenaHpStatistics(c, id, source, previous.hp ?? definition.max_hp, hp)
                     if (died && !definition.npc_duel) recordGuidedKill(c.tables, c.state, value)
                     changed.set(id, {
                         uuid: id,
@@ -470,6 +473,7 @@ export function registerCombat(on) {
                 })),
             })
         recordNpcArenaDeaths(c)
+        publishArenaStatistics(c)
         for (const id of deadGroups) finishEnemyGroupRelations(c, id)
         if (deadGroups.size) pruneInactiveCampaignRelations(c)
         if (deadGroups.size) advanceCultTrialCombat(c)

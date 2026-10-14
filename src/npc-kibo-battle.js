@@ -4,6 +4,7 @@ import { npcDuelEntry } from './npc-kibo-duel.js'
 import { arenaPetAttributes } from './kibo-arena-attributes.js'
 import { beginNpcArenaPresentation, publishNpcArenaPresentation } from './npc-kibo-presentation.js'
 import { stopArenaPetAI } from './npc-kibo-pet-ai.js'
+import { publishArenaStatistics } from './npc-kibo-statistics.js'
 import {
     startArenaClock,
     consumeArenaPoint,
@@ -236,6 +237,7 @@ export function reportNpcArenaLoadFinish(c) {
     ensure(c.state.combat?.npcDuel?.entities_sent, 'Arena entities have not been published')
     const wasLoaded = c.state.kiboDuelLoadingCompleteAt !== undefined
     c.state.kiboDuelLoadingCompleteAt ??= c.now
+    publishArenaStatistics(c, true)
     const run = c.state.combat.npcDuel
     if (run.result) {
         // Relogin reloads actors even when this match has already settled.
