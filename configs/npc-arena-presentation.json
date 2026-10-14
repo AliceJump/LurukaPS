@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "stories": {
+    "6120002": {
+      "timeline_seconds": 17.0,
+      "client_delay_seconds": 4.0,
+      "timeline_sha256": "0c80764222efec56639cd7ca9b23c2a802ce3696bc2268f0880e25461363025a",
+      "delay_il_sha256": "4507fc5aa1a6e183fbf561fd2e416192093f2c60fbea47648b4551e3c79c8c2e",
+      "delay_method": "0602a769"
+    }
+  }
+}

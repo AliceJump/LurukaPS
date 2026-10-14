@@ -1,0 +1,56 @@
+{
+    "policies": {
+        "Config/Battle/BehaviorTree/ast_behavior_kibo_arena.asset": {
+            "bundle_sha256": "0b76f23e5536f58a8ede47f0b875e9105c3c834e8369a999de4e89f6ab4e6876",
+            "graph_sha256": "afefba03cc2d3bb547837c3db6496be951e8adb3773ff5f64053b06e5838075e",
+            "lock_range": 10.0,
+            "lose_range": 15.0,
+            "ordinary_slots": [
+                1,
+                2
+            ],
+            "melee_surface_distance": 2.0,
+            "angular_velocity": 360.0,
+            "dir_change_slerp_time": 360.0
+        },
+        "Config/Battle/BehaviorTree/ast_behavior_kibo_arena_short.asset": {
+            "bundle_sha256": "ac92561e18801fef4d920f8fc6d67fea5c177fe3add59774649103122e63f03d",
+            "graph_sha256": "87ec6db5b2b01145475f19f657818d26921a700ea7480bc20d6247780cf2d468",
+            "lock_range": 10.0,
+            "lose_range": 15.0,
+            "ordinary_slots": [
+                1,
+                2
+            ],
+            "melee_surface_distance": 2.0,
+            "angular_velocity": 360.0,
+            "dir_change_slerp_time": 360.0
+        },
+        "Config/Battle/BehaviorTree/ast_behavior_kibo_arena_long.asset": {
+            "bundle_sha256": "1a2d91b616df510afc6f722d4a32af628ccfde48bd84445ff1cd3beedc291304",
+            "graph_sha256": "e31280db63fce6fdb971cdc702f9bc3599668ddc01e58aaf35fac9e0ca52da6a",
+            "lock_range": 10.0,
+            "lose_range": 15.0,
+            "ordinary_slots": [
+                1,
+                2
+            ],
+            "melee_surface_distance": null,
+            "angular_velocity": 360.0,
+            "dir_change_slerp_time": 360.0
+        },
+        "Config/Battle/BehaviorTree/ast_behavior_kibo_arena_battlecry.asset": {
+            "bundle_sha256": "364e0e0a798ca9f03270a17e45376c5306cce6bf10c6d73387b33ab801a17746",
+            "graph_sha256": "cad00884defe9607dd76781fdc3ca2aac8d12e4031de2b9003b167f3579a10d9",
+            "lock_range": 10.0,
+            "lose_range": 15.0,
+            "ordinary_slots": [
+                1,
+                2
+            ],
+            "melee_surface_distance": null,
+            "angular_velocity": 360.0,
+            "dir_change_slerp_time": 360.0
+        }
+    }
+}

@@ -1,3 +1,4 @@
+import { grantDuelAreaExperience, grantDuelPetExperience } from './kibo-duel-progress.js'
 import { recordResourceAcquisition } from './item-acquisition.js'
 import { createPets, createCustomizedPets } from './pets.js'
 import { ensureHome, addHomeBuildings, refreshAutoCropShortcut } from './home.js'
@@ -29,7 +30,7 @@ export function parseRewards(value, allowZero = false) {
             return { itemtype, itemid, itemnum }
         })
 }
-export function grantRewards(tables, state, rewards, depth = 0) {
+export function grantRewards(tables, state, rewards, depth = 0, context = {}) {
     ensure(depth <= 100, 'Reward recursion limit', 1007)
     const granted = []
     for (const reward of rewards) {
@@ -120,6 +121,11 @@ export function grantRewards(tables, state, rewards, depth = 0) {
                 ensure(basic[key] + itemnum <= 0x7fffffff, 'Currency overflow')
                 basic[key] += itemnum
                 syncCurrencyMirrors(state.player)
+            } else if (itemid === 14 && Array.isArray(context.petGuids)) {
+                const changes = grantDuelPetExperience(tables, state, context.petGuids, itemnum)
+                context.petExpChanges?.push(...changes)
+            } else if (grantDuelAreaExperience(tables, state, itemid, itemnum)) {
+                // Region currency is experience; its mirror stores the remainder.
             } else if (itemid === 10) {
                 ensure(
                     Number.isSafeInteger(basic.exp + itemnum) && basic.exp + itemnum <= 0x7fffffff,
@@ -135,7 +141,7 @@ export function grantRewards(tables, state, rewards, depth = 0) {
                     basic.exp -= row.exp
                     basic.lv++
                     const next = tables.find('player_level', basic.lv)
-                    granted.push(...grantRewards(tables, state, parseRewards(next.reward), depth + 1))
+                    granted.push(...grantRewards(tables, state, parseRewards(next.reward), depth + 1, context))
                 }
             } else {
                 const attrs = state.player.attr_infos.attrs

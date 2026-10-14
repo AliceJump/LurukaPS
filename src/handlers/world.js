@@ -1,3 +1,4 @@
+import { recordNpcArenaMovement } from '../npc-kibo-battle.js'
 import { repairSavedPetPuzzleVisibility } from '../pet-puzzles.js'
 import { activeDormVisit } from '../home-dorm.js'
 import { repairSavedElevatorVisibility } from './world-elevator.js'
@@ -455,6 +456,7 @@ export function registerWorld(on) {
         ensure((m.move ?? []).length <= 256, 'Too many movement records')
         let heroMove, mountMove
         for (const item of m.move ?? []) {
+            if (recordNpcArenaMovement(c, item)) continue
             if (item.uuid !== g.control && (!mounted || item.uuid !== activeMount)) continue
             const i = item.info
             ensure(i?.pos, 'Missing movement position')

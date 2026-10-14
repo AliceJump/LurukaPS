@@ -1,0 +1,14 @@
+{
+    "source": "Config/Battle/BehaviorTree/ast_battleKiboRing_npc.asset",
+    "bundle_sha256": "e4cf194a02c3b3d807c808c95ed38005ad733636fe0c30161adf26049c2fc949",
+    "graph_sha256": "79a2153a30c5ee1115931092f4a9e070da0508249b01bc108eafd3c3c8053245",
+    "wait_min_ms": 3000,
+    "wait_max_ms": 5000,
+    "replacement_hp_ratio": 0.35,
+    "replacement_points": 3,
+    "spawn_offset": {
+        "x": 2,
+        "y": 2
+    },
+    "element_selection": 2
+}

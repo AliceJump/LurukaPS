@@ -1,3 +1,4 @@
+import { recordNpcArenaDeaths } from '../npc-kibo-battle.js'
 import { enemyDefinition } from '../enemy-state.js'
 import { recordGuidedKill } from '../task-kills.js'
 import { finishEnemyGroupRelations, pruneInactiveCampaignRelations } from './world-combat.js'
@@ -276,6 +277,16 @@ export function registerCombat(on) {
         const reportSp = advanceEnergy(c, battle, changed)
         const update = (id, values, source) => {
             if (id === '0') return
+            const arena = battle.npcDuel
+            if (arena && (arena.actors[id] || arena.actors[source])) {
+                if (!arena.actors[id]) return // Arena trainers are not damageable contestants.
+                if (
+                    c.state.multiCampaign?.arena_status !== 4 ||
+                    arena.ai_control?.[0] === 1 ||
+                    arena.ai_control?.[2] === 1
+                )
+                    return
+            }
             const saved = c.state.player.heros_info.battle_infos.find((h) => h.hero_id === id)
             if (saved) {
                 const previousHp = saved.hp
@@ -289,6 +300,7 @@ export function registerCombat(on) {
             } else {
                 const previous = battle.entities[id] ?? { uuid: id },
                     definition = enemyDefinition(c.tables, c.state, id)
+                if (definition?.npc_duel && !battle.npcDuel.in_fight[id]) return
                 if (definition && values.delta !== undefined) {
                     const hp =
                         previous.hp === 0
@@ -316,7 +328,7 @@ export function registerCombat(on) {
                         entrustDamageChanged = true
                     }
                     boundedSet(battle.entities, id, value, 512)
-                    if (died) recordGuidedKill(c.tables, c.state, value)
+                    if (died && !definition.npc_duel) recordGuidedKill(c.tables, c.state, value)
                     changed.set(id, {
                         uuid: id,
                         hp,
@@ -457,6 +469,7 @@ export function registerCombat(on) {
                     hurt_info: { ...r.battle_info[source].hurt_info, cur_hp: hp },
                 })),
             })
+        recordNpcArenaDeaths(c)
         for (const id of deadGroups) finishEnemyGroupRelations(c, id)
         if (deadGroups.size) pruneInactiveCampaignRelations(c)
         if (deadGroups.size) advanceCultTrialCombat(c)

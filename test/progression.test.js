@@ -79,6 +79,7 @@ test('invalid costs, duplicate rows, insufficient gold and downstream failure ro
         })
         before = store.load(session.id)
         game.tables = {
+            dir: tables.dir,
             get: tables.get.bind(tables),
             find: (name, id) => (name === 'template_hero' && id === 6 ? undefined : tables.find(name, id)),
         }

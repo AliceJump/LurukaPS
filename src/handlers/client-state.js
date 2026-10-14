@@ -4,6 +4,7 @@ import { recordTaskBehaviour } from '../task-events.js'
 import { storyCampaignSnapshot, traceStoryCampaignTask } from '../story-campaign.js'
 import { endSceneTransition } from '../scene-transition.js'
 import { startCultTrialBattle } from '../cult-trial.js'
+import { syncLoadedNpcArena } from './kibo-duel.js'
 export function registerClientState(on) {
     on('GamePause', (c, r) => {
         const gameTime = String(r.game_time ?? '0')
@@ -20,6 +21,7 @@ export function registerClientState(on) {
         endSceneTransition(c.state)
         c.state.world.client_loaded = true
         c.state.world.loaded_at = c.now
+        syncLoadedNpcArena(c)
         if (c.state.cultTrial?.map_id === c.state.world.map_id && [2, 3, 4].includes(c.state.cultTrial.status))
             startCultTrialBattle(c)
         const run = c.state.storyCampaign

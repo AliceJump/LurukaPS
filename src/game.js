@@ -1,3 +1,6 @@
+import { npcArenaTickDue, forkNpcArenaRuntime, tickNpcArena } from './npc-kibo-service.js'
+import { npcArenaOutcome } from './npc-kibo-result.js'
+import { selectedArenaGroup } from './npc-kibo-duel.js'
 import { ensureFlightUnlocked, explorationSnapshot } from './flight-unlock.js'
 import { registerActivities } from './handlers/activities.js'
 import { registerGrowup } from './handlers/growup.js'
@@ -174,8 +177,14 @@ const fastCombatReplies = new Set([
     'CSProtoPlayerHatredIncSync',
     'CSProtoHatredResetSync',
     'CSProtoHatredResetToHomeSync',
+    'CSProtoKiboDuelArenaSummonReq',
+    'CSProtoPVEEnemySummonReq',
+    'CSProtoControlMapAI',
 ])
 const fastCombatTelemetry = new Set([
+    'CSProtoKiboDuelArenaAutoFightSync',
+    'CSProtoKiboCastUltraSkill',
+    'CSProtoKiboDuelPlaySummonActionFinish',
     'CSProtoSkillStart',
     'CSProtoSkillStop',
     'CSProtoCreateBullet',
@@ -522,7 +531,7 @@ export class Game {
                 // completed node or retain a barrier from the previous client.
                 delete state.pendingTaskStorySync
                 if (state.storyCampaign) delete state.storyCampaign.task_context_loaded_map
-                repairPendingDuelEntry(state)
+                repairPendingDuelEntry(state, now, this.tables)
                 this.activities.ensureGuideTasks(state, now)
                 if (!state.storyCampaign && !state.entrust?.run && !state.multiCampaign && !state.cultTrial) {
                     const point = this.activities.guideReturnPoint(state, now)
@@ -531,6 +540,10 @@ export class Game {
                 unlockAutomaticTasks(this.tables, state, now)
                 repairMainTaskTrace(this.tables, state)
                 delete state.world.transform
+                if (state.combat?.npcDuel) {
+                    state.combat.npcDuel.entities_sent = false
+                    delete state.kiboDuelLoadingCompleteAt
+                }
                 repairCharacterCreationMarker(state)
                 restoreLegacyHomeFormation(state)
                 repairMainHeroType(this.tables, state)
@@ -618,9 +631,10 @@ export class Game {
             const activeState = this.store.load(session.id).state,
                 campaign = activeState.multiCampaign
             if (campaign?.arena_status) {
-                const { duel_id, arena_status, ...wire } = campaign
+                packets.push(this.packet('CSProtoOnlineModeChange', { mode: 9 }))
+                const { duel_id, arena_status, formation_slot, ...wire } = campaign
                 const hero = activeState.player.heros_info.heros.find(
-                    (h) => h.guid === activeState.kiboDuelGroups?.[0]?.hero,
+                    (h) => h.guid === selectedArenaGroup(activeState)?.hero,
                 )
                 const name = Buffer.from(activeState.player.basic_info.name, 'base64').toString('utf8')
                 packets.push(
@@ -663,9 +677,18 @@ export class Game {
                             ],
                         }),
                     )
-                    const formation = activeState.kiboDuelGroups?.[0],
+                    const formation = selectedArenaGroup(activeState),
                         guids = formation?.pet_guids?.filter((p) => p.id !== '0').map((p) => p.guid)
                     if (guids?.length && guids.every(Boolean)) {
+                        packets.push(
+                            this.packet('SCProtoKiboDuelSingleInfoSync', {
+                                player_id: session.id,
+                                player_camp: 1,
+                                dungeon_id: campaign.dungeon_id,
+                                attr: arenaAttributePayload(this.tables, activeState),
+                                name,
+                            }),
+                        )
                         packets.push(
                             this.packet('CSProtoKiboDuelAttrInfoSync', arenaAttributePayload(this.tables, activeState)),
                         )
@@ -679,10 +702,28 @@ export class Game {
                             )
                     }
                 }
+                if (activeState.combat?.npcDuel?.result) {
+                    packets.push(
+                        this.packet('SCProtoKiboDuelArenaScoreInfoSync', {
+                            score_infos: [1, 2].map((camp) => ({
+                                camp,
+                                score: activeState.combat.npcDuel.scores[camp],
+                            })),
+                        }),
+                    )
+                    packets.push(this.packet('SCProtoKiboDuelArenaResultInfoSync', activeState.combat.npcDuel.result))
+                }
                 packets.push(
                     this.packet('SCProtoKiboDuelArenaInfoSync', {
-                        status: arena_status,
-                        status_endtime: String(now + 300),
+                        // Rebuild entities before replaying a pending intro.
+                        status: arena_status === 6 ? 2 : arena_status,
+                        status_endtime: String(
+                            activeState.combat?.npcDuel?.result
+                                ? (activeState.combat.npcDuel.exit_at ?? now)
+                                : (activeState.combat?.npcDuel?.end_at ??
+                                      activeState.combat?.npcDuel?.first_until ??
+                                      now),
+                        ),
                         enter_type: 0,
                     }),
                 )
@@ -1035,75 +1076,99 @@ export class Game {
             homeDue = productionDue(current, now),
             simpleDue = simpleProductionDue(current, now),
             dormDue = dormDayDue(this.tables, current, now),
-            activityDue = this.activities.due(current, now)
-        if (!homeDue && !simpleDue && !dormDue && !activityDue) return []
-        return this.store.transact(id, 0, (state) => {
-            const packets = [],
-                eggRevision = state.eggRevision || 0,
-                petRevision = state.petRevision || 0
-            if (activityDue)
-                this.activities.notify({
-                    state,
-                    now,
-                    pushBefore: (name, value) => packets.push(this.packet(name, value)),
-                })
-            if (dormDue) {
-                packets.push(this.packet('SCProtoHomeHeroStoryInfoNtf', dormTopics(this.tables, state, now)))
-                packets.push(
-                    this.packet('CSProtoSyncPlayerData', {
-                        basic_info: state.player.basic_info,
-                        heros_info: state.player.heros_info,
-                    }),
-                )
-            }
-            if (homeDue && refreshProduction(state, now)) {
-                if ((state.eggRevision || 0) !== eggRevision)
+            activityDue = this.activities.due(current, now),
+            arenaDue = npcArenaTickDue(current, now),
+            durable = homeDue || simpleDue || dormDue || activityDue || !!npcArenaOutcome(current, now)
+        if (!homeDue && !simpleDue && !dormDue && !activityDue && !arenaDue) return []
+        return this.store.transact(
+            id,
+            0,
+            (state) => {
+                const packets = [],
+                    eggRevision = state.eggRevision || 0,
+                    petRevision = state.petRevision || 0
+                if (arenaDue)
+                    tickNpcArena({
+                        id,
+                        state,
+                        tables: this.tables,
+                        now,
+                        randomInt: this.rng,
+                        memoryDraft: !durable,
+                        pushBefore: (name, data) => packets.push(this.packet(name, data)),
+                        push: (name, data) => packets.push(this.packet(name, data)),
+                    })
+                if (activityDue)
+                    this.activities.notify({
+                        state,
+                        now,
+                        pushBefore: (name, value) => packets.push(this.packet(name, value)),
+                    })
+                if (dormDue) {
+                    packets.push(this.packet('SCProtoHomeHeroStoryInfoNtf', dormTopics(this.tables, state, now)))
                     packets.push(
-                        this.packet('CSProtoPetEggInfoSync', {
-                            ...releaseFields(state, 'egg', now, this.releaseResetHour),
-                            egg_infos: { eggs: state.petEggs || [] },
+                        this.packet('CSProtoSyncPlayerData', {
+                            basic_info: state.player.basic_info,
+                            heros_info: state.player.heros_info,
                         }),
                     )
-                packets.push(this.packet('CSProtoHomeSync', homePayload(this.tables, state)))
-                if ((state.petRevision || 0) !== petRevision)
-                    packets.push(
-                        this.packet('CSProtoPetInfoSync', {
-                            ...releaseFields(state, 'pet', now, this.releaseResetHour),
-                            record_pets: state.recordPets ?? [],
-                            pet_infos: taskPetPresentation(this.tables, state, { pet_infos: { pets: state.pets } })
-                                .pet_infos,
-                        }),
-                    )
-            }
-            if (simpleDue) {
-                const settled = settleSimpleProducts(this.tables, state, now)
-                if (settled.changed) {
-                    if (settled.rewards.length)
+                }
+                if (homeDue && refreshProduction(state, now)) {
+                    if ((state.eggRevision || 0) !== eggRevision)
                         packets.push(
-                            this.packet('CSProtoSyncPlayerData', {
-                                sbag_infos: state.player.sbag_infos,
-                                basic_info: state.player.basic_info,
-                                attr_infos: state.player.attr_infos,
+                            this.packet('CSProtoPetEggInfoSync', {
+                                ...releaseFields(state, 'egg', now, this.releaseResetHour),
+                                egg_infos: { eggs: state.petEggs || [] },
                             }),
                         )
-                    packets.push(
-                        this.packet('CSProtoSimpleProductFinish', {
-                            ...simpleProductSnapshot(state),
-                            reward: { rewards: settled.rewards },
-                            dels: settled.dels,
-                        }),
-                    )
-                    const updated = refreshTaskProgress(this.tables, state)
-                    const visible = updated.filter(
-                        (task) =>
-                            taskVisibleAtLevel(this.tables, state, task) &&
-                            task.task_id !== state.pendingTaskStorySync?.task_id,
-                    )
-                    if (visible.length) packets.push(this.packet('CSProtoTaskSync', { tasks: visible }))
+                    packets.push(this.packet('CSProtoHomeSync', homePayload(this.tables, state)))
+                    if ((state.petRevision || 0) !== petRevision)
+                        packets.push(
+                            this.packet('CSProtoPetInfoSync', {
+                                ...releaseFields(state, 'pet', now, this.releaseResetHour),
+                                record_pets: state.recordPets ?? [],
+                                pet_infos: taskPetPresentation(this.tables, state, { pet_infos: { pets: state.pets } })
+                                    .pet_infos,
+                            }),
+                        )
                 }
-            }
-            return packets
-        })
+                if (simpleDue) {
+                    const settled = settleSimpleProducts(this.tables, state, now)
+                    if (settled.changed) {
+                        if (settled.rewards.length)
+                            packets.push(
+                                this.packet('CSProtoSyncPlayerData', {
+                                    sbag_infos: state.player.sbag_infos,
+                                    basic_info: state.player.basic_info,
+                                    attr_infos: state.player.attr_infos,
+                                }),
+                            )
+                        packets.push(
+                            this.packet('CSProtoSimpleProductFinish', {
+                                ...simpleProductSnapshot(state),
+                                reward: { rewards: settled.rewards },
+                                dels: settled.dels,
+                            }),
+                        )
+                        const updated = refreshTaskProgress(this.tables, state)
+                        const visible = updated.filter(
+                            (task) =>
+                                taskVisibleAtLevel(this.tables, state, task) &&
+                                task.task_id !== state.pendingTaskStorySync?.task_id,
+                        )
+                        if (visible.length) packets.push(this.packet('CSProtoTaskSync', { tasks: visible }))
+                    }
+                }
+                return packets
+            },
+            {
+                defer: !durable,
+                fork: durable ? undefined : forkNpcArenaRuntime,
+                persistWhen: !durable
+                    ? (draft, base) => !!draft.combat?.npcDuel?.result && !base.combat?.npcDuel?.result
+                    : undefined,
+            },
+        )
     }
     loginPackets(state, session, r, frame, id) {
         const now = this.clock()

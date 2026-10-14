@@ -8,6 +8,7 @@ import { worldSync } from './world.js'
 import { enterStoryCampaignScene, endStoryCampaignScene, exitStoryCampaign } from './story-campaign.js'
 import { enterCultTrialScene, exitCultTrial, endCultTrialScene } from './cult-trial.js'
 import { startCultTrialBattle } from '../cult-trial.js'
+import { reportNpcArenaLoadFinish } from '../npc-kibo-battle.js'
 import {
     getEntrustCatalog,
     entrustInfoSnapshot,
@@ -333,6 +334,11 @@ export function registerEntrust(on, tables) {
         return {}
     })
     on('MultiCampaignPlayerLoadFinish', (c) => {
+        if (c.state.combat?.npcDuel && c.state.multiCampaign?.map_id === c.state.world.map_id) {
+            reportNpcArenaLoadFinish(c)
+            c.pushBefore('CSProtoMultiCampaignPlayerLoadingPageCompleteNtf', { u32: c.id })
+            return
+        }
         if (c.state.cultTrial) {
             c.pushBefore('CSProtoMultiCampaignPlayerLoadingPageCompleteNtf', { u32: c.id })
             startCultTrialBattle(c)

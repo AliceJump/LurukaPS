@@ -4,6 +4,9 @@ import { pairs } from './battle.js'
 import { taskEnemyGroups } from './task-enemy-groups.js'
 const catalogs = new WeakMap()
 export function enemyDefinition(tables, state, uuid) {
+    const arena = state.combat?.npcDuel
+    const actor = arena?.map_id === state.world.map_id ? arena.actors[String(uuid)] : null
+    if (actor) return { config_id: actor.config_id, level: actor.level, max_hp: actor.max_hp, npc_duel: true }
     const id = BigInt(uuid),
         kind = Number(id >> 56n),
         slot = Number((id >> 32n) & 0xffffffn),

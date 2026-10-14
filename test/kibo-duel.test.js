@@ -7,13 +7,14 @@ import { Store } from '../src/store.js'
 import { Game } from '../src/game.js'
 import { TaskGraphs, makeNode } from '../src/tasks.js'
 import { lockedDuelSlot } from '../src/handlers/kibo-duel.js'
+import { arenaPoint } from '../src/npc-kibo-battle.js'
 
 const cfg = configuration(),
     protocol = new Protocol(cfg.base),
     tables = new Tables(cfg.tables)
 test('CBT3 duel501 initializes the native arena manager and locked formation before ACK without faking a quest pass', () => {
     const store = new Store(':memory:'),
-        game = new Game(protocol, store, tables)
+        game = new Game(protocol, store, tables, { syncOptimization: false }) // Full-snapshot assertions; NPC lifecycle tests cover deltas.
     let session = {},
         seq = 1
     const call = (name, r = {}) => {
@@ -192,11 +193,11 @@ test('duel501 enters its table-linked arena through one-way 9510 and can leave w
             started = call('MultiCampaignCreate', { dungeon_id: 40007 })
         assert.deepEqual(
             started.map((x) => x.id),
-            [10747, 9512, 9513, 9567, 11874, 10007, 11804, 11802, 9105, 9103, 11800, 11800],
+            [10747, 9512, 9513, 9567, 11874, 11801, 10007, 11804, 11802, 9105, 9103, 11055, 11800],
         )
         assert.deepEqual(
-            started.slice(-2).map((x) => x.data.status),
-            [2, 3],
+            started.filter((x) => x.id === 11800).map((x) => x.data.status),
+            [2],
         )
         assert.equal(started[0].data.id, 501)
         assert.equal(started[3].data.player_list[0].hero_id, 199001)
@@ -212,33 +213,40 @@ test('duel501 enters its table-linked arena through one-way 9510 and can leave w
         assert.equal(info.status, 2)
         assert.equal(info.map_id, tables.find('kibo_duel_map', 20008).art)
         assert.equal(store.load(session.id).state.world.map_id, info.map_id)
-        assert.deepEqual(store.load(session.id).state.world.pos, { x: -806, y: 2797, z: 2981 })
-        assert.equal(store.load(session.id).state.multiCampaign.arena_status, 3)
+        assert.deepEqual(
+            store.load(session.id).state.world.pos,
+            arenaPoint(tables, tables.find('kibo_duel_map', 20008), 'nestBorthPos1').pos,
+        )
+        assert.equal(store.load(session.id).state.multiCampaign.arena_status, 2)
         const history = store.load(session.id).state.worldHistory.length
         call('MultiCampaignCreate', { dungeon_id: 40007 })
         assert.equal(store.load(session.id).state.worldHistory.length, history)
         assert.equal(call('StartDungeonClientOk')[0].id, 9513)
         assert.equal(store.load(session.id).state.multiCampaign.status, 3)
-        assert.deepEqual(call('MultiCampaignPlayerLoadingPageComplete'), [])
+        assert.equal(call('MultiCampaignPlayerLoadFinish').find((x) => x.id === 11800).data.status, 3)
         assert(store.load(session.id).state.kiboDuelLoadingCompleteAt > 0)
         session = {}
         const resumed = call('EnterGame', { open_id: 'arena-entry' })
-        for (const id of [10747, 9512, 9513, 9567, 11874, 10007, 11804, 11802]) assert(resumed.some((x) => x.id === id))
+        for (const id of [10747, 9512, 9513, 9567, 11874, 11801, 10007, 11804, 11802])
+            assert(resumed.some((x) => x.id === id))
         assert.equal(resumed.find((x) => x.id === 11800).data.status, 3)
         assert.equal(store.load(session.id).state.world.map_id, info.map_id)
+        call('StartDungeonClientOk')
+        call('MultiCampaignPlayerLoadFinish')
         const confirmed = call('KiboDuelArenaFirstConfirmReq')
         assert.deepEqual(
             confirmed.map((x) => x.id),
-            [11803, 11800, 11813],
+            [11811, 11811, 11803, 11807, 11800, 11813],
         )
-        assert.equal(confirmed[0].data.confirm_infos[0].isConfirm, true)
-        assert.equal(confirmed[1].data.status, 4)
+        assert.equal(confirmed.find((x) => x.id === 11803).data.confirm_infos[0].isConfirm, true)
+        assert.equal(confirmed.find((x) => x.id === 11800).data.status, 6)
         assert.deepEqual(
             call('KiboDuelArenaFirstConfirmReq').map((x) => x.id),
             [11813],
         )
         const quit = call('MultiCampaignQuit')
         assert(quit.some((x) => x.id === 9103))
+        assert.equal(quit.find((x) => x.id === 11055).data.mode, 1)
         assert.equal(store.load(session.id).state.world.map_id, before.map_id)
         assert.equal(store.load(session.id).state.multiCampaign, undefined)
         assert.deepEqual(store.load(session.id).state.kiboDuelRecords ?? {}, {})
@@ -315,7 +323,7 @@ test('trial arena pet without an owned source gets one persisted table-generated
         call('KiboDuelGetGroup', { u32: 501 })
         assert.deepEqual(store.load(session.id).state.kiboDuelTrialProfiles[500135], first)
         call('MultiCampaignCreate', { dungeon_id: 40007 })
-        assert.equal(store.load(session.id).state.multiCampaign.arena_status, 3)
+        assert.equal(store.load(session.id).state.multiCampaign.arena_status, 2)
     } finally {
         store.close()
     }

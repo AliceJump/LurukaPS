@@ -131,11 +131,10 @@ export function guidedConditionValue(id, state, context) {
         }
         return stationed.size
     }
-    // TODO: remove this local bypass after Kibo Duel condition50002 has a
-    // server implementation and its result has been verified against CBT3.
-    // TODO: remove after server-side Kibo Duel condition 50002 is
-    // implemented and its result is validated against the official server.
-    if (context && parts[0] === 50002) return guidedRequirement(id)
+    // conditionNode_50002 checks the configured duel's nonzero success_time.
+    // Preparation, entering the arena or losing cannot satisfy the quest.
+    if (parts.length === 2 && parts[0] === 50002)
+        return Number(state.kiboDuelRecords?.[parts[1]]?.success_time ?? 0) > 0 ? guidedRequirement(id) : 0
     // DungeonEntrustFinish checks the best star count of the configured
     // commission. A mere EnterEntrust request never completes this condition.
     if (
