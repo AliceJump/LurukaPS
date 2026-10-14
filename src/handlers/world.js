@@ -8,7 +8,7 @@ import { expireTaskTrialGroup, trialPayload } from './trial-groups.js'
 import { validateTaskTransfer } from '../task-scenes.js'
 import { heroBattleLimits, heroModules, syncBattle } from '../battle.js'
 import { ensure, group, pet, syncGroupControl } from './common.js'
-import { mountPayload, clearSceneMount, clientMountId } from '../mounts.js'
+import { mountPayload, clearSceneMount } from '../mounts.js'
 import { restoreLegacyHomeFormation } from '../home-formation.js'
 import { repairMainHeroType } from '../main-hero.js'
 import { campaignSnapshot, entrustChestSnapshot } from '../entrust.js'
@@ -51,7 +51,7 @@ function mapPlayer(c) {
         name: s.player.basic_info.name,
         face: s.player.basic_info.wardrobe,
         group: { heros: ids, hero_mid: ids, control: g.control },
-        mount: clientMountId(s),
+        mount: w.mount,
         mount_status: w.mount_status ?? 0,
         ...(w.mount && w.mount !== '0' ? { mount_move: move } : {}),
         apparel_info: s.player.basic_info.apparel_info,
@@ -60,7 +60,7 @@ function mapPlayer(c) {
 }
 function playerStatusSync(c, cmd) {
     const w = c.state.world,
-        mount = clientMountId(c.state),
+        mount = w.mount,
         move = { pos: w.pos, angle: w.angle, area_id: w.area_id, move_status: 1, timestamp: String(c.now * 1000) }
     // Status deltas must not resend the formation: that can rebuild the local
     // party and select its first hero during a mount transition.
@@ -121,6 +121,7 @@ function teleportFromTestMark(c, mark) {
 export function repairLegacyMountState(state, tables) {
     const w = state.world
     if (w.pendingMountExit) delete w.pendingMountExit
+    delete w.lastMountMetadata
     // CBT3 MountUtil.CheckSceneCanMount reads world_city.mountAvailable.
     // Recover saves already transferred before scene-local riding was cleared.
     if (tables?.find('world_city', w.map_id)?.mountAvailable === 0) return clearSceneMount(state)
@@ -499,13 +500,13 @@ export function registerWorld(on) {
         const w = c.state.world,
             arg = String(r.arg ?? '0'),
             previousMount = w.mount
+        delete w.lastMountMetadata // Retire the withdrawn client-identity compatibility state.
         if (r.status === 1) {
             delete w.pendingMountExit
             const mount = pet(c.state, arg)
             ensure(!mount.work_status, 'Stationed pet cannot be mounted')
             syncGroupControl(c)
             w.mount = mount.guid
-            w.lastMountMetadata = { guid: mount.guid, map_id: w.map_id }
             if (c.state.mountRideId !== mount.guid) {
                 c.state.mountRideId = mount.guid
                 c.push('CSProtoRideMountInfo', mountPayload(c.tables, c.state))

@@ -59,5 +59,6 @@ export function clearSceneMount(state) {
     world.mount = '0'
     world.mount_status = 0
     delete world.pendingMountExit
+    delete world.lastMountMetadata
     return !!changed
 }
