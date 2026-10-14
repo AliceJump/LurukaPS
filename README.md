@@ -133,13 +133,13 @@ Back up your database before upgrading. Stop the server before copying database 
 
 ## Disclaimer
 
-LurukaPS is an unofficial game server emulator intended solely for learning and protocol research. It is not affiliated with, endorsed by, or supported by the developers, publishers, or operators of Azur Promilia.
+LurukaPS is an unofficial game server emulator developed for learning and protocol research. It is not affiliated with, endorsed by, or supported by the developers, publishers, or operators of Azur Promilia.
 
-**Commercial use is strictly prohibited.** This includes operating paid services, charging for access or in-game benefits, selling the emulator or services based on it, and any other commercial exploitation of the project. Use is limited to non-commercial learning and research.
+**Commercial use is not supported or endorsed and is strongly discouraged.** This includes operating paid services, charging for access or in-game benefits, selling the emulator or services based on it, and any other commercial exploitation of the project. Only non-commercial learning and research purposes are endorsed and supported.
 
 All game names, trademarks, characters, artwork, client software, and other original game assets belong to their respective rights holders. This project does not grant permission to use or distribute those materials. Links to external datasets are provided for reference and do not imply ownership, authorization, or endorsement.
 
-Users are responsible for ensuring that their use of this project and any associated client software or data complies with applicable laws, licenses, and agreements. Do not use this project to interfere with official services, access systems without authorization, infringe third-party rights, or operate an unauthorized commercial service. The maintainers do not endorse or assist such uses.
+Users are responsible for ensuring that their use of this project and any associated client software or data complies with applicable laws, licenses, and agreements. The project's license does not authorize interference with official services, access to systems without authorization, or infringement of third-party rights. The maintainers do not endorse or assist such activities.
 
 The software is provided "AS IS", without warranties of any kind, to the extent permitted by applicable law. Compatibility, completeness, security, and preservation of saved data are not guaranteed. Use it at your own risk and maintain backups. Nothing in this disclaimer limits rights or obligations that cannot be excluded under applicable law, or replaces the terms of the project's applicable license.
 

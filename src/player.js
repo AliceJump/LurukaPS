@@ -86,7 +86,7 @@ export function seedPlayer(tables, id, openId) {
                 name: bytes('&AzurPlayer'),
                 sex: 2,
                 lv: 1,
-                sign: 'THVydWthUFMg5piv5YWN6LS555qE77yM5LuF5L6b5a2m5Lmg56CU56m25Y2P6K6u5a6e546w77yM5Lil56aB55So5LqO5ZWG5Lia55So6YCU44CCTHVydWthUFMgaXMgZnJlZSBhbmQgaW50ZW5kZWQgZm9yIGxlYXJuaW5nIGFuZCBwcm90b2NvbCByZXNlYXJjaCBvbmx5OyBjb21tZXJjaWFsIHVzZSBpcyBwcm9oaWJpdGVkLg==',
+                sign: 'THVydWthUFMg5piv55So5LqO5a2m5Lmg56CU56m25Y2P6K6u5a6e546w55qE5YWN6LS55byA5rqQ6L2v5Lu244CC5aaC5p6c5L2g5piv5LuY6LS56LSt5Lmw55qE77yM6YKj5L2g5bey57uP6KKr6aqX5LqG44CCTHVydWthUFMgaXMgZnJlZSBhbmQgb3Blbi1zb3VyY2Ugc29mdHdhcmUgaW50ZW5kZWQgZm9yIGxlYXJuaW5nIGFuZCBwcm90b2NvbCByZXNlYXJjaC4gSWYgeW91IHBhaWQgZm9yIGl0LCB5b3UgaGF2ZSBiZWVuIHNjYW1tZWQuIEdpdEh1YjogaHR0cHM6Ly9naXRodWIuY29tL2RtbGd6cy9MdXJ1a2FQUw==',
                 gold: 0,
                 diamond: 0,
                 exp: 0,
