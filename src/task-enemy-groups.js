@@ -20,7 +20,7 @@ export function taskEnemyGroups(tables, state) {
             for (const data of asList(controller.__type_TaskCreateBattleUnitDataController?.enemiesDatas)) {
                 const groupId = data?.__type_TaskEnemiesOverrideData?.enemiesGroupId
                 if (!groupId || data.sceneId !== state.world.map_id) continue
-                groups.push({ groupId, objectId: data.createNpcId, taskConfig: graph.config })
+                groups.push({ groupId, objectId: data.createNpcId, taskConfig: graph.config, data })
             }
         }
     }

@@ -3,6 +3,7 @@ import { TaskGraphs, asList, nodeConditions } from './tasks.js'
 import { pairs } from './battle.js'
 import { taskEnemyGroups } from './task-enemy-groups.js'
 import { arenaProperty } from './npc-kibo-properties.js'
+import { taskEnemyPacks } from './task-enemy-slots.js'
 const catalogs = new WeakMap()
 export function enemyDefinition(tables, state, uuid) {
     const arena = state.combat?.npcDuel
@@ -26,7 +27,7 @@ export function enemyDefinition(tables, state, uuid) {
         cached = { world: new WorldObjectCatalog(tables), graphs: new TaskGraphs(tables) }
         catalogs.set(tables, cached)
     }
-    let packId, worldRow, taskConfig, groupSize
+    let packId, worldRow, taskConfig, groupSize, taskGroup
     if (kind === 7) {
         for (const [key, entry] of Object.entries(state.playableEnemies ?? {})) {
             if (!key.startsWith(state.world.map_id + ':')) continue
@@ -49,6 +50,7 @@ export function enemyDefinition(tables, state, uuid) {
                     ))
                         if (data?.createNpcId === object && data.sceneId === state.world.map_id) {
                             groupId = data.__type_TaskEnemiesOverrideData?.enemiesGroupId
+                            taskGroup = data
                             taskConfig = cached.graphs.get(task.task_id).config
                         }
                 }
@@ -57,6 +59,7 @@ export function enemyDefinition(tables, state, uuid) {
             const configured = taskEnemyGroups(tables, state).find((group) => group.objectId === object)
             if (configured) {
                 groupId = configured.groupId
+                taskGroup = configured.data
                 taskConfig = configured.taskConfig
             }
         }
@@ -75,10 +78,12 @@ export function enemyDefinition(tables, state, uuid) {
         }
         if (groupId) {
             const group = tables.find('world_enemy_group', groupId)
-            const packs = String(group?.enemyList ?? '')
-                .split('|')
-                .filter(Boolean)
-                .map(Number)
+            const packs = taskGroup
+                ? taskEnemyPacks(tables, taskGroup)
+                : String(group?.enemyList ?? '')
+                      .split('|')
+                      .filter(Boolean)
+                      .map(Number)
             groupSize = packs.length
             packId = packs[slot]
         }

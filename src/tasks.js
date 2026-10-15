@@ -5,6 +5,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { ensure } from './handlers/common.js'
 import { guidedConditionValue, guidedRequirement } from './guided-conditions.js'
+import { taskEnemyPacks } from './task-enemy-slots.js'
 export const asList = (value) => (value == null ? [] : Array.isArray(value) ? value : [value])
 export class TaskGraphs {
     constructor(tables, directory = path.resolve(tables.dir, '../Config/Task')) {
@@ -688,14 +689,7 @@ export function refreshTaskProgress(tables, state) {
                         const complete =
                             groups.length > 0 &&
                             groups.every((group) => {
-                                const config = tables.find(
-                                    'world_enemy_group',
-                                    group.__type_TaskEnemiesOverrideData?.enemiesGroupId,
-                                )
-                                const packs = String(config?.enemyList ?? '')
-                                    .split('|')
-                                    .filter(Boolean)
-                                    .map(Number)
+                                const packs = taskEnemyPacks(tables, group)
                                 return (
                                     packs.length > 0 &&
                                     packs.every((pack, slot) => {
@@ -727,16 +721,13 @@ export function refreshTaskProgress(tables, state) {
                 const complete = groups.every((group) => {
                     if (group.sceneId !== state.world.map_id) return false
                     const id = group.createNpcId,
-                        config = tables.find('world_enemy_group', group.__type_TaskEnemiesOverrideData?.enemiesGroupId),
-                        enemies = String(config?.enemyList ?? '')
-                            .split('|')
-                            .filter(Boolean)
+                        enemies = taskEnemyPacks(tables, group)
                     return (
                         enemies.length > 0 &&
-                        enemies.every((_, slot) => {
+                        enemies.every((pack, slot) => {
                             const uuid = ((4n << 56n) | (BigInt(slot) << 32n) | BigInt(id)).toString()
                             const e = state.combat.entities[uuid]
-                            return e?.object_id === id && e.slot === slot && e.hp === 0
+                            return e?.object_id === id && e.slot === slot && e.pack_id === pack && e.hp === 0
                         })
                     )
                 })
