@@ -1,7 +1,13 @@
 import { arenaContext } from './npc-kibo-time.js'
 import { ARENA_TICK_HZ } from './npc-kibo-time.js'
 import { advanceNpcArenaAI } from './npc-kibo-ai.js'
-import { advanceArenaEnergy, advanceArenaScores, arenaHand, publishArenaEnergy } from './npc-kibo-clock.js'
+import {
+    advanceArenaEnergy,
+    advanceArenaScores,
+    arenaHand,
+    publishArenaEnergy,
+    publishArenaCostStage,
+} from './npc-kibo-clock.js'
 import { startNpcArenaRound, finishNpcArenaPresentation, processNpcArenaQueue } from './npc-kibo-battle.js'
 import { npcArenaOutcome, settleNpcArena } from './npc-kibo-result.js'
 import { advanceArenaPetAI } from './npc-kibo-pet-ai.js'
@@ -9,6 +15,7 @@ import { publishArenaStatistics } from './npc-kibo-statistics.js'
 import { advanceArenaSp, publishArenaSp } from './npc-kibo-sp.js'
 import { updateNpcArenaPause } from './npc-kibo-pause.js'
 import { advanceArenaControls } from './npc-kibo-controls.js'
+import { publishArenaStageBuffs } from './npc-kibo-stage-buffs.js'
 
 export function npcArenaTickDue(state, now) {
     const run = state.combat?.npcDuel,
@@ -60,6 +67,8 @@ export function tickNpcArena(c) {
             return
         }
         advanceArenaEnergy(c)
+        publishArenaStageBuffs(c)
+        publishArenaCostStage(c)
         advanceArenaControls(c)
         processNpcArenaQueue(c)
         advanceNpcArenaAI(c)

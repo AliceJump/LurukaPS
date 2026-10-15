@@ -1,0 +1,109 @@
+{
+    "schema": 1,
+    "sources": [
+        {
+            "path": "DataTable\\MasterData\\Tables\\kibo_duel.json",
+            "sha256": "ed8ec9297bcf561305f956723017e3fce52c33c7232f30a5f16c11da08e18df3"
+        },
+        {
+            "path": "azurjs\\docs\\evidence\\npc-arena-raw-config\\mmap-schema.json",
+            "sha256": "354f1c6e6bf3fa6662fe1ea640809b348c18cff5b042658d345cbca750976e35"
+        },
+        {
+            "path": "azurjs\\docs\\evidence\\npc-arena-raw-config\\rd_assets_resourcesassets_config_vstring_azurconfig_azurconfig_bytes.dec.bytes",
+            "sha256": "e2fbf9784305889638effe0ac3a9af83ebdbd2b01373dc931623c69762c6b8c9"
+        },
+        {
+            "path": "azurjs\\docs\\evidence\\npc-arena-raw-config\\rd_assets_resourcesassets_config_vstring_vstring_bytes.dec.bytes",
+            "sha256": "6c1cda4925b40e7379aa9304d26d4cf4b043cffc5bb677c215571ac1e9042e1a"
+        },
+        {
+            "path": "azurjs\\docs\\evidence\\npc-duel-buff-element.il",
+            "sha256": "d31f27e7573c12a84e00a7c920057a6384cec552a173ff7d4a3b66a1b149f74d"
+        },
+        {
+            "path": "azurjs\\docs\\evidence\\npc-duel-config-object-equality.il",
+            "sha256": "af14f0e5da8b552a49d46fe0db914892761497899255ccf1a66135b85e91c8bd"
+        }
+    ],
+    "elements": {
+        "520201007": {
+            "source": "Config/Battle/Element/Assets/ast_520201007.asset",
+            "time": -1,
+            "apply_to": 1,
+            "combine_type": 5,
+            "children": [
+                {
+                    "id": 520201008,
+                    "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_520201008.asset",
+                    "type": "Azur.Core.MMap.ConfigTChangePropertyElementParams",
+                    "attribute_id": 21
+                },
+                {
+                    "id": 520201009,
+                    "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_520201009.asset",
+                    "type": "Azur.Core.MMap.ConfigTChangePropertyElementParams",
+                    "attribute_id": 123
+                },
+                {
+                    "id": 520201010,
+                    "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_520201010.asset",
+                    "type": "Azur.Core.MMap.ConfigTChangePropertyElementParams",
+                    "attribute_id": 24
+                }
+            ]
+        },
+        "520201015": {
+            "source": "Config/Battle/Element/Assets/ast_520201015.asset",
+            "time": -1,
+            "apply_to": 1,
+            "combine_type": 5,
+            "children": [
+                {
+                    "id": 520201016,
+                    "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_520201016.asset",
+                    "type": "Azur.Core.MMap.ConfigTChangePropertyElementParams",
+                    "attribute_id": 21
+                },
+                {
+                    "id": 520201017,
+                    "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_520201017.asset",
+                    "type": "Azur.Core.MMap.ConfigTChangePropertyElementParams",
+                    "attribute_id": 123
+                },
+                {
+                    "id": 520201018,
+                    "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_520201018.asset",
+                    "type": "Azur.Core.MMap.ConfigTChangePropertyElementParams",
+                    "attribute_id": 24
+                }
+            ]
+        },
+        "520201019": {
+            "source": "Config/Battle/Element/Assets/ast_520201019.asset",
+            "time": -1,
+            "apply_to": 1,
+            "combine_type": 5,
+            "children": [
+                {
+                    "id": 520201020,
+                    "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_520201020.asset",
+                    "type": "Azur.Core.MMap.ConfigTChangePropertyElementParams",
+                    "attribute_id": 21
+                },
+                {
+                    "id": 520201021,
+                    "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_520201021.asset",
+                    "type": "Azur.Core.MMap.ConfigTChangePropertyElementParams",
+                    "attribute_id": 123
+                },
+                {
+                    "id": 520201022,
+                    "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_520201022.asset",
+                    "type": "Azur.Core.MMap.ConfigTChangePropertyElementParams",
+                    "attribute_id": 24
+                }
+            ]
+        }
+    }
+}

@@ -10,6 +10,7 @@ import { duelProgressSnapshot } from './kibo-duel-progress.js'
 import { rewardSource } from './reward-source.js'
 import { selectedArenaGroup } from './npc-kibo-duel.js'
 import { withoutArenaOrigins } from './npc-kibo-origins.js'
+import { clearArenaStageBuffs } from './npc-kibo-stage-buffs.js'
 
 export function npcArenaOutcome(state, now) {
     const run = state.combat?.npcDuel
@@ -115,6 +116,7 @@ export function settleNpcArena(c, outcome) {
     )
     ensure(settlementSeconds > 0, 'NPC settlement duration unavailable', 1007)
     stopArenaPetAI(c)
+    clearArenaStageBuffs(c)
     c.state.combat.npcDuel = {
         ...withoutArenaOrigins(c.state.combat.npcDuel),
         pet_ai: c.state.combat.npcDuel.pet_ai,

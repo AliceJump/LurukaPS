@@ -1,5 +1,6 @@
 import { registerNpcArenaResults } from '../npc-kibo-result.js'
 import { duelProgressSnapshot } from '../kibo-duel-progress.js'
+import { clearArenaStageBuffs } from '../npc-kibo-stage-buffs.js'
 import {
     initializeNpcDuelBattle,
     arenaPoint,
@@ -527,6 +528,7 @@ export function registerKiboDuel(on, tables, protocol) {
         if (c.state.entrust?.run) return exitEntrust(c)
         const info = c.state.multiCampaign
         ensure(info && info.status >= 2, 'No active dungeon')
+        clearArenaStageBuffs(c)
         info.status = 1
         info.end_time = String(c.now)
         const { duel_id, arena_status, formation_slot, ...wire } = info

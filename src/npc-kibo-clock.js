@@ -1,6 +1,7 @@
 import { arenaContext, arenaMillis, secondsToArenaMs } from './npc-kibo-time.js'
 import { ensure } from './handlers/common.js'
 import { pairs } from './battle.js'
+import { arenaFeverInfo } from './npc-kibo-stage-buffs.js'
 
 // Local wire cadence, not an official backend rate. Keep a stable window
 // beyond ModuleDuelEnergy's350ms CostInit callback between passive updates.
@@ -146,6 +147,44 @@ export function advanceArenaEnergy(c) {
     if (changed || pending.length !== effects.length)
         battle.npcDuel = { ...run, energy, ...(effects.length ? { trainer_effects: pending } : {}) }
     return changed
+}
+
+export function arenaCostStage(c) {
+    c = arenaContext(c)
+    const run = c.state.combat?.npcDuel
+    if (!run || run.regular_started_at === undefined || run.result) return false
+    const elapsed = (run.pause?.server_at ?? c.now) - run.regular_started_at
+    // Native UpdateRecoverSpeed uses battleTime > costTime[n][0]. The UI's
+    // event7 selects costTime[0][1]; event6/in_speed_stage is separate Fever.
+    return arenaTiming(c.tables, run.duel_id)
+        .schedule.slice(1)
+        .some((segment) => elapsed > segment.at)
+}
+
+export function publishArenaCostStage(c) {
+    c = arenaContext(c)
+    const run = c.state.combat?.npcDuel
+    if (
+        !run ||
+        c.state.multiCampaign?.arena_status !== 4 ||
+        run.map_id !== c.state.world.map_id ||
+        !run.entities_sent ||
+        c.state.kiboDuelLoadingCompleteAt === undefined ||
+        run.cost_stage_sent ||
+        !arenaCostStage(c)
+    )
+        return
+    c.pushBefore('SCProtoKiboDuelArenaInfoSync', {
+        status: 4,
+        status_endtime: String(Math.ceil(run.end_at)),
+        enter_type: 0,
+        cost_change: true,
+        ...arenaFeverInfo(c),
+    })
+    // Repeating true restarts native StartCostRecover. Replay only after an
+    // entity/UI rebuild or through the explicit pause-resume snapshot.
+    c.state.combat.npcDuel = { ...run, cost_stage_sent: true }
+    publishArenaEnergy(c)
 }
 
 export function arenaHand(state) {

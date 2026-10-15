@@ -12,11 +12,13 @@ import { updateNpcArenaPause } from './npc-kibo-pause.js'
 import { clearArenaCardControls, publishArenaControls } from './npc-kibo-controls.js'
 import { arenaBaseProperties, arenaBasePropertyValue } from './npc-kibo-properties.js'
 import { resetArenaOrigins } from './npc-kibo-origins.js'
+import { publishArenaStageBuffs } from './npc-kibo-stage-buffs.js'
 import {
     startArenaClock,
     consumeArenaPoint,
     advanceArenaEnergy,
     publishArenaEnergy,
+    publishArenaCostStage,
     arenaHand,
     advanceArenaScores,
 } from './npc-kibo-clock.js'
@@ -260,6 +262,9 @@ export function syncNpcArenaEntities(c, selfAttributes) {
         control_replay_done: false,
         control_replays: {},
         energy_sent: undefined,
+        cost_stage_sent: undefined,
+        stage_buffs_sent: undefined,
+        fever_sent: undefined,
         hand_sent: undefined,
         pet_ai: Object.fromEntries(
             Object.entries(initial.pet_ai ?? {}).map(([uuid, ai]) => [uuid, { ...ai, moving: false }]),
@@ -338,6 +343,8 @@ export function reportNpcArenaLoadFinish(c) {
         })
     }
     if (c.state.world.pause?.operate) updateNpcArenaPause(c, c.state.world.pause)
+    publishArenaCostStage(c)
+    publishArenaStageBuffs(c)
 }
 
 export function startNpcArenaRound(c) {

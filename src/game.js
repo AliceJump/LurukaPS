@@ -1,5 +1,6 @@
 import { npcArenaTickDue, forkNpcArenaRuntime, tickNpcArena } from './npc-kibo-service.js'
 import { secondsToArenaMs } from './npc-kibo-time.js'
+import { arenaFeverInfo } from './npc-kibo-stage-buffs.js'
 import { npcArenaStatistics } from './npc-kibo-statistics.js'
 import { npcArenaOutcome } from './npc-kibo-result.js'
 import { selectedArenaGroup } from './npc-kibo-duel.js'
@@ -755,6 +756,12 @@ export class Game {
                     this.packet('SCProtoKiboDuelArenaInfoSync', {
                         // Rebuild entities before replaying a pending intro.
                         status: arena_status === 6 ? 2 : arena_status,
+                        ...arenaFeverInfo({
+                            state: activeState,
+                            tables: this.tables,
+                            now,
+                            arena_now_ms: this.arenaTime(now),
+                        }),
                         status_endtime: String(
                             Math.ceil(
                                 activeState.combat?.npcDuel?.result

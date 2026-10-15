@@ -11,7 +11,7 @@ const active = (c, effect) => effect.expires_ms === null || BigInt(effect.expire
 // an absolute begin_time and cfg_id is indexed only for op1/10. Replay op10
 // deliberately executes the local control, rather than its visual-only remote
 // variant. The server ends the restored instance at its original deadline.
-function elementPacket(rows) {
+export function arenaElementPacket(rows) {
     const dictionary = [],
         indexes = new Map()
     const index = (value) => {
@@ -55,7 +55,7 @@ function clearReplayed(c, entries) {
             replay[id] = { ...replay[id], active: false, awaiting: false, ended: true }
         }
     if (rows.length) {
-        c.pushBefore('SCProtoBattleInfoReduceNtf', elementPacket(rows))
+        c.pushBefore('SCProtoBattleInfoReduceNtf', arenaElementPacket(rows))
         c.state.combat.npcDuel = { ...run, control_replays: replay }
     }
 }
@@ -110,7 +110,7 @@ export function publishArenaControls(c) {
         })
         replay[id] = { active: true, awaiting: true, config_id: effect.config_id, target: effect.target }
     }
-    if (rows.length) c.pushBefore('SCProtoBattleInfoReduceNtf', elementPacket(rows))
+    if (rows.length) c.pushBefore('SCProtoBattleInfoReduceNtf', arenaElementPacket(rows))
     if (missing.length)
         console.warn(`[npc-arena] Control replay lacks an available attacker: ${missing.length} element(s)`)
     c.state.combat.npcDuel = {

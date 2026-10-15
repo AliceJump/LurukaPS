@@ -1,8 +1,15 @@
 import { arenaContext, arenaMillis, secondsToArenaMs } from './npc-kibo-time.js'
-import { advanceArenaEnergy, advanceArenaScores, publishArenaEnergy, arenaHand } from './npc-kibo-clock.js'
+import {
+    advanceArenaEnergy,
+    advanceArenaScores,
+    publishArenaEnergy,
+    arenaHand,
+    arenaCostStage,
+} from './npc-kibo-clock.js'
 import { advanceArenaSp, publishArenaSp } from './npc-kibo-sp.js'
 import { stopArenaPetAI } from './npc-kibo-pet-ai.js'
 import { npcArenaOutcome, settleNpcArena } from './npc-kibo-result.js'
+import { arenaFeverInfo } from './npc-kibo-stage-buffs.js'
 
 const shifted = (value, delta) => (Number.isFinite(value) ? value + delta : value)
 const deadline = (value, delta) => (value ? shifted(value, delta) : value)
@@ -102,11 +109,15 @@ export function updateNpcArenaPause(c, request) {
         if (run[key] !== undefined) resumed[key] = shifted(run[key], delta)
     c.state.combat.npcDuel = resumed
     const until = phase === 3 ? resumed.first_until : resumed.end_at
+    const costStage = phase === 4 && arenaCostStage(c)
     c.pushBefore('SCProtoKiboDuelArenaInfoSync', {
         status: phase,
         status_endtime: String(Math.ceil(until)),
         enter_type: 0,
+        ...(costStage ? { cost_change: true } : {}),
+        ...arenaFeverInfo(c),
     })
+    if (costStage) c.state.combat.npcDuel = { ...resumed, cost_stage_sent: true }
     publishArenaEnergy(c)
     publishArenaSp(c)
     c.pushBefore('SCProtoKiboDuelArenaCardInfoSync', arenaHand(c.state))
