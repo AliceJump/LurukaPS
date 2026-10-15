@@ -1,4 +1,5 @@
 import { npcArenaTickDue, forkNpcArenaRuntime, tickNpcArena } from './npc-kibo-service.js'
+import { secondsToArenaMs } from './npc-kibo-time.js'
 import { npcArenaStatistics } from './npc-kibo-statistics.js'
 import { npcArenaOutcome } from './npc-kibo-result.js'
 import { selectedArenaGroup } from './npc-kibo-duel.js'
@@ -80,6 +81,7 @@ import {
     ensureArenaFormationManager,
     repairPendingDuelEntry,
     arenaAttributePayload,
+    kiboDuelSnapshot,
 } from './handlers/kibo-duel.js'
 import { registerProfileQueries } from './handlers/profile-queries.js'
 import { registerWorldObjects, reconcileWorldCollectionFinalDrops } from './handlers/world-objects.js'
@@ -284,13 +286,16 @@ function forkFastCombat(base, name, request) {
     if (name === 'CSProtoShieldInfo' || name === 'CSProtoShieldInfoDel') battle.shields = { ...battle.shields }
     return state
 }
+const defaultGameClock = () => Math.floor(Date.now() / 1000)
+
 export class Game {
     constructor(
         protocol,
         store,
         tables,
         {
-            clock = () => Math.floor(Date.now() / 1000),
+            clock = defaultGameClock,
+            arenaClockMs = clock === defaultGameClock ? Date.now : null,
             rng = randomInt,
             crcDelay = 0,
             gmEnabled = true,
@@ -302,6 +307,7 @@ export class Game {
         this.announcementBaseUrl = 'http://127.0.0.1:20001/'
         this.syncOptimization = syncOptimization
         this.clock = clock
+        this.arenaClockMs = arenaClockMs
         this.rng = rng
         this.crcDelay = crcDelay
         this.releaseResetHour = Number(tables.get('game').find((r) => r.title === 'DAILY_REFRESH_TIME')?.value ?? 4)
@@ -479,6 +485,31 @@ export class Game {
         if (!e?.rsp) throw Error(`No response schema for ${id}`)
         return { id: e.id, payload: this.protocol.encode(e.rsp, value), ...meta }
     }
+    arenaTime(now) {
+        const ms = this.arenaClockMs ? this.arenaClockMs() : secondsToArenaMs(now)
+        ensure(Number.isSafeInteger(ms) && ms >= 0, 'Invalid arena clock')
+        return ms
+    }
+    trackArenaTick(session, requestId, packets) {
+        // Hints only wake a cheap state check. They never prove an arena is
+        // active, and are cleared by tickArena on pause/loading/scene changes.
+        if ([9509, 9596, 9602].includes(requestId)) {
+            session.npcArenaTick = true
+            session.npcArenaWakeMs = 0
+        }
+        for (const packet of packets) {
+            if (
+                packet.id !== 11800 ||
+                !packet.payload ||
+                packet.error ||
+                (packet.recipient && packet.recipient !== session.id)
+            )
+                continue
+            const status = this.protocol.decode(this.protocol.byId.get(11800).rsp, packet.payload).status
+            session.npcArenaTick = [2, 3, 4, 5, 6].includes(status)
+            session.npcArenaWakeMs = 0
+        }
+    }
     dispatch(session, frame) {
         const packets = this.dispatchRaw(session, frame)
         if (!this.syncOptimization) return packets
@@ -492,7 +523,8 @@ export class Game {
     }
     dispatchRaw(session, frame) {
         const e = this.protocol.byId.get(frame.id)
-        const now = this.clock()
+        const now = this.clock(),
+            arenaNowMs = this.arenaTime(now)
         if (!e) throw new GameError('Unknown message ID', 1021)
         let r
         try {
@@ -724,11 +756,13 @@ export class Game {
                         // Rebuild entities before replaying a pending intro.
                         status: arena_status === 6 ? 2 : arena_status,
                         status_endtime: String(
-                            activeState.combat?.npcDuel?.result
-                                ? (activeState.combat.npcDuel.exit_at ?? now)
-                                : (activeState.combat?.npcDuel?.end_at ??
-                                      activeState.combat?.npcDuel?.first_until ??
-                                      now),
+                            Math.ceil(
+                                activeState.combat?.npcDuel?.result
+                                    ? (activeState.combat.npcDuel.exit_at ?? now)
+                                    : (activeState.combat?.npcDuel?.end_at ??
+                                          activeState.combat?.npcDuel?.first_until ??
+                                          now),
+                            ),
                         ),
                         enter_type: 0,
                     }),
@@ -799,6 +833,7 @@ export class Game {
                         requestKey: frame.seq ? session.token + ':' + frame.id + ':' + frame.seq : null,
                         state,
                         now,
+                        arena_now_ms: arenaNowMs,
                         randomInt: this.rng,
                         tables: this.tables,
                         pushBefore: (name, value) => before.push(this.packet(name, value)),
@@ -864,6 +899,7 @@ export class Game {
                     activityCatalog: this.activities,
                     state,
                     now,
+                    arena_now_ms: arenaNowMs,
                     randomInt: this.rng,
                     tables: this.tables,
                     pushTo: (recipient, name, value) => pushes.push(this.packet(name, value, { recipient })),
@@ -1076,15 +1112,72 @@ export class Game {
         const packets = this.tickRaw(id)
         return this.syncOptimization && session ? optimizeSyncPackets(this.protocol, session, packets, 'tick') : packets
     }
+    tickArena(id, session) {
+        const now = this.clock(),
+            ms = this.arenaTime(now),
+            exact = ms / 1000
+        if (session?.npcArenaWakeMs > ms) return []
+        const check = this.store.read(id, (state) => {
+            const run = state.combat?.npcDuel,
+                phase = state.multiCampaign?.arena_status
+            const active =
+                !!run &&
+                run.map_id === state.world.map_id &&
+                [3, 4, 5, 6].includes(phase) &&
+                !run.pause &&
+                run.entities_sent !== false &&
+                state.kiboDuelLoadingCompleteAt !== undefined
+            const deadline =
+                phase === 3 ? run?.first_until : phase === 6 ? run?.intro_until : phase === 5 ? run?.exit_at : undefined
+            return {
+                active,
+                due: active && npcArenaTickDue(state, exact),
+                wake: active && Number.isFinite(deadline) ? secondsToArenaMs(deadline) : 0,
+            }
+        })
+        if (session) {
+            session.npcArenaTick = check.active
+            session.npcArenaWakeMs = !check.due && check.active ? check.wake : 0
+        }
+        if (!check.due) return []
+        const packets = this.store.transact(
+            id,
+            0,
+            (state) => {
+                const output = []
+                tickNpcArena({
+                    id,
+                    state,
+                    tables: this.tables,
+                    now,
+                    arena_now_ms: ms,
+                    randomInt: this.rng,
+                    memoryDraft: true,
+                    pushBefore: (name, value) => output.push(this.packet(name, value)),
+                    push: (name, value) => output.push(this.packet(name, value)),
+                })
+                return output
+            },
+            {
+                defer: true,
+                fork: forkNpcArenaRuntime,
+                persistWhen: (draft, base) => !!draft.combat?.npcDuel?.result && !base.combat?.npcDuel?.result,
+            },
+        )
+        if (session) this.trackArenaTick(session, 0, packets)
+        return this.syncOptimization && session ? optimizeSyncPackets(this.protocol, session, packets, 'tick') : packets
+    }
     tickRaw(id) {
         const now = this.clock(),
+            arenaNowMs = this.arenaTime(now),
+            exact = arenaNowMs / 1000,
             current = this.store.load(id).state,
             homeDue = productionDue(current, now),
             simpleDue = simpleProductionDue(current, now),
             dormDue = dormDayDue(this.tables, current, now),
             activityDue = this.activities.due(current, now),
-            arenaDue = npcArenaTickDue(current, now),
-            durable = homeDue || simpleDue || dormDue || activityDue || !!npcArenaOutcome(current, now)
+            arenaDue = npcArenaTickDue(current, exact),
+            durable = homeDue || simpleDue || dormDue || activityDue || !!npcArenaOutcome(current, exact)
         if (!homeDue && !simpleDue && !dormDue && !activityDue && !arenaDue) return []
         return this.store.transact(
             id,
@@ -1099,6 +1192,7 @@ export class Game {
                         state,
                         tables: this.tables,
                         now,
+                        arena_now_ms: arenaNowMs,
                         randomInt: this.rng,
                         memoryDraft: !durable,
                         pushBefore: (name, data) => packets.push(this.packet(name, data)),
@@ -1218,6 +1312,7 @@ export class Game {
                 egg_infos: { eggs: state.petEggs || [] },
             }),
             this.packet('CSProtoPetBoxInfoSync', { box_infos: state.petBoxes }),
+            this.packet('CSProtoKiboDuelGroupInfoSync', kiboDuelSnapshot(state, this.tables)),
             this.packet('CSProtoWorldExplorationSync', explorationSnapshot(state)),
             this.packet('SCProtoClothesInfoSync', clothesSnapshot(this.tables, state)),
             this.packet('SCProtoPresetWardrobeSync', { info_list: state.wardrobePresets ?? [] }),

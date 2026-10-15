@@ -60,6 +60,7 @@ export class ProtocolDiagnostics {
                 payload_sha256: frame?.payload ? createHash('sha256').update(frame.payload).digest('hex') : undefined,
                 request,
             }
+            if (error?.arenaSpContext) entry.arena_sp = redactRequest(error.arenaSpContext)
             if (phase === 'framing') {
                 entry.replay_high = replayHigh ?? null
                 if (connection) entry.connection = redactRequest(connection)

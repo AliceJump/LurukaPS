@@ -1,10 +1,17 @@
+import { arenaContext, arenaMillis } from './npc-kibo-time.js'
 import { ensure } from './handlers/common.js'
 import { combatState } from './combat-state.js'
 import { npcDuelEntry } from './npc-kibo-duel.js'
-import { arenaPetAttributes } from './kibo-arena-attributes.js'
+import { arenaPetAttributes, arenaSkillLevels } from './kibo-arena-attributes.js'
 import { beginNpcArenaPresentation, publishNpcArenaPresentation } from './npc-kibo-presentation.js'
 import { stopArenaPetAI } from './npc-kibo-pet-ai.js'
 import { publishArenaStatistics } from './npc-kibo-statistics.js'
+import { advanceArenaSp, arenaSpConfig, publishArenaSp } from './npc-kibo-sp.js'
+import { arenaSummonPositionAllowed } from './npc-kibo-geometry.js'
+import { updateNpcArenaPause } from './npc-kibo-pause.js'
+import { clearArenaCardControls, publishArenaControls } from './npc-kibo-controls.js'
+import { arenaBaseProperties, arenaBasePropertyValue } from './npc-kibo-properties.js'
+import { resetArenaOrigins } from './npc-kibo-origins.js'
 import {
     startArenaClock,
     consumeArenaPoint,
@@ -61,7 +68,11 @@ export function initializeNpcDuelBattle(tables, state, selfAttributes, now) {
         enemyInfos = []
     const add = (info, slot, camp, point) => {
         const uuid = guid(slot)
-        const maxHp = Math.floor(Number(info.attrs.attrs.find((attr) => attr.attr_id === 5)?.attr_val) / 10000)
+        const baseProperties = arenaBaseProperties(tables, info.attrs)
+        // SPSystem.InitKiboRingConfig replaces the wire MAXSP external base.
+        baseProperties[6] = { base: arenaSpConfig(tables, info.pet_conf_id).max, extra: 0, percent: 0 }
+        const skillLevels = arenaSkillLevels(tables, info.skills)
+        const maxHp = arenaBasePropertyValue(tables, baseProperties, 5)
         ensure(Number.isSafeInteger(maxHp) && maxHp > 0 && maxHp <= 0xffffffff, 'Arena actor HP unavailable', 1007)
         actors[uuid] = {
             uuid,
@@ -69,7 +80,10 @@ export function initializeNpcDuelBattle(tables, state, selfAttributes, now) {
             config_id: info.pet_conf_id,
             level: info.pet_lv,
             camp,
+            native_owner: { status: 'known', guid: '0', kind: 'none', via: 'arena-roster' },
             max_hp: maxHp,
+            base_properties: baseProperties,
+            skill_levels: skillLevels,
             pos: point.pos,
             angle: point.angle,
             slot,
@@ -77,7 +91,7 @@ export function initializeNpcDuelBattle(tables, state, selfAttributes, now) {
         battle.entities[uuid] = {
             uuid,
             hp: maxHp,
-            sp: 0,
+            sp: arenaSpConfig(tables, info.pet_conf_id).initial,
             alive_state: 0,
             updated_at: now,
             owner_id: camp === 1 ? selfAttributes.hero_info.hero_guid : String(npcId),
@@ -112,6 +126,9 @@ export function initializeNpcDuelBattle(tables, state, selfAttributes, now) {
         generation,
         start_time: campaign.start_time,
         npc_id: npcId,
+        trainer_guid: selfAttributes.hero_info.hero_guid,
+        trainer_grade: selfAttributes.hero_info.hero_grade,
+        trainer_skill_infos: structuredClone(selfAttributes.hero_info.skills ?? []),
         actors,
         enemy_attributes: { infos: enemyInfos, hero_info: { hero_guid: String(npcId), hero_lv: duel.recommendLevel } },
         positions,
@@ -172,7 +189,7 @@ export function npcArenaAppearances(state) {
                     unit_id: actor.uuid,
                     fobj_base_data: {
                         hp: state.combat.entities[actor.uuid]?.hp ?? actor.max_hp,
-                        sp: 0,
+                        sp: state.combat.entities[actor.uuid]?.sp ?? 0,
                         move_info: run.in_fight[actor.uuid]?.move ?? { pos: actor.pos, angle: actor.angle },
                     },
                     pet_base_data: {
@@ -189,22 +206,67 @@ export function npcArenaAppearances(state) {
 // All runtime edits replace only small combat branches, preserving rollback
 // isolation under Game.forkFastCombat and avoiding full account copies.
 export function setArenaInFight(c, actor, move, inFight, first = false) {
+    c = arenaContext(c)
     const battle = combatState(c.state, c.now)
+    if (inFight)
+        ensure(
+            arenaSummonPositionAllowed(c.tables, battle.npcDuel.duel_id, actor, move.pos),
+            'Arena summon position outside permitted deployment area',
+        )
     advanceArenaScores(c)
+    advanceArenaSp(c)
     const previous = battle.npcDuel
     const run = { ...previous, in_fight: { ...previous.in_fight } }
+    run.entry_reports = { ...previous.entry_reports }
+    run.arena_casts = { ...previous.arena_casts }
+    delete run.entry_reports[actor.uuid]
+    delete run.arena_casts[actor.uuid]
     if (inFight) {
         run.in_fight[actor.uuid] = { move, first, entered_at: c.now }
         run.ever_summoned = { ...run.ever_summoned, [actor.uuid]: true }
     } else delete run.in_fight[actor.uuid]
     battle.npcDuel = run
+    if (!inFight) clearArenaCardControls(c, actor.uuid)
     c.pushBefore('SCProtoKiboInFightChange', {
         changes: [{ kibo_guid: actor.uuid, in_fight: inFight, pos: move.pos, angle: move.angle, is_first: first }],
     })
 }
 
 export function syncNpcArenaEntities(c, selfAttributes) {
-    const run = initializeNpcDuelBattle(c.tables, c.state, selfAttributes, c.now)
+    c = arenaContext(c)
+    const initial = initializeNpcDuelBattle(c.tables, c.state, selfAttributes, c.now)
+    // Rebuilt client entities have no path/skill handlers from the old
+    // connection. Retain SP/CDs, but wait for their new entry reports.
+    const run = {
+        ...initial,
+        // These entities are created again from the newly sent arena payload.
+        trainer_grade:
+            selfAttributes.hero_info.hero_guid === initial.trainer_guid
+                ? selfAttributes.hero_info.hero_grade
+                : undefined,
+        actors: Object.fromEntries(
+            Object.entries(initial.actors).map(([id, actor]) => [
+                id,
+                {
+                    ...actor,
+                    native_owner: { status: 'known', guid: '0', kind: 'none', via: 'arena-roster' },
+                },
+            ]),
+        ),
+        require_entry_report: true,
+        entry_reports: {},
+        arena_casts: {},
+        arena_cast_receipts: {},
+        control_replay_done: false,
+        control_replays: {},
+        energy_sent: undefined,
+        hand_sent: undefined,
+        pet_ai: Object.fromEntries(
+            Object.entries(initial.pet_ai ?? {}).map(([uuid, ai]) => [uuid, { ...ai, moving: false }]),
+        ),
+    }
+    c.state.combat.npcDuel = run
+    resetArenaOrigins(c)
     const players = npcArenaPlayers(c.state, selfAttributes, c.tables)
     c.pushBefore('CSProtoKiboDuelArenaPlayerBaseInfo', {
         infos: players.player_info.map((player) => ({
@@ -229,6 +291,7 @@ export function syncNpcArenaEntities(c, selfAttributes) {
 // TryReportPlayerLoadFinish sends9602 after both rosters' entities are ready.
 // 9604 is a separate UI callback and cannot be the prerequisite for FIRST.
 export function reportNpcArenaLoadFinish(c) {
+    c = arenaContext(c)
     const info = c.state.multiCampaign
     ensure(
         [2, 3, 4, 5, 6, 7].includes(info?.arena_status) && c.state.world.map_id === info.map_id,
@@ -237,7 +300,9 @@ export function reportNpcArenaLoadFinish(c) {
     ensure(c.state.combat?.npcDuel?.entities_sent, 'Arena entities have not been published')
     const wasLoaded = c.state.kiboDuelLoadingCompleteAt !== undefined
     c.state.kiboDuelLoadingCompleteAt ??= c.now
+    if (!wasLoaded) publishArenaControls(c)
     publishArenaStatistics(c, true)
+    publishArenaSp(c, true)
     const run = c.state.combat.npcDuel
     if (run.result) {
         // Relogin reloads actors even when this match has already settled.
@@ -249,7 +314,7 @@ export function reportNpcArenaLoadFinish(c) {
         c.pushBefore('SCProtoKiboDuelArenaResultInfoSync', run.result)
         c.pushBefore('SCProtoKiboDuelArenaInfoSync', {
             status: info.arena_status,
-            status_endtime: String(run.exit_at ?? c.now),
+            status_endtime: String(Math.ceil(run.exit_at ?? c.now)),
             enter_type: 0,
         })
         return
@@ -261,42 +326,58 @@ export function reportNpcArenaLoadFinish(c) {
     }
     if (info.arena_status === 2) {
         const seconds = Number(
-            c.tables.get('game').find((row) => row.title === 'KIBO_DUEL_ARENA_MODE_FIRST_TIME')?.value,
+            c.tables.get('game').find((row) => row.title === 'KIBO_DUEL_ARENA_MODE_FIRST_KIBO_TIME')?.value,
         )
         ensure(Number.isFinite(seconds) && seconds > 0, 'Arena first selection time unavailable', 1007)
         info.arena_status = 3
         c.state.combat.npcDuel = { ...c.state.combat.npcDuel, first_until: c.now + seconds }
         c.pushBefore('SCProtoKiboDuelArenaInfoSync', {
             status: 3,
-            status_endtime: String(c.now + seconds),
+            status_endtime: String(Math.ceil(c.now + seconds)),
             enter_type: 0,
         })
     }
+    if (c.state.world.pause?.operate) updateNpcArenaPause(c, c.state.world.pause)
 }
 
 export function startNpcArenaRound(c) {
+    c = arenaContext(c)
     const info = c.state.multiCampaign,
         run = c.state.combat?.npcDuel
+    ensure(!run?.pause, 'Arena is paused')
     if ([4, 6].includes(info?.arena_status) && c.state.kiboDuelFirstConfirmedAt) return
     ensure(info?.arena_status === 3 && c.state.kiboDuelLoadingCompleteAt, 'Arena first pet is not loaded')
     const first = Object.values(run.actors).find(
         (actor) => actor.camp === 1 && actor.source_guid === c.state.kiboDuelFirstGuid,
     )
     ensure(first, 'No first arena pet selected')
-    setArenaInFight(c, first, run.positions.selfSummon, true, true)
-    const enemyFirst = Object.values(c.state.combat.npcDuel.actors).find((actor) => actor.camp === 2)
-    setArenaInFight(c, enemyFirst, run.positions.enemySummon, true, true)
+    ensure(
+        Object.values(run.actors).some((actor) => actor.camp === 2),
+        'No NPC first arena pet',
+    )
+    // StoryStage resolves the already-created roster by source GUID and uses
+    // KiboPerformance visibility. Entering battle here would create the native
+    // FloatingBarSystem and run summon triggers before the movie finishes.
     c.state.kiboDuelFirstConfirmedAt = c.now
     beginNpcArenaPresentation(c)
 }
 
 export function finishNpcArenaPresentation(c) {
+    c = arenaContext(c)
     const info = c.state.multiCampaign,
         run = c.state.combat.npcDuel
     ensure(info.arena_status === 6 && c.now >= run.intro_until, 'Arena entry presentation is not complete')
+    const first = Object.values(run.actors).find(
+            (actor) => actor.camp === 1 && actor.source_guid === c.state.kiboDuelFirstGuid,
+        ),
+        enemyFirst = Object.values(run.actors).find((actor) => actor.camp === 2)
+    ensure(first && enemyFirst, 'Arena first pet configuration unavailable', 1007)
     startArenaClock(c)
     c.state.combat.npcDuel = { ...c.state.combat.npcDuel, intro_completed_at: c.now }
     info.arena_status = 4
+    // Preserve already-deployed first pets from a saved pre-fix introduction.
+    if (!run.in_fight[first.uuid]) setArenaInFight(c, first, run.positions.selfSummon, true, true)
+    if (!run.in_fight[enemyFirst.uuid]) setArenaInFight(c, enemyFirst, run.positions.enemySummon, true, true)
     c.pushBefore('SCProtoKiboDuelArenaScoreInfoSync', {
         score_infos: [1, 2].map((camp) => ({ camp, score: run.scores[camp] })),
     })
@@ -304,13 +385,14 @@ export function finishNpcArenaPresentation(c) {
     publishArenaEnergy(c)
     c.pushBefore('SCProtoKiboDuelArenaInfoSync', {
         status: 4,
-        status_endtime: String(c.state.combat.npcDuel.end_at),
+        status_endtime: String(Math.ceil(c.state.combat.npcDuel.end_at)),
         enter_type: 0,
     })
 }
 
 export function registerNpcArenaSummons(on) {
     const summon = (camp) => (c, r) => {
+        c = arenaContext(c)
         let run = c.state.combat?.npcDuel
         const retired = c.state.retiredNpcArenaActors?.[String(r.pet_guid ?? '0')]
         if (retired?.camp === camp && (camp === 2 || retired.source_guid === String(r.source_pet_guid))) return {}
@@ -329,6 +411,10 @@ export function registerNpcArenaSummons(on) {
             'Invalid arena summon position',
         )
         ensure(Number.isInteger(r.angle ?? 0), 'Invalid arena summon angle')
+        ensure(
+            arenaSummonPositionAllowed(c.tables, run.duel_id, actor, r.pos),
+            'Arena summon position outside permitted deployment area',
+        )
         const replacement = String(r.replace_kibo_guid ?? '0')
         ensure(replacement !== actor.uuid, 'Cannot replace an arena pet with itself')
         if (replacement !== '0')
@@ -350,7 +436,7 @@ export function registerNpcArenaSummons(on) {
         if (c.state.combat.npcDuel.scores[1] <= 0 || c.state.combat.npcDuel.scores[2] <= 0) return {}
         advanceArenaEnergy(c)
         run = c.state.combat.npcDuel
-        if (camp === 2 && (run.energy[2].points < 100 - 1e-7 || c.now * 1000 < (run.gcd_until[2] ?? 0))) {
+        if (camp === 2 && (run.energy[2].points < 100 - 1e-7 || arenaMillis(c) < (run.gcd_until[2] ?? 0))) {
             c.state.combat.npcDuel = {
                 ...run,
                 npc_queue: { ...run.npc_queue, [actor.uuid]: { ...r, pos: { ...r.pos } } },
@@ -367,6 +453,7 @@ export function registerNpcArenaSummons(on) {
     on('KiboDuelArenaSummonReq', summon(1))
     on('PVEEnemySummonReq', summon(2))
     on('KiboDuelPlaySummonActionFinish', (c, r) => {
+        c = arenaContext(c)
         const run = c.state.combat?.npcDuel,
             uuid = String(r.uuid ?? '0')
         ensure(
@@ -379,6 +466,7 @@ export function registerNpcArenaSummons(on) {
         c.state.combat.npcDuel = { ...run, summon_actions: { ...run.summon_actions, [uuid]: c.now } }
     })
     on('ControlMapAI', (c, r) => {
+        c = arenaContext(c)
         const run = c.state.combat?.npcDuel
         ensure(run && run.map_id === c.state.world.map_id, 'No active NPC arena')
         ensure([0, 1, 2].includes(r.control_type ?? 0) && [1, 2].includes(r.status), 'Invalid arena AI control')
@@ -387,6 +475,7 @@ export function registerNpcArenaSummons(on) {
         return {}
     })
     on('KiboDuelArenaAutoFightSync', (c, r) => {
+        c = arenaContext(c)
         const run = c.state.combat?.npcDuel
         // The UI also sends its stop notification while tearing down a duel.
         if (!run && r.status === 2) return
@@ -409,18 +498,32 @@ export function registerNpcArenaSummons(on) {
         c.state.combat.npcDuel = { ...run, auto_fight: r.status === 1 }
     })
     on('KiboCastUltraSkill', (c, r) => {
+        c = arenaContext(c)
         const run = c.state.combat?.npcDuel
         const guid = String(r.guid)
         if (c.state.retiredNpcArenaActors?.[guid]) return
         ensure(run?.map_id === c.state.world.map_id, 'No active NPC arena')
         const actor = Object.values(run?.actors ?? {}).find((actor) => [actor.uuid, actor.source_guid].includes(guid))
-        // NPC pets are also controlled by this local arena client. Their
-        // entry-skill flag is reported through11875 with the battle GUID.
+        //11875 reports the entry cast attempt's result, not an auto-ultimate
+        // preference. A false report must not disable later full-energy casts.
         ensure(actor, 'Arena entry skill actor is not in this duel')
         if (run.result) return
         c.state.combat.npcDuel = {
             ...run,
             ultra_choices: { ...run.ultra_choices, [actor.source_guid]: !!r.cast_ultra_skill },
+            entry_reports: {
+                ...run.entry_reports,
+                ...(run.in_fight[actor.uuid]
+                    ? {
+                          [actor.uuid]: {
+                              cast: !!r.cast_ultra_skill,
+                              consumed:
+                                  run.arena_casts?.[actor.uuid]?.origin === 'client' &&
+                                  run.arena_casts[actor.uuid].slot === 206,
+                          },
+                      }
+                    : {}),
+            },
         }
     })
 }
@@ -435,6 +538,7 @@ export function retireNpcArenaActors(state) {
 }
 
 export function recordNpcArenaMovement(c, item) {
+    c = arenaContext(c)
     const run = c.state.combat?.npcDuel
     if (!run?.actors[item.uuid]) return false
     if (!run.in_fight[item.uuid]) return true
@@ -458,8 +562,9 @@ export function recordNpcArenaMovement(c, item) {
 }
 
 export function processNpcArenaQueue(c) {
+    c = arenaContext(c)
     const run = c.state.combat?.npcDuel
-    if (!run?.npc_queue || c.state.multiCampaign?.arena_status !== 4) return
+    if (!run?.npc_queue || run.pause || c.state.multiCampaign?.arena_status !== 4) return
     const entries = Object.entries(run.npc_queue)
     if (!entries.length) return
     const [uuid, request] = entries[0],
@@ -470,11 +575,18 @@ export function processNpcArenaQueue(c) {
         c.state.combat.npcDuel = { ...run, npc_queue: queue }
         return
     }
+    if (!arenaSummonPositionAllowed(c.tables, run.duel_id, actor, request.pos)) {
+        const queue = { ...run.npc_queue }
+        delete queue[uuid]
+        c.state.combat.npcDuel = { ...run, npc_queue: queue }
+        console.warn(`[npc-arena] Discarded queued summon outside deployment area: ${uuid}`)
+        return
+    }
     const active = Object.keys(run.in_fight).filter((id) => run.actors[id].camp === 2).length
     if (
         active >= c.tables.find('kibo_duel', run.duel_id).KiboNumber ||
         run.energy[2].points < 100 - 1e-7 ||
-        c.now * 1000 < run.gcd_until[2]
+        arenaMillis(c) < run.gcd_until[2]
     )
         return
     consumeArenaPoint(c, 2)
@@ -485,6 +597,7 @@ export function processNpcArenaQueue(c) {
 }
 
 export function recordNpcArenaDeaths(c) {
+    c = arenaContext(c)
     advanceArenaScores(c)
     const battle = c.state.combat,
         previous = battle?.npcDuel

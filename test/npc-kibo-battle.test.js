@@ -71,18 +71,19 @@ test('NPC arena publishes both rosters, waits for entity readiness, and validate
         )
         call('MultiCampaignPlayerLoadFinish')
         const confirmed = call('KiboDuelArenaFirstConfirmReq')
-        assert.equal(confirmed.find((x) => x.id === 11811).data.changes[0].is_first, true)
+        assert.ok(!confirmed.some((x) => x.id === 11811))
         assert.equal(confirmed.find((x) => x.id === 11807).data.stage, '2')
         assert.equal(confirmed.find((x) => x.id === 11800).data.status, 6)
         now = state().combat.npcDuel.intro_until
-        game.tick(session.id, session)
+        const deployed = game.tick(session.id, session)
+        assert.ok(deployed.some((x) => x.id === 11811))
         const run = state().combat.npcDuel
         const enemy = Object.values(run.actors).find((x) => x.camp === 2 && !run.in_fight[x.uuid])
         const friends = Object.values(run.actors).filter((x) => x.camp === 1 && !run.in_fight[x.uuid])
         const request = (actor) => ({
             pet_guid: actor.uuid,
             source_pet_guid: actor.source_guid,
-            pos: { ...actor.pos },
+            pos: { ...(actor.camp === 1 ? run.positions.selfSummon.pos : run.positions.enemySummon.pos) },
             angle: 270,
         })
         const writes = store.db.prepare('SELECT total_changes() AS n').get().n

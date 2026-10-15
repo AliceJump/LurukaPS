@@ -44,6 +44,37 @@ test('diagnostic size/write failures do not escape into request processing', () 
         fs.rmSync(dir, { recursive: true, force: true })
     }
 })
+
+test('rejected arena casts log energy and active-cast evidence with existing redaction', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'azur-diag-'))
+    try {
+        const file = path.join(dir, 'errors.jsonl'),
+            log = new ProtocolDiagnostics(file),
+            error = Object.assign(Error('Arena ultimate energy is insufficient'), {
+                code: 1024,
+                arenaSpContext: {
+                    uuid: '1441153998177435649',
+                    skill_id: 50004005,
+                    available_milli: 0,
+                    cost_milli: 510000,
+                    source_type: 0,
+                    active_cast: { origin: 'server', at: 1792079437800 },
+                    token: 'private',
+                },
+            })
+        log.record({ accountId: 1, error })
+        const entry = JSON.parse(fs.readFileSync(file, 'utf8'))
+        assert.equal(entry.error_code, 1024)
+        assert.equal(entry.arena_sp.cost_milli, 510000)
+        assert.equal(entry.arena_sp.available_milli, 0)
+        assert.equal(entry.arena_sp.active_cast.origin, 'server')
+        assert.equal(entry.arena_sp.token, '[redacted]')
+        assert.equal(error.arenaSpContext.token, 'private')
+    } finally {
+        assert(dir.startsWith(path.join(os.tmpdir(), 'azur-diag-')))
+        fs.rmSync(dir, { recursive: true, force: true })
+    }
+})
 test('connection routing preserves official catalog and CDN endpoints', () => {
     const source = fs.readFileSync(new URL('../../Frida/connect-azurjs.ts', import.meta.url), 'utf8'),
         match = source.match(/function rewriteDiscoveryUrl\(original: string\): string \| undefined \{[\s\S]*?\n\}/)

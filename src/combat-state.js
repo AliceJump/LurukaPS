@@ -5,6 +5,18 @@ export function u64(value) {
     ensure(/^\d+$/.test(s) && BigInt(s) <= MAX_U64, 'Invalid uint64')
     return BigInt(s).toString()
 }
+// BattleVerifyInfo.source_id is int64, unlike its unsigned sequence IDs.
+export function i64(value) {
+    const s = String(value ?? '0')
+    ensure(
+        /^-?\d+$/.test(s) &&
+            (typeof value !== 'number' || Number.isSafeInteger(value)) &&
+            BigInt(s) >= -(1n << 63n) &&
+            BigInt(s) < 1n << 63n,
+        'Invalid int64',
+    )
+    return BigInt(s).toString()
+}
 // Request-side inverse of CBT3 BattleService.Add*/SendBattleInfoDatas.
 export function expandBattleReport(request) {
     const dictionary = request.uint64_dic ?? [],

@@ -67,6 +67,8 @@ for (const duel of tables.get('kibo_duel').filter((row) => row.type === 1 && row
             assert.equal(attrs.hero_guid, hero.guid)
             assert.equal(attrs.hero_conf_id, hero.conf_id)
             assert.equal(attrs.hero_lv, 1)
+            assert.equal(state().combat.npcDuel.trainer_grade, attrs.hero_grade)
+            assert.equal(state().combat.npcDuel.trainer_grade, hero.hero_grade)
             assert.ok(
                 enter.findIndex((packet) => packet.id === trialId) < enter.findIndex((packet) => packet.id === 11801),
                 'HeroStore must register the trial actor before the arena adapter loads',

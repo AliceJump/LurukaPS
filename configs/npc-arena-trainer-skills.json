@@ -1,0 +1,112 @@
+{
+    "schema": 1,
+    "azurconfig_sha256": "e2fbf9784305889638effe0ac3a9af83ebdbd2b01373dc931623c69762c6b8c9",
+    "vstring_sha256": "6c1cda4925b40e7379aa9304d26d4cf4b043cffc5bb677c215571ac1e9042e1a",
+    "hotfix_sha256": "5eedb27d0983532a8cc063e3ba465882c0b50589733eaf4392ae8cb89110cd6c",
+    "schema_sha256": "354f1c6e6bf3fa6662fe1ea640809b348c18cff5b042658d345cbca750976e35",
+    "skills": {
+        "19999901": {
+            "source": "Config/Battle/SkillList/skill_control_19999901.asset",
+            "fps": 60,
+            "effects": []
+        },
+        "19999902": {
+            "source": "Config/Battle/SkillList/skill_control_19999902.asset",
+            "fps": 60,
+            "effects": []
+        },
+        "19999903": {
+            "source": "Config/Battle/SkillList/skill_control_19999903.asset",
+            "fps": 60,
+            "effects": [
+                {
+                    "kind": "points",
+                    "value": 2,
+                    "value_formula": 5,
+                    "parameters": [
+                        2,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        10000,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0
+                    ],
+                    "frame": 16,
+                    "element_id": 199999013
+                }
+            ]
+        },
+        "19999904": {
+            "source": "Config/Battle/SkillList/skill_control_19999904.asset",
+            "fps": 60,
+            "effects": [
+                {
+                    "kind": "interval_percent",
+                    "value": -0.5,
+                    "value_formula": 3,
+                    "parameters": [
+                        -5000,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        10000,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0
+                    ],
+                    "duration_ms": 10000,
+                    "frame": 16,
+                    "element_id": 199999014
+                }
+            ]
+        },
+        "19999905": {
+            "source": "Config/Battle/SkillList/skill_control_19999905.asset",
+            "fps": 60,
+            "effects": []
+        },
+        "19999907": {
+            "source": "Config/Battle/SkillList/skill_control_19999907.asset",
+            "fps": 60,
+            "effects": []
+        }
+    }
+}

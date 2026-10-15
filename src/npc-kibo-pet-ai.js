@@ -1,11 +1,14 @@
+import { arenaContext, arenaMillis, secondsToArenaMs } from './npc-kibo-time.js'
 import fs from 'node:fs'
 import { arenaPetSkills } from './kibo-arena-attributes.js'
 import { boundedSet } from './combat-state.js'
+import { arenaSpConfig, applyArenaCast } from './npc-kibo-sp.js'
+import { arenaControlState, arenaPriorityTarget, arenaTauntTarget } from './npc-kibo-controls.js'
 
 const { policies } = JSON.parse(fs.readFileSync(new URL('../configs/npc-arena-pet-ai.json', import.meta.url), 'utf8'))
 const catalogs = new WeakMap()
 const warnings = new Set()
-const distance = (a, b) => Math.hypot(a.x - b.x, a.z - b.z) / 100
+const distance = (a, b) => Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z) / 100
 const flags = (text) =>
     Object.fromEntries(
         String(text || '')
@@ -51,6 +54,7 @@ export function arenaPetAIProfile(tables, petId) {
     const profile = {
         policy,
         skills,
+        ultimate: arenaSpConfig(tables, petId).ultimate,
         radius,
         lockRange,
         loseRange,
@@ -64,6 +68,7 @@ export function arenaPetAIProfile(tables, petId) {
 }
 
 export function stopArenaPetAI(c) {
+    c = arenaContext(c)
     const run = c.state.combat?.npcDuel
     if (!run?.pet_ai) return
     const petAI = { ...run.pet_ai }
@@ -79,20 +84,35 @@ export function stopArenaPetAI(c) {
 //11101 executes a skill via SkillNetwork, with actual client hit reports
 // continuing through BattleInfoReduce. Never simulate a kill to advance AI.
 export function advanceArenaPetAI(c) {
+    c = arenaContext(c)
     const battle = c.state.combat,
         run = battle?.npcDuel
-    if (!run || run.map_id !== c.state.world.map_id || c.state.multiCampaign?.arena_status !== 4 || run.result) return
+    if (
+        !run ||
+        run.map_id !== c.state.world.map_id ||
+        c.state.multiCampaign?.arena_status !== 4 ||
+        run.result ||
+        run.pause ||
+        run.entities_sent === false ||
+        c.state.world.pause?.operate
+    )
+        return
     if (run.ai_control?.[0] === 1 || run.ai_control?.[2] === 1) {
         stopArenaPetAI(c)
         return
     }
-    const now = c.now * 1000,
+    const now = arenaMillis(c),
         petAI = { ...run.pet_ai }
-    const active = Object.keys(run.in_fight)
-        .map((uuid) => run.actors[uuid])
-        .filter((actor) => battle.entities[actor.uuid]?.hp > 0)
+    const active = Object.values(run.actors).filter(
+        (actor) => run.in_fight[actor.uuid] && battle.entities[actor.uuid]?.hp > 0,
+    )
     const position = (actor) => run.in_fight[actor.uuid].move.pos
     for (const actor of active) {
+        const current = battle.npcDuel,
+            cast = current.arena_casts?.[actor.uuid],
+            entry = current.entry_reports?.[actor.uuid]
+        if (current.require_entry_report && (!entry || (entry.cast && !entry.consumed))) continue
+        if (cast?.slot === 206 && !cast.ended) continue
         const profile = arenaPetAIProfile(c.tables, actor.config_id)
         if (!profile) {
             if (!warnings.has(actor.config_id)) {
@@ -107,21 +127,33 @@ export function advanceArenaPetAI(c) {
             gcd_until: 0,
             cast_index: 0,
             // Entry movie must not consume a pet's initial combat cooldown.
-            ready_at:
+            ready_at: secondsToArenaMs(
                 Math.max(
                     run.regular_started_at ?? c.now,
                     run.in_fight[actor.uuid].entered_at ?? run.regular_started_at ?? c.now,
-                ) * 1000,
+                ),
+            ),
         }
         const ai = { ...previous, cooldowns: { ...previous.cooldowns }, groups: { ...previous.groups } }
+        const control = arenaControlState(c, actor.uuid)
+        if (!control.can_move && ai.moving) {
+            c.pushBefore('SCProtoKiboStopMove', { uuid: actor.uuid })
+            ai.moving = false
+        }
         const enemies = active.filter((other) => other.camp !== actor.camp)
-        let target = enemies.find(
-            (other) =>
-                ai.locked &&
-                other.uuid === ai.target &&
-                distance(position(actor), position(other)) <= profile.loseRange,
-        )
-        if (!target)
+        const preference = arenaPriorityTarget(c, actor, enemies, profile.lockRange)
+        let target =
+            arenaTauntTarget(c, actor.uuid) ??
+            preference?.target ??
+            (preference?.only_select
+                ? undefined
+                : enemies.find(
+                      (other) =>
+                          ai.locked &&
+                          other.uuid === ai.target &&
+                          distance(position(actor), position(other)) <= profile.loseRange,
+                  ))
+        if (!target && !preference?.only_select)
             target = enemies
                 .filter((other) => distance(position(actor), position(other)) <= profile.lockRange)
                 .sort(
@@ -143,7 +175,11 @@ export function advanceArenaPetAI(c) {
             petAI[actor.uuid] = { ...ai, moving: false, locked: false, target: undefined }
             continue
         }
-        const candidates = profile.skills.filter(
+        const allowed = (skill) => control.can_skill && !control.blocked_slots.has(skill.skill_slot)
+        const available = profile.skills.filter(allowed)
+        if (allowed(profile.ultimate) && battle.entities[actor.uuid].sp >= profile.ultimate.logic.kiBoSpMax)
+            available.push(profile.ultimate)
+        const candidates = available.filter(
             ({ skill_id, logic }) =>
                 now >= (ai.cooldowns[skill_id] ?? ai.ready_at + logic.kiBoCoolDownDefault) &&
                 now >= (ai.groups[`self:${logic.selfCDGroup}`] ?? 0) &&
@@ -168,7 +204,10 @@ export function advanceArenaPetAI(c) {
         const gap = distance(position(actor), position(target))
         const moveAction = !locked && profile.engage ? 1 : 0
         if (gap > range) {
-            if (!ai.moving || ai.target !== target.uuid || ai.move_range !== range || ai.move_action !== moveAction) {
+            if (
+                control.can_move &&
+                (!ai.moving || ai.target !== target.uuid || ai.move_range !== range || ai.move_action !== moveAction)
+            ) {
                 c.pushBefore('SCProtoKiboStartMove', {
                     uuid: actor.uuid,
                     target: position(target),
@@ -210,6 +249,9 @@ export function advanceArenaPetAI(c) {
                     public_cd: String(logic.publicCD),
                     gcd: String(logic.GCD),
                 }
+                // Native OnSyncStartSkill executes a server cast directly;
+                // it has no full-SP admission check. Do not publish a transient
+                // full value before the already-paid command and its remainder.
                 c.pushBefore('SCProtoSkillStartSync', { unit_id: actor.uuid, skill, op_time: String(now) })
                 battle.skills = { ...battle.skills }
                 boundedSet(
@@ -222,6 +264,7 @@ export function advanceArenaPetAI(c) {
                 if (logic.selfCDGroup) ai.groups[`self:${logic.selfCDGroup}`] = now + logic.selfCD
                 if (logic.publicCDGroup) ai.groups[`public:${logic.publicCDGroup}`] = now + logic.publicCD
                 ai.gcd_until = now + logic.GCD
+                applyArenaCast(c, actor, selected)
             }
         }
         ai.target = target.uuid
@@ -232,5 +275,5 @@ export function advanceArenaPetAI(c) {
     // so returning a living card cannot reset its attack cooldown.
     for (const uuid of Object.keys(petAI))
         if (!run.in_fight[uuid]) petAI[uuid] = { ...petAI[uuid], moving: false, target: undefined }
-    battle.npcDuel = { ...run, pet_ai: petAI }
+    battle.npcDuel = { ...battle.npcDuel, pet_ai: petAI }
 }

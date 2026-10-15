@@ -4,6 +4,7 @@ import { u64, combatState, boundedSet } from '../combat-state.js'
 import { isRetiredTrialActor, temporaryPets } from '../trial-actors.js'
 import { completedEnemyGroup } from '../enemy-group-completion.js'
 import { inactiveCampaignEnemyGroup } from '../inactive-campaign-enemies.js'
+import { arenaNativeSummonOwner } from '../npc-kibo-unit-grade.js'
 function runtime(c) {
     const state = combatState(c.state, c.now)
     state.summons ??= {}
@@ -268,6 +269,15 @@ export function registerWorldCombat(on) {
         const record = {
             unit_id: id,
             owner_id: owner,
+            ...(battle.npcDuel?.map_id === c.state.world.map_id
+                ? {
+                      native_owner: arenaNativeSummonOwner(c, owner),
+                      native_owner_scope: {
+                          generation: battle.npcDuel.generation,
+                          epoch: battle.npcDuel.origin_epoch ?? 0,
+                      },
+                  }
+                : {}),
             battle_index: index,
             config_id: info.config_id,
             summon_type: info.summon_type,

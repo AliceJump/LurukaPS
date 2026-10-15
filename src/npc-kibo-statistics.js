@@ -1,3 +1,4 @@
+import { arenaContext } from './npc-kibo-time.js'
 //10756 is an absolute per-entity snapshot, not a damage-event stream.
 // KiBoDuelStore uses owner_id == myPlayerId to identify the player's records
 // in an arena, then resolves the battle UUID to source_pet_guid for the UI.
@@ -33,6 +34,7 @@ function sourceActor(state, source) {
 }
 
 export function recordArenaHpStatistics(c, target, source, before, after) {
+    c = arenaContext(c)
     const run = c.state.combat?.npcDuel,
         victim = run?.actors[target]
     if (
@@ -67,10 +69,12 @@ export function recordArenaHpStatistics(c, target, source, before, after) {
 }
 
 export function publishArenaStatistics(c, force = false) {
+    c = arenaContext(c)
     const run = c.state.combat?.npcDuel
     if (!run || run.map_id !== c.state.world.map_id) return
     const revision = run.statistics_revision ?? 0
-    if (!force && (revision === (run.statistics_synced_revision ?? 0) || run.statistics_sync_at === c.now)) return
+    const second = Math.floor(c.now)
+    if (!force && (revision === (run.statistics_synced_revision ?? 0) || run.statistics_sync_at === second)) return
     ;(c.pushBefore ?? c.push)('CSProtoKiboDuelStatsSync', npcArenaStatistics(c.state))
-    c.state.combat.npcDuel = { ...run, statistics_synced_revision: revision, statistics_sync_at: c.now }
+    c.state.combat.npcDuel = { ...run, statistics_synced_revision: revision, statistics_sync_at: second }
 }

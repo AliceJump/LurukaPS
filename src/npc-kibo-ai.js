@@ -1,20 +1,23 @@
+import { arenaContext, arenaMillis } from './npc-kibo-time.js'
 import fs from 'node:fs'
 import { consumeArenaPoint } from './npc-kibo-clock.js'
 import { setArenaInFight } from './npc-kibo-battle.js'
 const rules = JSON.parse(fs.readFileSync(new URL('../configs/npc-arena-ai.json', import.meta.url), 'utf8'))
 
 export function advanceNpcArenaAI(c) {
+    c = arenaContext(c)
     const battle = c.state.combat,
         run = battle?.npcDuel
     if (
         !run ||
+        run.pause ||
         c.state.multiCampaign?.arena_status !== 4 ||
         run.result ||
         run.ai_control?.[0] === 1 ||
         run.ai_control?.[1] === 1
     )
         return
-    if (Object.keys(run.npc_queue ?? {}).length || c.now * 1000 < (run.ai_next_at ?? 0)) return
+    if (Object.keys(run.npc_queue ?? {}).length || arenaMillis(c) < (run.ai_next_at ?? 0)) return
     const duel = c.tables.find('kibo_duel', run.duel_id)
     if (duel.behaviortree !== rules.source) return
     const active = Object.keys(run.in_fight)
@@ -23,9 +26,9 @@ export function advanceNpcArenaAI(c) {
     let candidates = Object.values(run.actors).filter(
         (actor) => actor.camp === 2 && !run.in_fight[actor.uuid] && battle.entities[actor.uuid]?.hp > 0,
     )
-    const next = c.now * 1000 + rules.wait_min_ms + c.randomInt(0, rules.wait_max_ms - rules.wait_min_ms + 1)
+    const next = arenaMillis(c) + rules.wait_min_ms + c.randomInt(0, rules.wait_max_ms - rules.wait_min_ms + 1)
     battle.npcDuel = { ...run, ai_next_at: next }
-    if (!candidates.length || run.energy[2].points < 100 - 1e-7 || c.now * 1000 < run.gcd_until[2]) return
+    if (!candidates.length || run.energy[2].points < 100 - 1e-7 || arenaMillis(c) < run.gcd_until[2]) return
     let replace
     if (active.length >= duel.KiboNumber) {
         if (run.energy[2].points < rules.replacement_points * 100 - 1e-7) return

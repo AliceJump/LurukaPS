@@ -1,0 +1,416 @@
+{
+  "time": "2026-10-15T14:17:16.474Z",
+  "server_started_at": "2026-10-15T14:11:54.383Z",
+  "error": "Invalid uint64",
+  "payload_sha256": "c187033e1ea83f5013ccebb5c1e57363d3300f115100509d0ed213623f4695c2",
+  "request": {
+    "uint64_dic": [
+      "1441153122004107265",
+      "7063601700",
+      "1441153169248747521",
+      "1153309129700278273",
+      "4294967858",
+      "1441153156363845633",
+      "0",
+      "7063601703",
+      "500097008",
+      "4294967855",
+      "50009705",
+      "7063601282",
+      "7063601704",
+      "510200852",
+      "4294967487",
+      "7063601705",
+      "500098010",
+      "4294967859",
+      "7063601706",
+      "7063601268",
+      "7063601707",
+      "510201401",
+      "4294967465",
+      "7063601615",
+      "7063601708"
+    ],
+    "battle_info": [
+      {
+        "element_info": {
+          "op_params": [],
+          "op": 2,
+          "tar_id": "1",
+          "buff": {
+            "random": [],
+            "entrys": [],
+            "link_nodes": [],
+            "attacker_id": "3",
+            "executor_id": "1",
+            "source_id": "3",
+            "creator_id": "4",
+            "source_behavior_id": "17179959435",
+            "remove_when_switch_client": false,
+            "bullet_config_id": 50600121
+          },
+          "uniqueId": "2",
+          "verify_info": {
+            "related_index": "5",
+            "op_time": "129"
+          }
+        }
+      },
+      {
+        "element_info": {
+          "op_params": [],
+          "op": 1,
+          "tar_id": "6",
+          "buff": {
+            "random": [],
+            "entrys": [],
+            "link_nodes": [],
+            "cfg_id": 9,
+            "layer": 1,
+            "begin_time": "37",
+            "attacker_id": "1",
+            "executor_id": "6",
+            "source_id": "1",
+            "creator_id": "1",
+            "source_behavior_id": "10798253392",
+            "collision_type": 0,
+            "from_type": 1,
+            "from_params": 50009705,
+            "collider_index": 0,
+            "collider_point": {
+              "x": 13150,
+              "y": 10079,
+              "z": 14208
+            },
+            "remove_when_switch_client": false,
+            "damage_cri_pct": 9328
+          },
+          "uniqueId": "8",
+          "verify_info": {
+            "battle_index": "4294967859",
+            "related_index": "10",
+            "op_time": "37",
+            "source_type": 1,
+            "source_id": "-2086648496"
+          }
+        }
+      },
+      {
+        "hurt_info": {
+          "shield_chg": [],
+          "shield_cur": [],
+          "from_id": "1",
+          "tar_id": "6",
+          "skill_id": 11,
+          "hp_change": -174,
+          "hpLocked": false,
+          "from_sp": 500,
+          "tar_sp": 35500,
+          "element_uniqueId": "8",
+          "dmg_inc_id": 109
+        }
+      },
+      {
+        "element_info": {
+          "op_params": [],
+          "op": 7,
+          "tar_id": "6",
+          "buff": {
+            "random": [],
+            "entrys": [],
+            "link_nodes": [],
+            "cfg_id": 14,
+            "layer": 1,
+            "begin_time": "36",
+            "attacker_id": "6",
+            "executor_id": "6",
+            "source_id": "6",
+            "creator_id": "6",
+            "source_behavior_id": "13395102739",
+            "from_type": 1,
+            "from_params": 51020085,
+            "remove_when_switch_client": false,
+            "total_time": "6000"
+          },
+          "clientTmpID": 2600,
+          "uniqueId": "13",
+          "parentUniqueId": "12",
+          "verify_info": {
+            "battle_index": "0",
+            "related_index": "15",
+            "op_time": "36",
+            "source_type": 2,
+            "source_id": "510200851"
+          }
+        }
+      },
+      {
+        "element_info": {
+          "op_params": [],
+          "op": 2,
+          "tar_id": "6",
+          "buff": {
+            "random": [],
+            "entrys": [],
+            "link_nodes": [],
+            "attacker_id": "6",
+            "executor_id": "6",
+            "source_id": "6",
+            "creator_id": "6",
+            "source_behavior_id": "13395102739",
+            "remove_when_switch_client": false
+          },
+          "clientTmpID": 2600,
+          "uniqueId": "13",
+          "parentUniqueId": "12",
+          "verify_info": {
+            "op_time": "36"
+          }
+        }
+      },
+      {
+        "element_info": {
+          "op_params": [],
+          "op": 1,
+          "tar_id": "6",
+          "buff": {
+            "random": [],
+            "entrys": [],
+            "link_nodes": [],
+            "cfg_id": 17,
+            "layer": 1,
+            "begin_time": "36",
+            "attacker_id": "1",
+            "executor_id": "6",
+            "source_id": "1",
+            "creator_id": "1",
+            "source_behavior_id": "10798253392",
+            "from_type": 1,
+            "from_params": 50009705,
+            "remove_when_switch_client": false,
+            "total_time": "6000"
+          },
+          "clientTmpID": 2700,
+          "uniqueId": "16",
+          "verify_info": {
+            "battle_index": "4294967860",
+            "related_index": "10",
+            "op_time": "36",
+            "source_type": 1,
+            "source_id": "-2086648496"
+          }
+        }
+      },
+      {
+        "element_info": {
+          "op_params": [],
+          "op": 2,
+          "tar_id": "6",
+          "buff": {
+            "random": [],
+            "entrys": [],
+            "link_nodes": [],
+            "attacker_id": "1",
+            "executor_id": "6",
+            "source_id": "1",
+            "creator_id": "1",
+            "source_behavior_id": "10798253392",
+            "remove_when_switch_client": false
+          },
+          "uniqueId": "8",
+          "verify_info": {
+            "related_index": "18",
+            "op_time": "32"
+          }
+        }
+      },
+      {
+        "element_info": {
+          "op_params": [],
+          "op": 1,
+          "tar_id": "3",
+          "buff": {
+            "random": [],
+            "entrys": [],
+            "link_nodes": [],
+            "cfg_id": 9,
+            "layer": 1,
+            "begin_time": "3",
+            "attacker_id": "1",
+            "executor_id": "3",
+            "source_id": "1",
+            "creator_id": "1",
+            "source_behavior_id": "10798253392",
+            "collision_type": 0,
+            "from_type": 1,
+            "from_params": 50009705,
+            "collider_index": 0,
+            "collider_point": {
+              "x": 13051,
+              "y": 10070,
+              "z": 14279
+            },
+            "remove_when_switch_client": false,
+            "damage_cri_pct": 2648
+          },
+          "uniqueId": "19",
+          "verify_info": {
+            "battle_index": "4294967861",
+            "related_index": "10",
+            "op_time": "3",
+            "source_type": 1,
+            "source_id": "-2086648496"
+          }
+        }
+      },
+      {
+        "hurt_info": {
+          "shield_chg": [],
+          "shield_cur": [],
+          "from_id": "1",
+          "tar_id": "3",
+          "skill_id": 11,
+          "hp_change": -162,
+          "hpLocked": false,
+          "from_sp": 500,
+          "tar_sp": 42900,
+          "element_uniqueId": "19",
+          "dmg_inc_id": 110
+        }
+      },
+      {
+        "element_info": {
+          "op_params": [],
+          "op": 7,
+          "tar_id": "3",
+          "buff": {
+            "random": [],
+            "entrys": [],
+            "link_nodes": [],
+            "cfg_id": 22,
+            "layer": 1,
+            "begin_time": "3",
+            "attacker_id": "3",
+            "executor_id": "3",
+            "source_id": "3",
+            "creator_id": "3",
+            "source_behavior_id": "13395103290",
+            "from_type": 1,
+            "from_params": 51020140,
+            "remove_when_switch_client": false,
+            "total_time": "114514"
+          },
+          "clientTmpID": 1000,
+          "uniqueId": "21",
+          "parentUniqueId": "20",
+          "verify_info": {
+            "battle_index": "0",
+            "related_index": "23",
+            "op_time": "3",
+            "source_type": 2,
+            "source_id": "510201402"
+          }
+        }
+      },
+      {
+        "element_info": {
+          "op_params": [],
+          "op": 3,
+          "tar_id": "3",
+          "buff": {
+            "random": [],
+            "entrys": [],
+            "link_nodes": [],
+            "layer": 3,
+            "attacker_id": "3",
+            "executor_id": "3",
+            "source_id": "3",
+            "creator_id": "3",
+            "source_behavior_id": "13395103290",
+            "remove_when_switch_client": false
+          },
+          "clientTmpID": 800,
+          "uniqueId": "24",
+          "parentUniqueId": "20"
+        }
+      },
+      {
+        "element_info": {
+          "op_params": [],
+          "op": 2,
+          "tar_id": "3",
+          "buff": {
+            "random": [],
+            "entrys": [],
+            "link_nodes": [],
+            "attacker_id": "3",
+            "executor_id": "3",
+            "source_id": "3",
+            "creator_id": "3",
+            "source_behavior_id": "13395103290",
+            "remove_when_switch_client": false
+          },
+          "clientTmpID": 1000,
+          "uniqueId": "21",
+          "parentUniqueId": "20",
+          "verify_info": {
+            "op_time": "3"
+          }
+        }
+      },
+      {
+        "element_info": {
+          "op_params": [],
+          "op": 3,
+          "tar_id": "3",
+          "buff": {
+            "random": [],
+            "entrys": [],
+            "link_nodes": [],
+            "layer": 1,
+            "attacker_id": "1",
+            "executor_id": "3",
+            "source_id": "1",
+            "creator_id": "1",
+            "remove_when_switch_client": false
+          },
+          "uniqueId": "7"
+        }
+      },
+      {
+        "element_info": {
+          "op_params": [],
+          "op": 1,
+          "tar_id": "3",
+          "buff": {
+            "random": [],
+            "entrys": [],
+            "link_nodes": [],
+            "cfg_id": 17,
+            "layer": 1,
+            "begin_time": "3",
+            "attacker_id": "1",
+            "executor_id": "3",
+            "source_id": "1",
+            "creator_id": "1",
+            "source_behavior_id": "10798253392",
+            "from_type": 1,
+            "from_params": 50009705,
+            "remove_when_switch_client": false,
+            "total_time": "6000"
+          },
+          "clientTmpID": 1100,
+          "uniqueId": "25",
+          "verify_info": {
+            "battle_index": "4294967862",
+            "related_index": "10",
+            "op_time": "3",
+            "source_type": 1,
+            "source_id": "-2086648496"
+          }
+        }
+      }
+    ],
+    "base_time": "1792073836467"
+  }
+}

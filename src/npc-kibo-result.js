@@ -1,3 +1,4 @@
+import { arenaContext } from './npc-kibo-time.js'
 import { advanceArenaScores } from './npc-kibo-clock.js'
 import { stopArenaPetAI } from './npc-kibo-pet-ai.js'
 import { publishArenaStatistics } from './npc-kibo-statistics.js'
@@ -8,6 +9,7 @@ import { refreshTaskProgress } from './tasks.js'
 import { duelProgressSnapshot } from './kibo-duel-progress.js'
 import { rewardSource } from './reward-source.js'
 import { selectedArenaGroup } from './npc-kibo-duel.js'
+import { withoutArenaOrigins } from './npc-kibo-origins.js'
 
 export function npcArenaOutcome(state, now) {
     const run = state.combat?.npcDuel
@@ -16,7 +18,7 @@ export function npcArenaOutcome(state, now) {
     if (run.scores[2] <= 0) return { result: 1, reason: 1 }
     if (run.scores[1] <= 0) return { result: 2, reason: 1 }
     // CBT3 guide_words: at timeout the side with more remaining points wins.
-    if (run.end_at && now >= run.end_at)
+    if (!run.pause && run.end_at && now >= run.end_at)
         return { result: run.scores[1] === run.scores[2] ? 3 : run.scores[1] > run.scores[2] ? 1 : 2, reason: 2 }
     return null
 }
@@ -46,6 +48,7 @@ function grant(c, rewards, guids) {
 }
 
 export function settleNpcArena(c, outcome) {
+    c = arenaContext(c)
     advanceArenaScores(c)
     outcome ??= npcArenaOutcome(c.state, c.now)
     if (c.memoryDraft && outcome?.result === 1) Object.assign(c.state, structuredClone(c.state))
@@ -55,7 +58,8 @@ export function settleNpcArena(c, outcome) {
     ensure(outcome && [1, 2, 3].includes(outcome.result), 'NPC arena result is not proven')
     publishArenaStatistics(c, true)
     const duel = c.tables.find('kibo_duel', run.duel_id)
-    const elapsed = Math.max(0, c.now - (run.regular_started_at ?? c.now))
+    const activeNow = run.pause?.server_at ?? c.now
+    const elapsed = Math.max(0, activeNow - (run.regular_started_at ?? activeNow))
     const remaining = Math.max(0, Number(duel.time) - elapsed)
     const old = c.state.kiboDuelRecords?.[duel.id]
     const first = outcome.result === 1 && !(Number(old?.success_time) > 0)
@@ -94,21 +98,28 @@ export function settleNpcArena(c, outcome) {
         ;(c.state.kiboDuelRecords ??= {})[duel.id] = {
             id: duel.id,
             star: (old?.star ?? 0) | mask,
-            success_time: Number(old?.success_time) > 0 ? old.success_time : String(c.now),
+            success_time: Number(old?.success_time) > 0 ? old.success_time : String(Math.floor(c.now)),
         }
         ;(c.state.kiboDuelChallengeClaims ??= {})[duel.id] = previousMask | mask
         notifyProgress(c)
     }
-    const result = { ...outcome, star: mask, clearance_time: String(remaining), is_first: first, is_competition: false }
+    const result = {
+        ...outcome,
+        star: mask,
+        clearance_time: String(Math.ceil(remaining)),
+        is_first: first,
+        is_competition: false,
+    }
     const settlementSeconds = Number(
         c.tables.get('game').find((row) => row.title === 'KIBO_DUEL_ARENA_MODE_SETTLEMENT_TIME')?.value,
     )
     ensure(settlementSeconds > 0, 'NPC settlement duration unavailable', 1007)
     stopArenaPetAI(c)
     c.state.combat.npcDuel = {
-        ...c.state.combat.npcDuel,
+        ...withoutArenaOrigins(c.state.combat.npcDuel),
         pet_ai: c.state.combat.npcDuel.pet_ai,
         result,
+        pause: undefined,
         finished_at: c.now,
         exit_at: c.now + settlementSeconds,
         reward_receipt: { ...granted, src: rewardSource(c.tables, 'kiboDuelComplete') },
@@ -118,14 +129,14 @@ export function settleNpcArena(c, outcome) {
         id: duel.id,
         status: 4,
         star: mask,
-        start_time: run.regular_started_at ?? c.now,
-        end_time: c.now,
+        start_time: Math.floor(c.now - elapsed),
+        end_time: Math.floor(c.now),
     })
     // Result must arrive before FINISH/EXIT: ExitStage dereferences it.
     c.pushBefore('SCProtoKiboDuelArenaResultInfoSync', result)
     c.pushBefore('SCProtoKiboDuelArenaInfoSync', {
         status: 5,
-        status_endtime: String(c.now + settlementSeconds),
+        status_endtime: String(Math.ceil(c.now + settlementSeconds)),
         enter_type: 0,
     })
     return result
@@ -133,15 +144,18 @@ export function settleNpcArena(c, outcome) {
 
 export function registerNpcArenaResults(on, tables) {
     on('KiboDuelBattleFinish', (c) => {
+        c = arenaContext(c)
         // Client status/time are telemetry, not proof of a victory.
         settleNpcArena(c)
         return {}
     })
     on('KiboDuelSurrender', (c) => {
+        c = arenaContext(c)
         settleNpcArena(c, { result: 2, reason: 3 })
         return {}
     })
     on('KiboRealStart', (c) => {
+        c = arenaContext(c)
         ensure(
             (c.state.combat?.npcDuel?.regular_started_at && c.state.multiCampaign?.arena_status === 4) ||
                 (c.state.multiCampaign?.arena_status === 6 && c.state.kiboDuelFirstConfirmedAt),
@@ -150,6 +164,7 @@ export function registerNpcArenaResults(on, tables) {
         return {}
     })
     on('KiboDuelGetAreaReward', (c, r) => {
+        c = arenaContext(c)
         const area = c.state.kiboDuelAreas?.[r.area]
         const row = tables
             .get('kibo_duel_area_level')

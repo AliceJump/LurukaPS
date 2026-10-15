@@ -1,5 +1,10 @@
+import { arenaContext, arenaMillis, secondsToArenaMs } from './npc-kibo-time.js'
 import { ensure } from './handlers/common.js'
 import { pairs } from './battle.js'
+
+// Local wire cadence, not an official backend rate. Keep a stable window
+// beyond ModuleDuelEnergy's350ms CostInit callback between passive updates.
+const ACTION_POINT_UI_SYNC_MS = 500
 
 export function arenaTiming(tables, duelId) {
     const duel = tables.find('kibo_duel', duelId),
@@ -25,6 +30,7 @@ export function arenaTiming(tables, duelId) {
 }
 
 export function startArenaClock(c) {
+    c = arenaContext(c)
     const battle = c.state.combat,
         run = battle.npcDuel,
         timing = arenaTiming(c.tables, run.duel_id)
@@ -41,9 +47,10 @@ export function startArenaClock(c) {
 }
 
 export function advanceArenaScores(c) {
+    c = arenaContext(c)
     const battle = c.state.combat,
         run = battle?.npcDuel
-    if (!run || run.regular_started_at === undefined || run.result || run.score_at >= c.now) return false
+    if (!run || run.pause || run.regular_started_at === undefined || run.result || run.score_at >= c.now) return false
     const counts = { 1: 0, 2: 0 }
     // Membership describes the interval before a summon/death at this instant.
     for (const uuid of Object.keys(run.in_fight)) counts[run.actors[uuid].camp]++
@@ -64,40 +71,80 @@ export function advanceArenaScores(c) {
         for (let i = 0; i < rates.length; i++) {
             const start = Math.max(run.score_at, run.regular_started_at + rates[i].at)
             const end = Math.min(c.now, run.end_at, run.regular_started_at + (rates[i + 1]?.at ?? Infinity))
-            if (end > start) loss += (end - start) * rates[i].rate
+            if (end > start) loss += (secondsToArenaMs(end) - secondsToArenaMs(start)) * rates[i].rate
         }
     const scores = { ...run.scores }
-    if (empty) scores[empty] = Math.max(0, scores[empty] - Math.floor(loss))
-    battle.npcDuel = { ...run, score_at: Math.min(c.now, run.end_at), scores }
-    if (loss)
+    const fractions = { ...run.score_remainders }
+    let lost = 0
+    if (empty) {
+        const total = loss + (fractions[empty] ?? 0)
+        lost = Math.floor(total / 1000)
+        fractions[empty] = total - lost * 1000
+        scores[empty] = Math.max(0, scores[empty] - lost)
+    }
+    battle.npcDuel = { ...run, score_at: Math.min(c.now, run.end_at), scores, score_remainders: fractions }
+    if (lost)
         c.push('SCProtoKiboDuelArenaScoreInfoSync', {
             score_infos: [1, 2].map((camp) => ({ camp, score: scores[camp] })),
         })
-    return loss > 0
+    return lost > 0
 }
 
 export function advanceArenaEnergy(c) {
+    c = arenaContext(c)
     const battle = c.state.combat,
         run = battle?.npcDuel
-    if (!run?.energy || run.result) return false
+    if (!run?.energy || run.pause || run.result) return false
     const timing = arenaTiming(c.tables, run.duel_id)
-    const energy = {}
+    const energy = {},
+        effects = run.trainer_effects ?? []
     let changed = false
     for (const camp of [1, 2]) {
         const previous = run.energy[camp]
         let points = previous.points,
             from = previous.at,
             to = Math.min(c.now, run.end_at)
-        for (let i = 0; i < timing.schedule.length; i++) {
-            const segment = timing.schedule[i]
-            const start = Math.max(from, run.regular_started_at + segment.at)
-            const end = Math.min(to, run.regular_started_at + (timing.schedule[i + 1]?.at ?? Infinity))
-            if (end > start) points = Math.min(timing.max, points + ((end - start) * 100) / segment.interval)
+        const fromMs = secondsToArenaMs(from),
+            toMs = secondsToArenaMs(to)
+        const events = effects.filter((effect) => effect.camp === camp)
+        const boundaries = [
+            ...new Set(
+                [
+                    fromMs,
+                    toMs,
+                    ...timing.schedule.map((segment) => secondsToArenaMs(run.regular_started_at + segment.at)),
+                    ...events.flatMap((effect) => [effect.at_ms, effect.at_ms + (effect.duration_ms ?? 0)]),
+                ].filter((at) => at >= fromMs && at <= toMs),
+            ),
+        ].sort((a, b) => a - b)
+        for (let i = 1; i < boundaries.length; i++) {
+            const start = boundaries[i - 1],
+                end = boundaries[i],
+                middle = (start + end) / 2
+            const segment = timing.schedule.findLast(
+                (item) => secondsToArenaMs(run.regular_started_at + item.at) <= middle,
+            )
+            const percent = events
+                .filter(
+                    (effect) =>
+                        effect.kind === 'interval_percent' &&
+                        effect.at_ms <= middle &&
+                        effect.at_ms + effect.duration_ms > middle,
+                )
+                .reduce((sum, effect) => sum + effect.value, 0)
+            ensure(1 + percent > 0, 'Invalid arena action point recovery modifier', 1007)
+            points = Math.min(timing.max, points + (end - start) / (10 * segment.interval * (1 + percent)))
+            for (const effect of events)
+                if (effect.kind === 'points' && effect.at_ms === end && effect.at_ms > fromMs)
+                    points = Math.max(0, Math.min(timing.max, points + effect.value * 100))
         }
         energy[camp] = { points, at: Math.max(previous.at, to) }
         if (energy[camp].at !== previous.at || points !== previous.points) changed = true
     }
-    if (changed) battle.npcDuel = { ...run, energy }
+    const settled = secondsToArenaMs(Math.min(energy[1].at, energy[2].at))
+    const pending = effects.filter((effect) => effect.at_ms + (effect.duration_ms ?? 0) > settled)
+    if (changed || pending.length !== effects.length)
+        battle.npcDuel = { ...run, energy, ...(effects.length ? { trainer_effects: pending } : {}) }
     return changed
 }
 
@@ -113,28 +160,51 @@ export function arenaHand(state) {
     }
 }
 
-export function publishArenaEnergy(c) {
+export function publishArenaEnergy(c, force = true) {
+    c = arenaContext(c)
     const run = c.state.combat.npcDuel,
         timing = arenaTiming(c.tables, run.duel_id)
     if (!run.energy) return
     const current = Math.floor(run.energy[1].points + 1e-7)
+    // OnMainUIShow can clear Filled after the first count packet. Whole-point
+    // updates alone then leave that cell dark. Send changed fractional values
+    // too, coalesced so the native animation can finish. Do not fabricate a
+    //0→1 transition or resend unchanged values. Whole-point/capacity changes
+    // and explicit consumption/pause corrections stay immediate.
+    const marker = `${current}:${timing.max}`,
+        whole = `${Math.floor(current / 100)}:${timing.max}`,
+        now = arenaMillis(c)
+    if (
+        !force &&
+        (run.energy_sent === marker ||
+            (run.energy_sent_whole === whole && now - (run.energy_sync_at ?? -Infinity) < ACTION_POINT_UI_SYNC_MS))
+    )
+        return
     c.pushBefore('SCProtoKiboDuelArenaActionPointSync', {
         current_points: current,
         max_points: timing.max,
         next_recover_time: '0',
     })
+    c.state.combat.npcDuel = {
+        ...c.state.combat.npcDuel,
+        energy_sent: marker,
+        energy_sent_whole: whole,
+        energy_sync_at: now,
+    }
 }
 
 export function consumeArenaPoint(c, camp) {
+    c = arenaContext(c)
     advanceArenaEnergy(c)
     const battle = c.state.combat,
         run = battle.npcDuel,
         timing = arenaTiming(c.tables, run.duel_id)
+    ensure(!run.pause, 'Arena is paused')
     ensure(run.energy?.[camp].points >= 100 - 1e-7, 'Not enough arena action points')
-    ensure(c.now * 1000 >= (run.gcd_until?.[camp] ?? 0), 'Arena summon is cooling down')
+    ensure(arenaMillis(c) >= (run.gcd_until?.[camp] ?? 0), 'Arena summon is cooling down')
     battle.npcDuel = {
         ...run,
         energy: { ...run.energy, [camp]: { ...run.energy[camp], points: Math.max(0, run.energy[camp].points - 100) } },
-        gcd_until: { ...run.gcd_until, [camp]: c.now * 1000 + timing.gcd },
+        gcd_until: { ...run.gcd_until, [camp]: arenaMillis(c) + timing.gcd },
     }
 }

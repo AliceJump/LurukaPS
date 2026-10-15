@@ -164,6 +164,8 @@ test('Game.tick drives server pet AI after the movie without immediate SQLite wr
         call('KiboDuelArenaFirstConfirmReq')
         now = store.load(session.id).state.combat.npcDuel.intro_until
         game.tick(session.id, session)
+        for (const uuid of Object.keys(store.load(session.id).state.combat.npcDuel.in_fight))
+            call('KiboCastUltraSkill', { guid: uuid, cast_ultra_skill: false })
         call('ControlMapAI', { control_type: 1, status: 1 })
         const changes = store.db.prepare('SELECT total_changes() AS n').get().n
         now++

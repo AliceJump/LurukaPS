@@ -1,0 +1,1625 @@
+{
+    "schema": 1,
+    "azurconfig_sha256": "e2fbf9784305889638effe0ac3a9af83ebdbd2b01373dc931623c69762c6b8c9",
+    "vstring_sha256": "6c1cda4925b40e7379aa9304d26d4cf4b043cffc5bb677c215571ac1e9042e1a",
+    "schema_sha256": "354f1c6e6bf3fa6662fe1ea640809b348c18cff5b042658d345cbca750976e35",
+    "control_il_sha256": "47f66ea01182cee9470b03830f01f77b13cc48f9443585cdcef7181f90f5b663",
+    "hotfix_sha256": "5eedb27d0983532a8cc063e3ba465882c0b50589733eaf4392ae8cb89110cd6c",
+    "elements": {
+        "50300011": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_50300011.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 2039,
+            "preset": 3,
+            "frozen_cd": 0,
+            "taunt": false,
+            "block_move": true,
+            "block_skill": true,
+            "blocked_slots": [
+                1,
+                2,
+                3,
+                4
+            ]
+        },
+        "50300012": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_50300012.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 2039,
+            "preset": 3,
+            "frozen_cd": 0,
+            "taunt": false,
+            "block_move": true,
+            "block_skill": true,
+            "blocked_slots": [
+                1,
+                2,
+                3,
+                4
+            ]
+        },
+        "50302202": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_50302202.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 2039,
+            "preset": 3,
+            "frozen_cd": 0,
+            "taunt": false,
+            "block_move": true,
+            "block_skill": true,
+            "blocked_slots": [
+                1,
+                2,
+                3,
+                4
+            ]
+        },
+        "50900902": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_50900902.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 8,
+            "preset": 0,
+            "frozen_cd": 0,
+            "taunt": true,
+            "block_move": false,
+            "block_skill": false,
+            "blocked_slots": []
+        },
+        "50900903": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_50900903.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 8,
+            "preset": 0,
+            "frozen_cd": 0,
+            "taunt": true,
+            "block_move": false,
+            "block_skill": false,
+            "blocked_slots": []
+        },
+        "51000119": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_51000119.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 2039,
+            "preset": 3,
+            "frozen_cd": 0,
+            "taunt": false,
+            "block_move": true,
+            "block_skill": true,
+            "blocked_slots": [
+                1,
+                2,
+                3,
+                4
+            ]
+        },
+        "51000124": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_51000124.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 2039,
+            "preset": 3,
+            "frozen_cd": 0,
+            "taunt": false,
+            "block_move": true,
+            "block_skill": true,
+            "blocked_slots": [
+                1,
+                2,
+                3,
+                4
+            ]
+        },
+        "51020001": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_51020001.asset",
+            "kind": "lock",
+            "apply_to": 1,
+            "property": 10000,
+            "priority": 0,
+            "pet_types": -1,
+            "only_select": false,
+            "immediate": true
+        },
+        "51020050": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_51020050.asset",
+            "kind": "lock",
+            "apply_to": 1,
+            "property": 0,
+            "priority": 0,
+            "pet_types": 48,
+            "only_select": true,
+            "immediate": true
+        },
+        "51020062": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_51020062.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 2039,
+            "preset": 3,
+            "frozen_cd": 0,
+            "taunt": false,
+            "block_move": true,
+            "block_skill": true,
+            "blocked_slots": [
+                1,
+                2,
+                3,
+                4
+            ]
+        },
+        "51020064": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_51020064.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 2039,
+            "preset": 3,
+            "frozen_cd": 0,
+            "taunt": false,
+            "block_move": true,
+            "block_skill": true,
+            "blocked_slots": [
+                1,
+                2,
+                3,
+                4
+            ]
+        },
+        "51020066": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_51020066.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 2039,
+            "preset": 3,
+            "frozen_cd": 0,
+            "taunt": false,
+            "block_move": true,
+            "block_skill": true,
+            "blocked_slots": [
+                1,
+                2,
+                3,
+                4
+            ]
+        },
+        "51020152": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_51020152.asset",
+            "kind": "lock",
+            "apply_to": 1,
+            "property": 0,
+            "priority": 0,
+            "pet_types": 48,
+            "only_select": true,
+            "immediate": true
+        },
+        "51020154": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_51020154.asset",
+            "kind": "lock",
+            "apply_to": 1,
+            "property": 0,
+            "priority": 0,
+            "pet_types": 48,
+            "only_select": true,
+            "immediate": true
+        },
+        "51020156": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_51020156.asset",
+            "kind": "lock",
+            "apply_to": 1,
+            "property": 0,
+            "priority": 0,
+            "pet_types": 48,
+            "only_select": true,
+            "immediate": true
+        },
+        "51020193": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_51020193.asset",
+            "kind": "lock",
+            "apply_to": 1,
+            "property": 0,
+            "priority": 0,
+            "pet_types": 48,
+            "only_select": true,
+            "immediate": true
+        },
+        "55010102": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_55010102.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 4080,
+            "preset": 0,
+            "frozen_cd": 0,
+            "taunt": false,
+            "block_move": false,
+            "block_skill": true,
+            "blocked_slots": [
+                2,
+                3,
+                4
+            ]
+        },
+        "55010109": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_55010109.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 768,
+            "preset": 0,
+            "frozen_cd": 0,
+            "taunt": false,
+            "block_move": false,
+            "block_skill": false,
+            "blocked_slots": []
+        },
+        "101014095": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_101014095.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 23,
+            "preset": 3,
+            "frozen_cd": 0,
+            "taunt": false,
+            "block_move": true,
+            "block_skill": true,
+            "blocked_slots": [
+                1
+            ]
+        },
+        "108002103": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_108002103.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 8,
+            "preset": 1,
+            "frozen_cd": 0,
+            "taunt": true,
+            "block_move": false,
+            "block_skill": false,
+            "blocked_slots": []
+        },
+        "199003017": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_199003017.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 7,
+            "preset": 0,
+            "frozen_cd": 0,
+            "taunt": false,
+            "block_move": true,
+            "block_skill": false,
+            "blocked_slots": [
+                1
+            ]
+        },
+        "310283045": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_310283045.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 8,
+            "preset": 0,
+            "frozen_cd": 0,
+            "taunt": true,
+            "block_move": false,
+            "block_skill": false,
+            "blocked_slots": []
+        },
+        "310670005": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_310670005.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 791,
+            "preset": 0,
+            "frozen_cd": 0,
+            "taunt": false,
+            "block_move": true,
+            "block_skill": true,
+            "blocked_slots": [
+                1
+            ]
+        },
+        "320021002": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_320021002.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 2818,
+            "preset": 0,
+            "frozen_cd": 0,
+            "taunt": false,
+            "block_move": true,
+            "block_skill": false,
+            "blocked_slots": []
+        },
+        "400011170": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_400011170.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 1015,
+            "preset": 0,
+            "frozen_cd": 0,
+            "taunt": false,
+            "block_move": true,
+            "block_skill": true,
+            "blocked_slots": [
+                1,
+                2,
+                3,
+                4
+            ]
+        },
+        "400011181": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_400011181.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 1024,
+            "preset": 0,
+            "frozen_cd": 0,
+            "taunt": false,
+            "block_move": false,
+            "block_skill": false,
+            "blocked_slots": []
+        },
+        "400085025": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_400085025.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 31735,
+            "preset": 0,
+            "frozen_cd": 0,
+            "taunt": false,
+            "block_move": true,
+            "block_skill": true,
+            "blocked_slots": [
+                1,
+                2,
+                3,
+                4
+            ]
+        },
+        "400086041": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_400086041.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 3858,
+            "preset": 0,
+            "frozen_cd": 0,
+            "taunt": false,
+            "block_move": true,
+            "block_skill": true,
+            "blocked_slots": []
+        },
+        "400111013": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_400111013.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 791,
+            "preset": 0,
+            "frozen_cd": 0,
+            "taunt": false,
+            "block_move": true,
+            "block_skill": true,
+            "blocked_slots": [
+                1
+            ]
+        },
+        "400111022": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_400111022.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 791,
+            "preset": 0,
+            "frozen_cd": 0,
+            "taunt": false,
+            "block_move": true,
+            "block_skill": true,
+            "blocked_slots": [
+                1
+            ]
+        },
+        "480144000": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_480144000.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 8,
+            "preset": 0,
+            "frozen_cd": 0,
+            "taunt": true,
+            "block_move": false,
+            "block_skill": false,
+            "blocked_slots": []
+        },
+        "480151000": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_480151000.asset",
+            "kind": "lock",
+            "apply_to": 1,
+            "property": 0,
+            "priority": 1,
+            "pet_types": 8,
+            "only_select": false,
+            "immediate": false
+        },
+        "480153001": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_480153001.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 8,
+            "preset": 1,
+            "frozen_cd": 0,
+            "taunt": true,
+            "block_move": false,
+            "block_skill": false,
+            "blocked_slots": []
+        },
+        "500035027": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_500035027.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 8,
+            "preset": 0,
+            "frozen_cd": 0,
+            "taunt": true,
+            "block_move": false,
+            "block_skill": false,
+            "blocked_slots": []
+        },
+        "500053047": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_500053047.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 8,
+            "preset": 0,
+            "frozen_cd": 0,
+            "taunt": true,
+            "block_move": false,
+            "block_skill": false,
+            "blocked_slots": []
+        },
+        "500055005": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_500055005.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 8,
+            "preset": 0,
+            "frozen_cd": 0,
+            "taunt": true,
+            "block_move": false,
+            "block_skill": false,
+            "blocked_slots": []
+        },
+        "500070009": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_500070009.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 3063,
+            "preset": 0,
+            "frozen_cd": 0,
+            "taunt": false,
+            "block_move": true,
+            "block_skill": true,
+            "blocked_slots": [
+                1,
+                2,
+                3,
+                4
+            ]
+        },
+        "500070010": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_500070010.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 3063,
+            "preset": 0,
+            "frozen_cd": 0,
+            "taunt": false,
+            "block_move": true,
+            "block_skill": true,
+            "blocked_slots": [
+                1,
+                2,
+                3,
+                4
+            ]
+        },
+        "500072011": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_500072011.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 4087,
+            "preset": 3,
+            "frozen_cd": 0,
+            "taunt": false,
+            "block_move": true,
+            "block_skill": true,
+            "blocked_slots": [
+                1,
+                2,
+                3,
+                4
+            ]
+        },
+        "500072014": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_500072014.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 4087,
+            "preset": 3,
+            "frozen_cd": 0,
+            "taunt": false,
+            "block_move": true,
+            "block_skill": true,
+            "blocked_slots": [
+                1,
+                2,
+                3,
+                4
+            ]
+        },
+        "500079005": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_500079005.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 1073741815,
+            "preset": 3,
+            "frozen_cd": 0,
+            "taunt": false,
+            "block_move": true,
+            "block_skill": true,
+            "blocked_slots": [
+                1,
+                2,
+                3,
+                4
+            ]
+        },
+        "500079006": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_500079006.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 1073741815,
+            "preset": 3,
+            "frozen_cd": 0,
+            "taunt": false,
+            "block_move": true,
+            "block_skill": true,
+            "blocked_slots": [
+                1,
+                2,
+                3,
+                4
+            ]
+        },
+        "500083042": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_500083042.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 8,
+            "preset": 0,
+            "frozen_cd": 0,
+            "taunt": true,
+            "block_move": false,
+            "block_skill": false,
+            "blocked_slots": []
+        },
+        "500084042": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_500084042.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 8,
+            "preset": 0,
+            "frozen_cd": 0,
+            "taunt": true,
+            "block_move": false,
+            "block_skill": false,
+            "blocked_slots": []
+        },
+        "500085043": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_500085043.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 8,
+            "preset": 0,
+            "frozen_cd": 0,
+            "taunt": true,
+            "block_move": false,
+            "block_skill": false,
+            "blocked_slots": []
+        },
+        "500085046": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_500085046.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 8,
+            "preset": 0,
+            "frozen_cd": 0,
+            "taunt": true,
+            "block_move": false,
+            "block_skill": false,
+            "blocked_slots": []
+        },
+        "500085047": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_500085047.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 8,
+            "preset": 0,
+            "frozen_cd": 0,
+            "taunt": true,
+            "block_move": false,
+            "block_skill": false,
+            "blocked_slots": []
+        },
+        "500098007": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_500098007.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 8,
+            "preset": 0,
+            "frozen_cd": 0,
+            "taunt": true,
+            "block_move": false,
+            "block_skill": false,
+            "blocked_slots": []
+        },
+        "500098010": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_500098010.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 8,
+            "preset": 0,
+            "frozen_cd": 0,
+            "taunt": true,
+            "block_move": false,
+            "block_skill": false,
+            "blocked_slots": []
+        },
+        "500116050": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_500116050.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 2039,
+            "preset": 3,
+            "frozen_cd": 0,
+            "taunt": false,
+            "block_move": true,
+            "block_skill": true,
+            "blocked_slots": [
+                1,
+                2,
+                3,
+                4
+            ]
+        },
+        "500116054": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_500116054.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 2039,
+            "preset": 3,
+            "frozen_cd": 0,
+            "taunt": false,
+            "block_move": true,
+            "block_skill": true,
+            "blocked_slots": [
+                1,
+                2,
+                3,
+                4
+            ]
+        },
+        "500116055": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_500116055.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 2039,
+            "preset": 3,
+            "frozen_cd": 0,
+            "taunt": false,
+            "block_move": true,
+            "block_skill": true,
+            "blocked_slots": [
+                1,
+                2,
+                3,
+                4
+            ]
+        },
+        "500135030": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_500135030.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 8,
+            "preset": 0,
+            "frozen_cd": 0,
+            "taunt": true,
+            "block_move": false,
+            "block_skill": false,
+            "blocked_slots": []
+        },
+        "500137036": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_500137036.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 8,
+            "preset": 0,
+            "frozen_cd": 0,
+            "taunt": true,
+            "block_move": false,
+            "block_skill": false,
+            "blocked_slots": []
+        },
+        "500147003": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_500147003.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 2818,
+            "preset": 0,
+            "frozen_cd": 0,
+            "taunt": false,
+            "block_move": true,
+            "block_skill": false,
+            "blocked_slots": []
+        },
+        "500147005": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_500147005.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 2818,
+            "preset": 0,
+            "frozen_cd": 0,
+            "taunt": false,
+            "block_move": true,
+            "block_skill": false,
+            "blocked_slots": []
+        },
+        "500148004": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_500148004.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 2818,
+            "preset": 0,
+            "frozen_cd": 0,
+            "taunt": false,
+            "block_move": true,
+            "block_skill": false,
+            "blocked_slots": []
+        },
+        "500148006": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_500148006.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 2818,
+            "preset": 0,
+            "frozen_cd": 0,
+            "taunt": false,
+            "block_move": true,
+            "block_skill": false,
+            "blocked_slots": []
+        },
+        "500149004": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_500149004.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 2818,
+            "preset": 0,
+            "frozen_cd": 0,
+            "taunt": false,
+            "block_move": true,
+            "block_skill": false,
+            "blocked_slots": []
+        },
+        "500149006": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_500149006.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 2818,
+            "preset": 0,
+            "frozen_cd": 0,
+            "taunt": false,
+            "block_move": true,
+            "block_skill": false,
+            "blocked_slots": []
+        },
+        "500173017": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_500173017.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 791,
+            "preset": 0,
+            "frozen_cd": 0,
+            "taunt": false,
+            "block_move": true,
+            "block_skill": true,
+            "blocked_slots": [
+                1
+            ]
+        },
+        "500174008": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_500174008.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 791,
+            "preset": 0,
+            "frozen_cd": 0,
+            "taunt": false,
+            "block_move": true,
+            "block_skill": true,
+            "blocked_slots": [
+                1
+            ]
+        },
+        "500175001": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_500175001.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 791,
+            "preset": 0,
+            "frozen_cd": 0,
+            "taunt": false,
+            "block_move": true,
+            "block_skill": true,
+            "blocked_slots": [
+                1
+            ]
+        },
+        "500207003": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_500207003.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 2818,
+            "preset": 0,
+            "frozen_cd": 0,
+            "taunt": false,
+            "block_move": true,
+            "block_skill": false,
+            "blocked_slots": []
+        },
+        "500208003": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_500208003.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 2818,
+            "preset": 0,
+            "frozen_cd": 0,
+            "taunt": false,
+            "block_move": true,
+            "block_skill": false,
+            "blocked_slots": []
+        },
+        "500209002": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_500209002.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 2818,
+            "preset": 0,
+            "frozen_cd": 0,
+            "taunt": false,
+            "block_move": true,
+            "block_skill": false,
+            "blocked_slots": []
+        },
+        "500209009": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_500209009.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 2818,
+            "preset": 0,
+            "frozen_cd": 0,
+            "taunt": false,
+            "block_move": true,
+            "block_skill": false,
+            "blocked_slots": []
+        },
+        "500213009": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_500213009.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 8,
+            "preset": 0,
+            "frozen_cd": 0,
+            "taunt": true,
+            "block_move": false,
+            "block_skill": false,
+            "blocked_slots": []
+        },
+        "500213016": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_500213016.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 791,
+            "preset": 0,
+            "frozen_cd": 0,
+            "taunt": false,
+            "block_move": true,
+            "block_skill": true,
+            "blocked_slots": [
+                1
+            ]
+        },
+        "500321000": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_500321000.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 2839,
+            "preset": 2,
+            "frozen_cd": 0,
+            "taunt": false,
+            "block_move": true,
+            "block_skill": true,
+            "blocked_slots": [
+                1
+            ]
+        },
+        "500356008": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_500356008.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 2039,
+            "preset": 3,
+            "frozen_cd": 0,
+            "taunt": false,
+            "block_move": true,
+            "block_skill": true,
+            "blocked_slots": [
+                1,
+                2,
+                3,
+                4
+            ]
+        },
+        "500356011": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_500356011.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 2039,
+            "preset": 3,
+            "frozen_cd": 0,
+            "taunt": false,
+            "block_move": true,
+            "block_skill": true,
+            "blocked_slots": [
+                1,
+                2,
+                3,
+                4
+            ]
+        },
+        "500602012": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_500602012.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 791,
+            "preset": 0,
+            "frozen_cd": 0,
+            "taunt": false,
+            "block_move": true,
+            "block_skill": true,
+            "blocked_slots": [
+                1
+            ]
+        },
+        "500639001": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_500639001.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 2839,
+            "preset": 2,
+            "frozen_cd": 0,
+            "taunt": false,
+            "block_move": true,
+            "block_skill": true,
+            "blocked_slots": [
+                1
+            ]
+        },
+        "500715027": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_500715027.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 2039,
+            "preset": 3,
+            "frozen_cd": 0,
+            "taunt": false,
+            "block_move": true,
+            "block_skill": true,
+            "blocked_slots": [
+                1,
+                2,
+                3,
+                4
+            ]
+        },
+        "500751008": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_500751008.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 2818,
+            "preset": 0,
+            "frozen_cd": 0,
+            "taunt": false,
+            "block_move": true,
+            "block_skill": false,
+            "blocked_slots": []
+        },
+        "503053002": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_503053002.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 2039,
+            "preset": 3,
+            "frozen_cd": 0,
+            "taunt": false,
+            "block_move": true,
+            "block_skill": true,
+            "blocked_slots": [
+                1,
+                2,
+                3,
+                4
+            ]
+        },
+        "503054002": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_503054002.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 2039,
+            "preset": 3,
+            "frozen_cd": 0,
+            "taunt": false,
+            "block_move": true,
+            "block_skill": true,
+            "blocked_slots": [
+                1,
+                2,
+                3,
+                4
+            ]
+        },
+        "506008103": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_506008103.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 8,
+            "preset": 0,
+            "frozen_cd": 0,
+            "taunt": true,
+            "block_move": false,
+            "block_skill": false,
+            "blocked_slots": []
+        },
+        "509002103": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_509002103.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 2039,
+            "preset": 3,
+            "frozen_cd": 0,
+            "taunt": false,
+            "block_move": true,
+            "block_skill": true,
+            "blocked_slots": [
+                1,
+                2,
+                3,
+                4
+            ]
+        },
+        "509002105": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_509002105.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 2039,
+            "preset": 3,
+            "frozen_cd": 0,
+            "taunt": false,
+            "block_move": true,
+            "block_skill": true,
+            "blocked_slots": [
+                1,
+                2,
+                3,
+                4
+            ]
+        },
+        "509002107": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_509002107.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 2039,
+            "preset": 3,
+            "frozen_cd": 0,
+            "taunt": false,
+            "block_move": true,
+            "block_skill": true,
+            "blocked_slots": [
+                1,
+                2,
+                3,
+                4
+            ]
+        },
+        "509002109": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_509002109.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 2039,
+            "preset": 3,
+            "frozen_cd": 0,
+            "taunt": false,
+            "block_move": true,
+            "block_skill": true,
+            "blocked_slots": [
+                1,
+                2,
+                3,
+                4
+            ]
+        },
+        "509002111": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_509002111.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 2039,
+            "preset": 3,
+            "frozen_cd": 0,
+            "taunt": false,
+            "block_move": true,
+            "block_skill": true,
+            "blocked_slots": [
+                1,
+                2,
+                3,
+                4
+            ]
+        },
+        "509002113": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_509002113.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 2039,
+            "preset": 3,
+            "frozen_cd": 0,
+            "taunt": false,
+            "block_move": true,
+            "block_skill": true,
+            "blocked_slots": [
+                1,
+                2,
+                3,
+                4
+            ]
+        },
+        "509002115": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_509002115.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 2039,
+            "preset": 3,
+            "frozen_cd": 0,
+            "taunt": false,
+            "block_move": true,
+            "block_skill": true,
+            "blocked_slots": [
+                1,
+                2,
+                3,
+                4
+            ]
+        },
+        "509002117": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_509002117.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 2039,
+            "preset": 3,
+            "frozen_cd": 0,
+            "taunt": false,
+            "block_move": true,
+            "block_skill": true,
+            "blocked_slots": [
+                1,
+                2,
+                3,
+                4
+            ]
+        },
+        "509002119": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_509002119.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 2039,
+            "preset": 3,
+            "frozen_cd": 0,
+            "taunt": false,
+            "block_move": true,
+            "block_skill": true,
+            "blocked_slots": [
+                1,
+                2,
+                3,
+                4
+            ]
+        },
+        "509002121": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_509002121.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 2039,
+            "preset": 3,
+            "frozen_cd": 0,
+            "taunt": false,
+            "block_move": true,
+            "block_skill": true,
+            "blocked_slots": [
+                1,
+                2,
+                3,
+                4
+            ]
+        },
+        "509002123": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_509002123.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 2039,
+            "preset": 3,
+            "frozen_cd": 0,
+            "taunt": false,
+            "block_move": true,
+            "block_skill": true,
+            "blocked_slots": [
+                1,
+                2,
+                3,
+                4
+            ]
+        },
+        "509002125": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_509002125.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 2039,
+            "preset": 3,
+            "frozen_cd": 0,
+            "taunt": false,
+            "block_move": true,
+            "block_skill": true,
+            "blocked_slots": [
+                1,
+                2,
+                3,
+                4
+            ]
+        },
+        "509002127": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_509002127.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 2039,
+            "preset": 3,
+            "frozen_cd": 0,
+            "taunt": false,
+            "block_move": true,
+            "block_skill": true,
+            "blocked_slots": [
+                1,
+                2,
+                3,
+                4
+            ]
+        },
+        "509002129": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_509002129.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 2039,
+            "preset": 3,
+            "frozen_cd": 0,
+            "taunt": false,
+            "block_move": true,
+            "block_skill": true,
+            "blocked_slots": [
+                1,
+                2,
+                3,
+                4
+            ]
+        },
+        "509002131": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_509002131.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 2039,
+            "preset": 3,
+            "frozen_cd": 0,
+            "taunt": false,
+            "block_move": true,
+            "block_skill": true,
+            "blocked_slots": [
+                1,
+                2,
+                3,
+                4
+            ]
+        },
+        "509002133": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_509002133.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 2039,
+            "preset": 3,
+            "frozen_cd": 0,
+            "taunt": false,
+            "block_move": true,
+            "block_skill": true,
+            "blocked_slots": [
+                1,
+                2,
+                3,
+                4
+            ]
+        },
+        "510131502": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_510131502.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 791,
+            "preset": 0,
+            "frozen_cd": 0,
+            "taunt": false,
+            "block_move": true,
+            "block_skill": true,
+            "blocked_slots": [
+                1
+            ]
+        },
+        "510162402": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_510162402.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 791,
+            "preset": 0,
+            "frozen_cd": 0,
+            "taunt": false,
+            "block_move": true,
+            "block_skill": true,
+            "blocked_slots": [
+                1
+            ]
+        },
+        "510162404": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_510162404.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 791,
+            "preset": 0,
+            "frozen_cd": 0,
+            "taunt": false,
+            "block_move": true,
+            "block_skill": true,
+            "blocked_slots": [
+                1
+            ]
+        },
+        "510202201": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_510202201.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 2039,
+            "preset": 3,
+            "frozen_cd": 1000,
+            "taunt": false,
+            "block_move": true,
+            "block_skill": true,
+            "blocked_slots": [
+                1,
+                2,
+                3,
+                4
+            ]
+        },
+        "510225601": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_510225601.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 2039,
+            "preset": 3,
+            "frozen_cd": 0,
+            "taunt": false,
+            "block_move": true,
+            "block_skill": true,
+            "blocked_slots": [
+                1,
+                2,
+                3,
+                4
+            ]
+        },
+        "520059005": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_520059005.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 8,
+            "preset": 0,
+            "frozen_cd": 0,
+            "taunt": true,
+            "block_move": false,
+            "block_skill": false,
+            "blocked_slots": []
+        },
+        "520201006": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_520201006.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 2039,
+            "preset": 3,
+            "frozen_cd": 0,
+            "taunt": false,
+            "block_move": true,
+            "block_skill": true,
+            "blocked_slots": [
+                1,
+                2,
+                3,
+                4
+            ]
+        },
+        "394": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_394.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 1073741815,
+            "preset": 3,
+            "frozen_cd": 0,
+            "taunt": false,
+            "block_move": true,
+            "block_skill": true,
+            "blocked_slots": [
+                1,
+                2,
+                3,
+                4
+            ]
+        },
+        "398": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_398.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 2039,
+            "preset": 3,
+            "frozen_cd": 0,
+            "taunt": false,
+            "block_move": true,
+            "block_skill": true,
+            "blocked_slots": [
+                1,
+                2,
+                3,
+                4
+            ]
+        },
+        "14005": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_14005.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 2039,
+            "preset": 3,
+            "frozen_cd": 0,
+            "taunt": false,
+            "block_move": true,
+            "block_skill": true,
+            "blocked_slots": [
+                1,
+                2,
+                3,
+                4
+            ]
+        },
+        "14007": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_14007.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 2039,
+            "preset": 3,
+            "frozen_cd": 0,
+            "taunt": false,
+            "block_move": true,
+            "block_skill": true,
+            "blocked_slots": [
+                1,
+                2,
+                3,
+                4
+            ]
+        },
+        "5102001": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_5102001.asset",
+            "kind": "lock",
+            "apply_to": 1,
+            "property": 10000,
+            "priority": 0,
+            "pet_types": -1,
+            "only_select": false,
+            "immediate": true
+        },
+        "5102010": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_5102010.asset",
+            "kind": "lock",
+            "apply_to": 1,
+            "property": 0,
+            "priority": 0,
+            "pet_types": 48,
+            "only_select": true,
+            "immediate": true
+        },
+        "30300003": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_30300003.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 2039,
+            "preset": 3,
+            "frozen_cd": 0,
+            "taunt": false,
+            "block_move": true,
+            "block_skill": true,
+            "blocked_slots": [
+                1,
+                2,
+                3,
+                4
+            ]
+        },
+        "30300202": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_30300202.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 2039,
+            "preset": 3,
+            "frozen_cd": 0,
+            "taunt": false,
+            "block_move": true,
+            "block_skill": true,
+            "blocked_slots": [
+                1,
+                2,
+                3,
+                4
+            ]
+        },
+        "30300203": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_30300203.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 2039,
+            "preset": 3,
+            "frozen_cd": 0,
+            "taunt": false,
+            "block_move": true,
+            "block_skill": true,
+            "blocked_slots": [
+                1,
+                2,
+                3,
+                4
+            ]
+        },
+        "30300302": {
+            "source": "Assets/ResourcesAssets/Config/Battle/Element/Assets/ast_30300302.asset",
+            "kind": "control",
+            "apply_to": 1,
+            "flags": 2039,
+            "preset": 3,
+            "frozen_cd": 0,
+            "taunt": false,
+            "block_move": true,
+            "block_skill": true,
+            "blocked_slots": [
+                1,
+                2,
+                3,
+                4
+            ]
+        }
+    }
+}

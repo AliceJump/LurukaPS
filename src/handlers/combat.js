@@ -1,5 +1,17 @@
 import { recordNpcArenaDeaths } from '../npc-kibo-battle.js'
 import { recordArenaHpStatistics, publishArenaStatistics } from '../npc-kibo-statistics.js'
+import { recordArenaTrainerSkill, recordArenaTrainerStop } from '../npc-kibo-trainer-skills.js'
+import { recordArenaControlEvent } from '../npc-kibo-controls.js'
+import { recordArenaDamageElement, arenaDamageRecord, arenaDamageElement } from '../npc-kibo-damage-inputs.js'
+import { arenaNumericalConfig } from '../npc-kibo-damage-amounts.js'
+import { arenaHurtIsDuplicate } from '../npc-kibo-hurt-receipts.js'
+import { recordArenaSkillOrigin, recordArenaBulletOrigin, recordArenaElementOrigin } from '../npc-kibo-origins.js'
+import {
+    recordArenaSkillStart,
+    recordArenaSkillStop,
+    recordArenaPropertyChange,
+    publishArenaSp,
+} from '../npc-kibo-sp.js'
 import { enemyDefinition } from '../enemy-state.js'
 import { recordGuidedKill } from '../task-kills.js'
 import { finishEnemyGroupRelations, pruneInactiveCampaignRelations } from './world-combat.js'
@@ -158,6 +170,9 @@ export function registerCombat(on) {
         if (c.state.petCaptureResults?.[id]) return
         ensure(r.skill?.skill_id > 0, 'Missing skill')
         const battle = combatState(c.state, c.now)
+        recordArenaTrainerSkill(c, id, r)
+        if (recordArenaSkillStart(c, id, r) === false) return
+        recordArenaSkillOrigin(c, r)
         boundedSet(
             battle.skills,
             id,
@@ -213,6 +228,8 @@ export function registerCombat(on) {
         const id = skillActorKey(c, r, Number(u64(r.skill_id)), true),
             battle = combatState(c.state, c.now),
             active = battle.skills[id]
+        recordArenaTrainerStop(c, id, r)
+        recordArenaSkillStop(c, id, r)
         if (active && String(active.skill.skill_id) === u64(r.skill_id)) delete battle.skills[id]
     })
     on('CreateBullet', (c, r) => {
@@ -227,6 +244,7 @@ export function registerCombat(on) {
             ensure(id !== '0' && bullet.config_id > 0, 'Invalid bullet')
             const previous = battle.bullets[id]
             ensure(!previous || previous.unit_id === unit, 'Bullet belongs to another actor')
+            recordArenaBulletOrigin(c, unit, bullet)
             boundedSet(
                 battle.bullets,
                 id,
@@ -276,13 +294,14 @@ export function registerCombat(on) {
                 : null
         let entrustDamageChanged = false
         const reportSp = advanceEnergy(c, battle, changed)
-        const update = (id, values, source) => {
+        const update = (id, values, source, applyHp = true) => {
             if (id === '0') return
             const arena = battle.npcDuel
             if (arena && (arena.actors[id] || arena.actors[source])) {
                 if (!arena.actors[id]) return // Arena trainers are not damageable contestants.
                 if (
                     c.state.multiCampaign?.arena_status !== 4 ||
+                    arena.pause ||
                     arena.ai_control?.[0] === 1 ||
                     arena.ai_control?.[2] === 1
                 )
@@ -303,13 +322,11 @@ export function registerCombat(on) {
                     definition = enemyDefinition(c.tables, c.state, id)
                 if (definition?.npc_duel && !battle.npcDuel.in_fight[id]) return
                 if (definition && values.delta !== undefined) {
-                    const hp =
-                        previous.hp === 0
-                            ? 0
-                            : Math.max(
-                                  0,
-                                  Math.min(definition.max_hp, (previous.hp ?? definition.max_hp) + values.delta),
-                              )
+                    const hp = !applyHp
+                        ? (previous.hp ?? definition.max_hp)
+                        : previous.hp === 0
+                          ? 0
+                          : Math.max(0, Math.min(definition.max_hp, (previous.hp ?? definition.max_hp) + values.delta))
                     const value = {
                         ...previous,
                         ...definition,
@@ -357,6 +374,14 @@ export function registerCombat(on) {
                 if (c.state.petCaptureResults?.[h.from_id] || c.state.petCaptureResults?.[h.tar_id]) continue
                 if (h.tar_id !== '0') actor(c, h.tar_id)
                 if (h.from_id !== '0') actor(c, h.from_id)
+                if (arenaHurtIsDuplicate(c, h)) {
+                    const hp = battle.entities[h.tar_id]?.hp
+                    // The client removes its pending DamageIndex on the hurt
+                    // ACK. A retry still needs authoritative HP, without a
+                    // second HP/statistics/SP application.
+                    if (hp !== undefined) enemyHurts.push({ source: rows.indexOf(row), hp })
+                    continue
+                }
                 if (h.from_sp !== undefined || h.tar_sp !== undefined || h.delta_sp !== undefined) {
                     const trace = (battle.energyTrace ??= [])
                     trace.push({
@@ -378,13 +403,19 @@ export function registerCombat(on) {
                         : undefined,
                     boss = battle.entities[h.from_id],
                     prior = battle.entities[h.tar_id]?.hp
+                const damageRecord = arenaDamageRecord(c, h)
+                const dummy =
+                    damageRecord &&
+                    arenaDamageElement(damageRecord.config_id)?.damageType ===
+                        arenaNumericalConfig.constants.DamageType_Dummy
                 update(
                     h.tar_id,
                     {
-                        ...(h.hp_change !== undefined ? { delta: h.hp_change } : {}),
+                        ...(h.hp_change !== undefined ? { delta: dummy ? 0 : h.hp_change } : {}),
                         ...(h.cur_hp !== undefined ? { reported_hp: h.cur_hp } : {}),
                     },
                     h.from_id,
+                    !dummy,
                 )
                 reportSp(h.from_id, h.from_sp)
                 reportSp(h.tar_id, h.tar_sp, h.tar_sp === undefined ? h.delta_sp : 0)
@@ -432,6 +463,7 @@ export function registerCombat(on) {
                 if (c.state.petCaptureResults?.[a.uuid]) continue
                 actor(c, a.uuid)
                 ensure((a.attrButeInfos ?? []).length <= 256, 'Too many attribute changes')
+                recordArenaPropertyChange(c, a)
                 boundedSet(
                     battle.entities,
                     a.uuid,
@@ -458,6 +490,9 @@ export function registerCombat(on) {
                     const prev = battle.elements[id]
                     battle.elements[id] = { ...prev, ...e, buff: { ...prev.buff, ...e.buff }, updated_at: c.now }
                 }
+                recordArenaControlEvent(c, e)
+                recordArenaElementOrigin(c, e)
+                recordArenaDamageElement(c, e)
             }
         }
         battle.report_count++
@@ -474,6 +509,7 @@ export function registerCombat(on) {
             })
         recordNpcArenaDeaths(c)
         publishArenaStatistics(c)
+        publishArenaSp(c)
         for (const id of deadGroups) finishEnemyGroupRelations(c, id)
         if (deadGroups.size) pruneInactiveCampaignRelations(c)
         if (deadGroups.size) advanceCultTrialCombat(c)

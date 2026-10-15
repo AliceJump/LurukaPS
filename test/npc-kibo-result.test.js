@@ -71,7 +71,11 @@ function fixture() {
         const source = actors.find((actor) => actor.camp === 1 && state().combat.npcDuel.in_fight[actor.uuid]).uuid
         const enemies = actors.filter((actor) => actor.camp === 2)
         const summon = (enemy) =>
-            call('PVEEnemySummonReq', { pet_guid: enemy.uuid, pos: enemy.pos, angle: enemy.angle })
+            call('PVEEnemySummonReq', {
+                pet_guid: enemy.uuid,
+                pos: state().combat.npcDuel.positions.enemySummon.pos,
+                angle: enemy.angle,
+            })
         const kill = (enemy) =>
             call('BattleInfoReduce', {
                 uint64_dic: [source, enemy.uuid],
@@ -197,6 +201,12 @@ test('real NPC victories grant first/challenge rewards and area progress once, t
         assert.equal(won.find((x) => x.id === 11806).data.result, 1)
         assert.equal(won.find((x) => x.id === 11806).data.star, 0)
         assert.equal(won.find((x) => x.id === 11806).data.clearance_time, '160')
+        const progress = won.find((x) => x.id === 10740).data.records.find((record) => record.id === 1001)
+        assert.equal(progress.success_time, f.state().kiboDuelRecords[1001].success_time)
+        assert.ok(
+            Number(progress.success_time) > 0,
+            'a win immediately publishes a clear marker even with zero challenge stars',
+        )
         assert.equal(f.state().kiboDuelRecords[1001].star, 0)
         assert.equal(f.state().kiboDuelAreas[1].lvl, 1)
         assert.equal(f.state().kiboDuelAreas[1].exp, 30)
@@ -211,6 +221,17 @@ test('real NPC victories grant first/challenge rewards and area progress once, t
         f.advance(6)
         assert.equal(f.tick().find((x) => x.id === 11800).data.status, 7)
         f.call('MultiCampaignQuit')
+        const clearTime = f.state().kiboDuelRecords[1001].success_time
+        const login = f.relogin()
+        assert.equal(
+            login.find((packet) => packet.id === 10740).data.records.find((record) => record.id === 1001).success_time,
+            clearTime,
+        )
+        assert.equal(
+            inventory(402000),
+            before + 10,
+            'world relogin restores progress without repeating first-clear rewards',
+        )
         for (const id of [1002, 1003, 1004, 1005]) {
             f.enter(id)
             f.win()
@@ -348,7 +369,10 @@ test('settled arena relogin accepts9602/9604 without reopening the match; explic
         f.call('MultiCampaignPlayerLoadFinish')
         f.call('KiboDuelArenaFirstConfirmReq')
         f.finishPresentation()
-        assert.equal(f.state().combat.npcDuel.end_at, finished.end_at + 329)
+        const firstWindow = Number(
+            tables.get('game').find((row) => row.title === 'KIBO_DUEL_ARENA_MODE_FIRST_TIME').value,
+        )
+        assert.equal(f.state().combat.npcDuel.end_at, finished.end_at + 300 + 6 + firstWindow)
         f.advance(1)
         f.tick()
         assert.equal(f.state().multiCampaign.arena_status, 4)
@@ -377,7 +401,7 @@ test('NPC AI respects trainer pause but guide summons still work; empty-field pr
         assert.equal(Object.keys(f.state().combat.npcDuel.in_fight).length, 1)
         assert.equal(f.store.db.prepare('SELECT total_changes() AS n').get().n, writes)
         const next = Object.values(run.actors).find((actor) => actor.camp === 2 && actor.uuid !== enemy.uuid)
-        f.call('PVEEnemySummonReq', { pet_guid: next.uuid, pos: next.pos, angle: next.angle })
+        f.call('PVEEnemySummonReq', { pet_guid: next.uuid, pos: run.positions.enemySummon.pos, angle: next.angle })
         assert.ok(f.state().combat.npcDuel.in_fight[next.uuid], 'guide explicitly deploys while trainer AI is stopped')
         f.call('ControlMapAI', { control_type: 1, status: 2 })
         f.advance(1)

@@ -11,6 +11,7 @@ import { Protocol } from './protocol.js'
 import { Store } from './store.js'
 import { Tables } from './player.js'
 import { Game } from './game.js'
+import { ARENA_TIMER_MS } from './npc-kibo-time.js'
 import { FrameReader, encodeFrame } from './wire.js'
 
 // Project maintenance policy for contributors and AI agents:
@@ -189,6 +190,7 @@ export async function startServer(config, logger = console) {
                     try {
                         const entering = !session.entered
                         packets = game.dispatch(session, frame)
+                        game.trackArenaTick(session, frame.id, packets)
                         if (entering && session.entered) crc.setDelay(config.crcDelay ?? 0)
                         if (entering && session.entered && config.strongEncryption) {
                             const nextKey = randomBytes(32)
@@ -438,32 +440,44 @@ export async function startServer(config, logger = console) {
         store.close()
         throw err
     }
+    const sendUpdates = (socket, session, replay, packets) => {
+        game.trackArenaTick(session, 0, packets)
+        if (packets.length) replay.invalidate()
+        for (const packet of packets) {
+            if (socket.writableLength > 8 * 1024 * 1024) {
+                socket.destroy()
+                break
+            }
+            session.ntfSeq = ((session.ntfSeq || 0) + 1) >>> 0
+            socket.write(
+                encodeFrame({ ...packet, pushSeq: session.ntfSeq, flag: session.wireKey ? 2 : 0 }, packet.payload, {
+                    encryptionKey: session.wireKey,
+                }),
+            )
+        }
+    }
     const productionTimer = setInterval(() => {
         for (const [socket, { session, replay }] of sessions) {
             if (!session.entered || owners.get(session.id) !== socket) continue
             try {
-                const packets = game.tick(session.id, session)
-                if (packets.length) replay.invalidate()
-                for (const packet of packets) {
-                    if (socket.writableLength > 8 * 1024 * 1024) {
-                        socket.destroy()
-                        break
-                    }
-                    session.ntfSeq = ((session.ntfSeq || 0) + 1) >>> 0
-                    socket.write(
-                        encodeFrame(
-                            { ...packet, pushSeq: session.ntfSeq, flag: session.wireKey ? 2 : 0 },
-                            packet.payload,
-                            { encryptionKey: session.wireKey },
-                        ),
-                    )
-                }
+                sendUpdates(socket, session, replay, game.tick(session.id, session))
             } catch (err) {
                 logger.warn(`Production update: ${err.message}`)
             }
         }
     }, 1000)
     productionTimer.unref()
+    const arenaTimer = setInterval(() => {
+        for (const [socket, { session, replay }] of sessions) {
+            if (!session.entered || !session.npcArenaTick || owners.get(session.id) !== socket) continue
+            try {
+                sendUpdates(socket, session, replay, game.tickArena(session.id, session))
+            } catch (err) {
+                logger.warn(`Arena update: ${err.message}`)
+            }
+        }
+    }, ARENA_TIMER_MS)
+    arenaTimer.unref()
     return {
         tcp,
         web,
@@ -473,6 +487,7 @@ export async function startServer(config, logger = console) {
         runtime,
         async close() {
             clearInterval(productionTimer)
+            clearInterval(arenaTimer)
             for (const s of sockets) s.destroy()
             await Promise.all([
                 new Promise((resolve) => tcp.close(resolve)),

@@ -5,9 +5,12 @@ import { storyCampaignSnapshot, traceStoryCampaignTask } from '../story-campaign
 import { endSceneTransition } from '../scene-transition.js'
 import { startCultTrialBattle } from '../cult-trial.js'
 import { syncLoadedNpcArena } from './kibo-duel.js'
+import { updateNpcArenaPause } from '../npc-kibo-pause.js'
 export function registerClientState(on) {
     on('GamePause', (c, r) => {
         const gameTime = String(r.game_time ?? '0')
+        if (updateNpcArenaPause(c, r))
+            return { operate: c.state.world.pause.operate, game_time: c.state.world.pause.game_time }
         c.state.world.pause = { operate: !!r.operate, game_time: gameTime, updated_at: c.now }
         return { operate: !!r.operate, game_time: gameTime }
     })

@@ -1,3 +1,4 @@
+import { arenaContext } from './npc-kibo-time.js'
 import fs from 'node:fs'
 import { ensure } from './handlers/common.js'
 
@@ -10,26 +11,40 @@ export function npcArenaPresentation(tables, duelId) {
     const story = tables.find('story', storyId),
         timing = config.stories[storyId]
     ensure(story && timing && timing.timeline_seconds > 0, 'Arena entry presentation configuration unavailable', 1007)
-    // Wall-clock deadline follows the client's4s start timer, master Timeline
-    // length, and the story table's closing mask. Exact official scheduling
-    // is not captured; this local envelope must not shorten those actions.
-    const seconds = Math.ceil(
-        timing.client_delay_seconds + timing.timeline_seconds + Number(story.endCover || 0) / 1000,
+    // The server controls the FIRST story window. The extracted Timeline also
+    // contains a long held final camera shot; its container length is not the
+    // stage duration. StoryStage.OnExit handles ending that presentation.
+    // Keep the extracted asset metadata as evidence, not as an extra timer.
+    const seconds = Number(tables.get('game').find((row) => row.title === 'KIBO_DUEL_ARENA_MODE_FIRST_TIME')?.value)
+    ensure(
+        Number.isInteger(seconds) && seconds > timing.client_delay_seconds,
+        'Arena entry stage duration configuration unavailable',
+        1007,
     )
     return { storyId, seconds }
 }
 
 export function publishNpcArenaPresentation(c) {
+    c = arenaContext(c)
     const run = c.state.combat.npcDuel
-    c.pushBefore('SCProtoKiboDuelArenaStingerInfoSync', { stage: 2, end_time: String(run.intro_until) })
-    c.pushBefore('SCProtoKiboDuelArenaInfoSync', { status: 6, status_endtime: String(run.intro_until), enter_type: 0 })
+    c.pushBefore('SCProtoKiboDuelArenaStingerInfoSync', { stage: 2, end_time: String(Math.ceil(run.intro_until)) })
+    c.pushBefore('SCProtoKiboDuelArenaInfoSync', {
+        status: 6,
+        status_endtime: String(Math.ceil(run.intro_until)),
+        enter_type: 0,
+    })
 }
 
 export function beginNpcArenaPresentation(c, replay = false) {
+    c = arenaContext(c)
     const run = c.state.combat.npcDuel
     const { storyId, seconds } = npcArenaPresentation(c.tables, run.duel_id)
     if (replay)
-        c.pushBefore('SCProtoKiboDuelArenaInfoSync', { status: 3, status_endtime: String(c.now), enter_type: 0 })
+        c.pushBefore('SCProtoKiboDuelArenaInfoSync', {
+            status: 3,
+            status_endtime: String(Math.ceil(c.now)),
+            enter_type: 0,
+        })
     c.state.combat.npcDuel = { ...run, intro_story_id: storyId, intro_started_at: c.now, intro_until: c.now + seconds }
     c.state.multiCampaign.arena_status = 6
     c.pushBefore('SCProtoKiboDuelArenaFirstConfirmInfoSync', {

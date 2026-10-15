@@ -236,7 +236,7 @@ test('duel501 enters its table-linked arena through one-way 9510 and can leave w
         const confirmed = call('KiboDuelArenaFirstConfirmReq')
         assert.deepEqual(
             confirmed.map((x) => x.id),
-            [11811, 11811, 11803, 11807, 11800, 11813],
+            [11803, 11807, 11800, 11813],
         )
         assert.equal(confirmed.find((x) => x.id === 11803).data.confirm_infos[0].isConfirm, true)
         assert.equal(confirmed.find((x) => x.id === 11800).data.status, 6)
