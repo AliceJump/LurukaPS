@@ -18,7 +18,7 @@ function homeScenePosition(tables) {
 
     const point = tables.get('world_borthpos').find((row) => row.cityId === homeMapId && Number(row.mainPoint) === 1)
     const area = tables.get('world_area').find((row) => row.sceneId === homeMapId)
-    ensure(point && area, 'Missing home scene spawn configuration', ErrorCode.GameConfig)
+    ensure(point && area, 'Missing home scene spawn configuration', ErrorCode.NotFoundBirthPoint)
 
     return { ...tables.position(point), area_id: area.id }
 }
@@ -156,7 +156,11 @@ export function registerHome(on, tables) {
         ensure(tables.find('products', r.product_id), 'Unknown product')
         ensure(Number.isInteger(r.count) && r.count > 0, 'Invalid wishlist quantity')
         const limit = Number(tables.get('game').find((x) => x.title === 'HOME_WISHLIST_LIMIT')?.value)
-        ensure(Number.isInteger(limit) && limit > 0, 'Invalid wishlist limit', ErrorCode.GameConfig)
+        ensure(
+            Number.isInteger(limit) && limit > 0,
+            'Invalid wishlist limit',
+            ErrorCode.HomeMaterialWishlistConfInvalid,
+        )
         if (r.uid) {
             const index = home.wishlist.findIndex((x) => x.uid === r.uid)
             ensure(index >= 0, 'Wishlist entry not owned')

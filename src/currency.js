@@ -22,7 +22,7 @@ export function syncCurrencyMirrors(player) {
     ]) {
         const value = basic[key]
         if (value === undefined) continue
-        ensure(Number.isSafeInteger(value) && value >= 0, 'Invalid currency balance', ErrorCode.GameConfig)
+        ensure(Number.isSafeInteger(value) && value >= 0, 'Invalid currency balance', ErrorCode.InvalidLogic)
         const old = attrs.find((a) => a.attr_id === id),
             text = String(value)
         if (!old) {

@@ -17,7 +17,7 @@ export function ensureHome(tables, state) {
         config = tables.find('home_building', id)
     ensure(config && tables.find('home_block', block), 'Missing initial home configuration', ErrorCode.GameConfig)
     const group = tables.get('home_building_group').find((g) => g.groupId === config.groupId)
-    ensure(group, 'Missing home building group', ErrorCode.GameConfig)
+    ensure(group, 'Missing home building group', ErrorCode.BuildGroupConfNotFound)
     state.home = {
         name: Buffer.from('我的家园').toString('base64'),
         level: state.player.basic_info.home_lv || 1,
@@ -217,7 +217,7 @@ export function reconcileHomeBuildShortcuts(tables, state) {
 
 export function addHomeBuildings(tables, state, id, count) {
     const config = tables.find('home_building', id)
-    ensure(config, 'Unknown building reward', ErrorCode.GameConfig)
+    ensure(config, 'Unknown building reward', ErrorCode.BuildConfNotFound)
     const home = ensureHome(tables, state)
     let row = home.inventory.find((b) => b.build_id === id)
     if (!row) {

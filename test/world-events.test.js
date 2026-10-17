@@ -46,8 +46,7 @@ test('world event start is stable, sequential steps reward once and cooldown pre
         assert.throws(() => f.call('WorldEventStep', { cfg_id: 300, step: 4 }))
         assert.deepEqual(f.store.load(f.session.id), before)
         let done
-        for (let step = 2; step <= finalStep; step++)
-            done = f.call('WorldEventStep', { cfg_id: 300, step }).at(-1).data
+        for (let step = 2; step <= finalStep; step++) done = f.call('WorldEventStep', { cfg_id: 300, step }).at(-1).data
         assert(done.rewards.length > 0)
         assert.equal(f.state().worldEvents['101:300'].completed, true)
         assert.deepEqual(f.call('WorldEventStep', { cfg_id: 300, step: finalStep }).at(-1).data.rewards, [])

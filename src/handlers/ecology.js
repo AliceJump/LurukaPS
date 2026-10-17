@@ -17,12 +17,16 @@ export function registerEcology(on, tables) {
                         ensure(
                             !extra.length && Number.isSafeInteger(weight) && weight > 0 && templates.has(id),
                             'Invalid ecology template configuration',
-                            ErrorCode.GameConfig,
+                            ErrorCode.WorldInvalidEcologyConfig,
                         )
                         return { weight, id }
                     })
                 const total = choices.reduce((n, x) => n + x.weight, 0)
-                ensure(total > 0 && total <= 0x7fffffff, 'Invalid ecology template weights', ErrorCode.GameConfig)
+                ensure(
+                    total > 0 && total <= 0x7fffffff,
+                    'Invalid ecology template weights',
+                    ErrorCode.WorldInvalidEcologyConfig,
+                )
                 let draw = c.randomInt(total),
                     selected
                 for (const choice of choices) {

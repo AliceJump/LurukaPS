@@ -27,7 +27,7 @@ export function registerSimpleProduction(on, tables) {
         ensure(
             Number.isInteger(recipe.time) && recipe.time > 0 && c.now + r.count * recipe.time <= 0xffffffff,
             'Invalid production duration',
-            ErrorCode.GameConfig,
+            ErrorCode.HomeNoProductConf,
         )
         const costs = parseRewards(recipe.material),
             rewards = parseRewards(recipe.rewardId)

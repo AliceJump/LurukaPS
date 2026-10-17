@@ -11,7 +11,7 @@ export function cookingRecipe(tables, id) {
             tables.find('common_item', id) &&
             (product?.type === 2 || (product?.type === 3 && tables.find('food', id))),
         'Unknown cooking recipe',
-        ErrorCode.InvalidProtoID,
+        ErrorCode.CookConfFail,
     )
     ensure(product.rewardId === `3#${id}#1`, 'Cooking product configuration is missing', ErrorCode.GameConfig)
     const requirements = String(quality.needMaterial ?? '')
@@ -26,7 +26,7 @@ export function cookingRecipe(tables, id) {
             )
             const [groupId, count, minimumQuality] = parts
             const group = tables.find('food_material_group', groupId)
-            ensure(group, 'Cooking material group is missing', ErrorCode.GameConfig)
+            ensure(group, 'Cooking material group is missing', ErrorCode.CookMaterialConfFail)
             const choices = String(group.includeItems ?? '')
                 .split('|')
                 .filter(Boolean)
@@ -41,7 +41,7 @@ export function cookingRecipe(tables, id) {
                 })
                 .filter(([, quality]) => quality >= minimumQuality)
                 .map(([id]) => id)
-            ensure(choices.length, 'Cooking material quality is unavailable', ErrorCode.GameConfig)
+            ensure(choices.length, 'Cooking material quality is unavailable', ErrorCode.CookMaterialConfFail)
             return { count, choices }
         })
     ensure(requirements.length > 0 && requirements.length <= 4, 'Invalid cooking material slots', ErrorCode.GameConfig)

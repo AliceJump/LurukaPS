@@ -39,7 +39,7 @@ export function registerWorldEvents(on, tables) {
     const config = (c, id) => {
         const row = tables.find('world_event', id)
         ensure(row && row.worldMapID === c.state.world.map_id, 'Event not in current map')
-        ensure(!row.conditionID, 'Event condition evaluation is not implemented', ErrorCode.GameConfig)
+        ensure(!row.conditionID, 'Event condition evaluation is not implemented', ErrorCode.FunctionClosed)
         ensure(row.stepCount >= 2, 'Invalid event step configuration', ErrorCode.GameConfig)
         return row
     }
@@ -244,7 +244,11 @@ export function registerWorldEvents(on, tables) {
     on('TaskRandomArea', (c, r) => {
         ensure(Number.isInteger(r.u32) && r.u32 > 0, 'Invalid random task group')
         const groups = tables.get('task_randomgroup')
-        ensure(groups.length === 0, 'Configured random task selection needs scheduling support', ErrorCode.GameConfig)
+        ensure(
+            groups.length === 0,
+            'Configured random task selection needs scheduling support',
+            ErrorCode.FunctionClosed,
+        )
         c.state.randomTaskQuery = { group_id: r.u32, time: c.now }
         c.pushBefore('CSProtoTaskRandomAreaSync', { time: c.now, areas_ids: [], task_ids: [] })
         return {}

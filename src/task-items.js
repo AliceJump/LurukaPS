@@ -6,7 +6,7 @@ export function taskItemCount(state, id) {
 }
 
 export function changeTaskItem(tables, state, id, delta) {
-    ensure(tables.find('task_item', id), 'Unknown task item', ErrorCode.GameConfig)
+    ensure(tables.find('task_item', id), 'Unknown task item', ErrorCode.TaskItemConf)
     const count = taskItemCount(state, id) + delta
     ensure(
         Number.isSafeInteger(delta) && Number.isSafeInteger(count) && count >= 0 && count <= 99,

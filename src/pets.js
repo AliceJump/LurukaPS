@@ -181,13 +181,14 @@ export function repairPetProfiles(tables, state, now) {
 }
 export function ensurePetName(tables, pet, config = tables.find('pet', pet.config_id)) {
     if (pet.pet_name) return false
-    ensure(config && typeof config.name === 'string' && config.name.trim(), 'Missing pet name', ErrorCode.GameConfig)
+    ensure(config, 'Missing pet name configuration', ErrorCode.PetConfNotExist)
+    ensure(typeof config.name === 'string' && config.name.trim(), 'Missing pet name', ErrorCode.GameConfig)
     pet.pet_name = Buffer.from(config.name, 'utf8').toString('base64')
     return true
 }
 export function petData(tables, configId, guid, box, builderRuleId = 1001) {
     const config = tables.find('pet', configId)
-    ensure(config && tables.find('template_value', configId), 'Missing pet configuration', ErrorCode.GameConfig)
+    ensure(config && tables.find('template_value', configId), 'Missing pet configuration', ErrorCode.PetConfNotExist)
     const pet = {
         guid: String(guid),
         pet_name: Buffer.from(config.name, 'utf8').toString('base64'),

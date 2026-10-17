@@ -282,7 +282,7 @@ function attachTrialPets(c, tables, trial, positions, requested) {
         ensure(
             cfg && tables.find('pet', cfg.petId) && tables.find('template_value', cfg.petId),
             'Unknown trial pet',
-            ErrorCode.GameConfig,
+            ErrorCode.TrialPetNotExist,
         )
         const guid = trialPetGuid(c.id, cfg.id)
         let pet = pets.find((p) => p.guid === guid)
@@ -441,11 +441,11 @@ export function registerTrialGroups(on, tables) {
         ensure(!!r.force === !!active.data.isForceChange, 'Trial replacement mode mismatch')
         const heroes = requested.map((item) => {
             const cfg = configs.get(item.id)
-            ensure(cfg && tables.find('hero', cfg.heroId), 'Unknown trial hero', ErrorCode.GameConfig)
+            ensure(cfg && tables.find('hero', cfg.heroId), 'Unknown trial hero', ErrorCode.HeroNotExist)
             ensure(
                 !cfg.accessorySet && !cfg.talentrune,
                 'Trial accessory or talent configuration not implemented',
-                ErrorCode.GameConfig,
+                ErrorCode.FunctionClosed,
             )
             trialSoulEssence(tables, cfg)
             const guid = trialHeroGuid(c.id, cfg.id)

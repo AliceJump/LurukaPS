@@ -49,7 +49,7 @@ export function registerProduction(on, tables) {
         ensure(
             Number.isInteger(recipe.time) && recipe.time > 0,
             'Unsupported production duration',
-            ErrorCode.GameConfig,
+            ErrorCode.HomeNoProductConf,
         )
         const costs = parseRewards(recipe.material),
             rewards = parseRewards(recipe.rewardId)

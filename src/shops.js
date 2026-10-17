@@ -121,7 +121,7 @@ export class ShopCatalog {
         const slot = this.slots.get(id)
         ensure(slot?.slotType === 1, 'Unsupported shop slot type', ErrorCode.InvalidProtoID)
         const goods = this.goods.get(slot.slotParam)
-        ensure(goods, 'Missing shop goods', ErrorCode.GameConfig)
+        ensure(goods, 'Missing shop goods', ErrorCode.ShopGoodsConfNotExist)
         ensure(
             !goods.timelimit && !goods.launchType,
             'Event goods scheduling is not yet available',

@@ -78,7 +78,7 @@ export function grantRewards(tables, state, rewards, depth = 0, context = {}) {
             granted.push(...pets.map((p) => ({ itemtype: 30, itemid, itemnum: 1, guid: p.guid })))
             continue
         } else if (itemtype === 9) {
-            ensure(tables.find('soulessence', itemid), 'Unknown equipment', ErrorCode.GameConfig)
+            ensure(tables.find('soulessence', itemid), 'Unknown equipment', ErrorCode.SoulEssenceConfNotExist)
             const bag = state.player.soulessence_infos.soulessences
             ensure(itemnum <= 1000 && bag.length + itemnum <= 10000, 'Equipment bag limit')
             let next = Math.max(state.nextEssenceGuid ?? 1, ...bag.map((e) => e.guid + 1))
@@ -91,7 +91,7 @@ export function grantRewards(tables, state, rewards, depth = 0, context = {}) {
             state.nextEssenceGuid = next
             continue
         } else if (itemtype === 25) {
-            ensure(tables.find('mount_saddle', itemid), 'Unknown mount saddle', ErrorCode.GameConfig)
+            ensure(tables.find('mount_saddle', itemid), 'Unknown mount saddle', ErrorCode.MountSaddleConfNotFound)
             state.mountSaddles ??= tables.get('mount_saddle').map((r) => r.id)
             if (!state.mountSaddles.includes(itemid)) state.mountSaddles.push(itemid)
         } else if (itemtype === 40) {

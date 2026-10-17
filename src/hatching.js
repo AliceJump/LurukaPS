@@ -26,7 +26,8 @@ export function startHatch(c, buildGuid, eggGuid) {
     )
     const config = c.tables.find('pet_egg', egg.configid),
         station = c.tables.find('home_building_production', b.build_id)
-    ensure(config && station, 'Missing hatch configuration', ErrorCode.GameConfig)
+    ensure(config, 'Missing egg configuration', ErrorCode.EggConfNotExist)
+    ensure(station, 'Missing hatch station configuration', ErrorCode.BuildProductConfNotFound)
     ensure(Number.isInteger(config.eggTime) && config.eggTime > 0, 'Invalid incubation duration', ErrorCode.GameConfig)
     const home = c.state.home
     home.productionJobs ??= {}

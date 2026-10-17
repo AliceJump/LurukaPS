@@ -100,7 +100,7 @@ export function cultTrialRoute(tables, catalog, activityId, trialId) {
     ensure(
         route && trial.dungeonId === dungeon?.id && city?.type === 27 && point?.cityId === city.id,
         'Cultivation trial scene mapping unavailable',
-        ErrorCode.GameConfig,
+        ErrorCode.InstanceSceneConfNotExist,
     )
     return { activity, trial, route, dungeon, point }
 }
@@ -168,11 +168,11 @@ export function ensureCultTrialScene(tables, state, now) {
             packs = String(group?.enemyList ?? '')
                 .split('|')
                 .filter(Boolean)
-        ensure(packs.length, 'Missing cultivation trial enemy group', ErrorCode.GameConfig)
+        ensure(packs.length, 'Missing cultivation trial enemy group', ErrorCode.NoEnemyConf)
         const monsters = packs.map((_, slot) => {
             const uid = ((3n << 56n) | (BigInt(slot) << 32n) | BigInt(row.id)).toString(),
                 definition = enemyDefinition(tables, state, uid)
-            ensure(definition, 'Missing cultivation trial enemy attributes', ErrorCode.GameConfig)
+            ensure(definition, 'Missing cultivation trial enemy attributes', ErrorCode.NoEnemyConf)
             const entity = (battle.entities[uid] ??= {
                 uuid: uid,
                 ...definition,

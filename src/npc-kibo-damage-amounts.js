@@ -174,7 +174,7 @@ export function arenaHealingOverheal(result, actualHeal) {
         ensure(
             Number.isInteger(actualHeal) && actualHeal >= -2147483648 && actualHeal <= 2147483647,
             'Actual healing result unavailable',
-            ErrorCode.GameConfig,
+            ErrorCode.InvalidLogic,
         )
         overflow = add(overflow, sub(result.healDeltaBeforeApplication, finite(actualHeal, 'actual heal')))
     }
@@ -286,7 +286,7 @@ export function arenaDamageAmounts(config, input, settings = arenaNumericalConfi
             shield.damage <= 2147483647 &&
             typeof shield.isShield === 'boolean',
         'Arena shield result unavailable',
-        ErrorCode.GameConfig,
+        ErrorCode.InvalidLogic,
     )
     let output = shield.damage
     if (config.damageMinimunValueType === C.DamageMinimun_SpecialMinimunValue) {

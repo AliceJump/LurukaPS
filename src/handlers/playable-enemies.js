@@ -10,7 +10,7 @@ export function registerPlayableEnemies(on, tables, store) {
         world = new WorldObjectCatalog(tables)
     on('WorldObjEnemyInfo', (c, r) => {
         const asset = assets.get(r.play_id)
-        ensure(asset, 'Playable enemy configuration unavailable', ErrorCode.GameConfig)
+        ensure(asset, 'Playable enemy configuration unavailable', ErrorCode.PlayableNoConf)
         if (r.obj_id) {
             const { row, spawner } = world.object(c.state.world.map_id, r.obj_id)
             ensure(spawner.objectType === 101 && row.expandId === r.play_id, 'Playable does not belong to world object')

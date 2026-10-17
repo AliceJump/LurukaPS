@@ -14,7 +14,7 @@ function visible(row, record, state) {
         )
     } catch (error) {
         // Do not reveal a conditional target whose appearance rule is unsupported.
-        if (error.code !== ErrorCode.GameConfig) throw error
+        if (![ErrorCode.GameConfig, ErrorCode.FunctionClosed].includes(error.code)) throw error
         return false
     }
 }
@@ -66,8 +66,8 @@ export function registerWorldSearch(on, tables) {
         )
         // TODO: verify nonzero attribute_filter semantics against a client caller/capture.
         // CBT3 MapStore.BuildBattleExploreSearchReq never sets it; do not guess a bitmask.
-        ensure(filter === 0, 'World search attribute filter is not implemented', ErrorCode.GameConfig)
-        ensure(positionValid(state.world.pos), 'Search position unavailable', ErrorCode.GameConfig)
+        ensure(filter === 0, 'World search attribute filter is not implemented', ErrorCode.FunctionClosed)
+        ensure(positionValid(state.world.pos), 'Search position unavailable', ErrorCode.InvalidTarget)
         // A zero count is used by the client's overload. The local response bound
         // is 64; the 100m range comes from game.json, not a guessed skill radius.
         const limit = Math.min(count || 64, 64),

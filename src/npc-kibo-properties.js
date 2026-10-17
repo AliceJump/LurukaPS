@@ -79,7 +79,7 @@ export function arenaProperty(c, uuid, id, base, normalized = true, tags = null,
     if (base !== undefined) external = { base, extra: 0, percent: 0 }
     else if (!external && spProperties.has(id)) external = { base: 0, extra: 0, percent: 0 }
     else if (!external) {
-        ensure(bases, 'Arena base properties unavailable', ErrorCode.GameConfig)
+        ensure(bases, 'Arena base properties unavailable', ErrorCode.InvalidLogic)
         if (row.attrDefault === -10000) return 0 // This property was not installed by the client.
         external = { base: row.attrDefault, extra: 0, percent: 0 }
     }
@@ -134,7 +134,7 @@ function propertyValue(row, external, values, normalized, tags, component, nativ
 
 export function captureArenaProperties(c, uuid) {
     const base = c.state.combat.npcDuel?.actors[uuid]?.base_properties
-    ensure(base, 'Arena base properties unavailable', ErrorCode.GameConfig)
+    ensure(base, 'Arena base properties unavailable', ErrorCode.InvalidLogic)
     return structuredClone({
         base_properties: base,
         arena_properties: c.state.combat.entities[uuid]?.arena_properties ?? {},

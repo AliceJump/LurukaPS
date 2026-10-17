@@ -58,7 +58,7 @@ function buffValue(tables, rows, id, stationType) {
                     value = value === 0 ? v : Math.min(value, v)
                     break
                 default:
-                    ensure(false, 'Unsupported production buff algorithm', ErrorCode.GameConfig)
+                    ensure(false, 'Unsupported production buff algorithm', ErrorCode.FunctionClosed)
             }
         }
     }
@@ -66,9 +66,9 @@ function buffValue(tables, rows, id, stationType) {
 }
 
 export function productionSeconds(tables, state, build, recipe) {
-    ensure(Number.isInteger(recipe.time) && recipe.time > 0, 'Invalid production duration', ErrorCode.GameConfig)
+    ensure(Number.isInteger(recipe.time) && recipe.time > 0, 'Invalid production duration', ErrorCode.HomeNoProductConf)
     const station = tables.find('home_building_production', build.build_id)
-    ensure(station, 'Missing production station configuration', ErrorCode.GameConfig)
+    ensure(station, 'Missing production station configuration', ErrorCode.BuildProductConfNotFound)
     const data = catalog(tables)
     const pet = state.pets?.find((entry) => entry.guid === String(build.station_pet_guid))
     const rows = (pet?.talent_id ?? []).map((id) => data.talents.get(id)).filter(Boolean)
@@ -77,7 +77,7 @@ export function productionSeconds(tables, state, build, recipe) {
     for (const row of data.technology) if (state.home?.technology?.levels[row.type]?.level === row.level) rows.push(row)
     const fixed = buffValue(tables, rows, 5007, station.type)
     if (fixed !== 0) {
-        ensure(Number.isInteger(fixed) && fixed > 0, 'Invalid fixed production duration', ErrorCode.GameConfig)
+        ensure(Number.isInteger(fixed) && fixed > 0, 'Invalid fixed production duration', ErrorCode.HomeNoProductConf)
         return fixed
     }
     const reduction = buffValue(tables, rows, 2011, station.type)
@@ -96,9 +96,13 @@ export function productionSeconds(tables, state, build, recipe) {
         }
     }
     const minimum = data.constants.get('HOME_PROCESS_PRODUCT_TIME')
-    ensure(Number.isInteger(minimum) && minimum > 0, 'Invalid minimum production duration', ErrorCode.GameConfig)
+    ensure(Number.isInteger(minimum) && minimum > 0, 'Invalid minimum production duration', ErrorCode.HomeNoProductConf)
     const seconds = Math.floor(Math.max(minimum, recipe.time * (1 - reduction) * (1 - laborReduction)))
-    ensure(Number.isSafeInteger(seconds) && seconds > 0, 'Invalid effective production duration', ErrorCode.GameConfig)
+    ensure(
+        Number.isSafeInteger(seconds) && seconds > 0,
+        'Invalid effective production duration',
+        ErrorCode.HomeNoProductConf,
+    )
     return seconds
 }
 

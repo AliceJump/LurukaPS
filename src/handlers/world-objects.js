@@ -52,7 +52,7 @@ export function worldCondition(value, state) {
                 ensure(Number.isInteger(b) && b > 0, 'Invalid task-step appearance condition', ErrorCode.GameConfig)
                 return taskNodeCompleted(state, a, b)
             }
-            ensure(false, `Unsupported world object condition ${kind}`, ErrorCode.GameConfig)
+            ensure(false, `Unsupported world object condition ${kind}`, ErrorCode.FunctionClosed)
         })
 }
 function stateData(input, depth = 0) {

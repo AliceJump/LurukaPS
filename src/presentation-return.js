@@ -16,5 +16,5 @@ export function takePresentationReturn(tables, state) {
         )
         return candidate
     }
-    ensure(false, 'Photo/cultivation return context unavailable', ErrorCode.GameConfig)
+    ensure(false, 'Photo/cultivation return context unavailable', ErrorCode.InvalidLogic)
 }

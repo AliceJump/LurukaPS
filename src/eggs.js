@@ -28,7 +28,7 @@ function choose(list, rng) {
 }
 export function createEggs(tables, state, id, count, rng = randomInt) {
     const config = tables.find('pet_egg', id)
-    ensure(config, 'Unknown pet egg', ErrorCode.GameConfig)
+    ensure(config, 'Unknown pet egg', ErrorCode.EggConfNotExist)
     const limit = Number(tables.get('game').find((r) => r.title === 'PET_EGG_LIMITS')?.value)
     ensure(Number.isInteger(limit) && limit > 0, 'Invalid egg capacity', ErrorCode.GameConfig)
     state.petEggs ??= []

@@ -51,7 +51,7 @@ export function registerActivities(on, tables) {
             const reward = activityTables
                 .get('game_events_day_attendance')
                 .find((x) => x.eventId === row.systemId && x.date === day)
-            ensure(reward, 'Missing attendance reward configuration', ErrorCode.GameConfig)
+            ensure(reward, 'Missing attendance reward configuration', ErrorCode.ActivityRewardConfNone)
             rewards.push(...parseRewards(reward.reward))
         }
         const granted = grant(c, rewards)

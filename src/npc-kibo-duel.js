@@ -23,7 +23,11 @@ export function validateNpcDuelFormation(tables, state, duel, formation) {
         seen.add(key)
         if (pet.is_trial) {
             ensure(duel.levelType !== 0 && allowedTrials.has(Number(id)), 'Trial pet is not allowed in this duel')
-            ensure(tables.find('trial_pet', Number(id)), 'Trial pet configuration unavailable', ErrorCode.GameConfig)
+            ensure(
+                tables.find('trial_pet', Number(id)),
+                'Trial pet configuration unavailable',
+                ErrorCode.TrialPetNotExist,
+            )
         } else {
             ensure(duel.levelType !== 2, 'This duel requires trial pets')
             ensure(
@@ -57,17 +61,19 @@ export function npcDuelEntry(tables, duelId) {
     ensure(
         dungeon?.dungeonType === 400 && dungeon.gameplayID === duel.id,
         'NPC duel dungeon mapping unavailable',
-        ErrorCode.GameConfig,
+        ErrorCode.DungeonConfNotExist,
     )
     const map = tables.find('kibo_duel_map', duel.mapId)
     const coordinates = list(dungeon.position)
+    ensure(map, 'NPC duel scene configuration unavailable', ErrorCode.KiboDuelMapConfNotExist)
     ensure(
-        map &&
-            Number.isInteger(Number(map.art)) &&
-            Number(map.art) > 0 &&
-            coordinates.length === 6 &&
-            coordinates.every(Number.isFinite),
-        'NPC duel scene configuration unavailable',
+        Number.isInteger(Number(map.art)) && Number(map.art) > 0,
+        'NPC duel scene art unavailable',
+        ErrorCode.KiboDuelConfArtMapNone,
+    )
+    ensure(
+        coordinates.length === 6 && coordinates.every(Number.isFinite),
+        'Invalid NPC duel scene coordinates',
         ErrorCode.GameConfig,
     )
     const enemyPets = list(duel.enemy)

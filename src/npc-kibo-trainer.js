@@ -11,12 +11,16 @@ export function arenaTrainer(tables, state, duel, formation) {
     }
     const row = tables.find('hero_interim', duel.trialRole)
     ensure(row && row.level > 0, 'Arena trial trainer configuration unavailable', ErrorCode.GameConfig)
-    ensure(!row.accessorySet && !row.talentrune, 'Arena trial trainer equipment not implemented', ErrorCode.GameConfig)
+    ensure(
+        !row.accessorySet && !row.talentrune,
+        'Arena trial trainer equipment not implemented',
+        ErrorCode.FunctionClosed,
+    )
     const configId =
         row.heroType === 1 && [mainHeroConfigId(tables, 1), mainHeroConfigId(tables, 2)].includes(row.heroId)
             ? mainHeroConfigId(tables, state.player.basic_info.wardrobe?.sex ?? state.player.basic_info.sex)
             : row.heroId
-    ensure(tables.find('hero', configId), 'Arena trial trainer hero unavailable', ErrorCode.GameConfig)
+    ensure(tables.find('hero', configId), 'Arena trial trainer hero unavailable', ErrorCode.HeroNotExist)
     // Match the existing CBT3 trial actor layout: type5, hero_interim ID,
     // account. Never downgrade or rename the player's owned copy.
     return {

@@ -87,7 +87,11 @@ export function registerStoryBattle(on, tables) {
             const profile = profiles.find((p) => p.battleFsmType === group?.battleFsmType)
             ensure(group?.canForceKill === 1 && profile, 'Enemy group has no configured story kill')
             const rules = profile.rules.filter((rule) => !rule.validation || rule.validation === 'story')
-            ensure(rules.length > 0, 'Story-kill client-condition validation is not implemented', ErrorCode.GameConfig)
+            ensure(
+                rules.length > 0,
+                'Story-kill client-condition validation is not implemented',
+                ErrorCode.FunctionClosed,
+            )
             const matchedRule = rules.find(
                 (rule) => rule.stories.length && rule.stories.every((id) => c.state.storyIds?.includes(id)),
             )

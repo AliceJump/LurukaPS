@@ -26,7 +26,7 @@ export class EntrustCatalog {
         const entrust = this.tables.find('dungeon_entrust', id)
         ensure(entrust, 'Unknown entrust', ErrorCode.EntrustConfigNone)
         const dungeon = this.tables.find('dungeon', entrust.dungeonId)
-        ensure(dungeon, 'Entrust dungeon configuration unavailable', ErrorCode.GameConfig)
+        ensure(dungeon, 'Entrust dungeon configuration unavailable', ErrorCode.DungeonConfNotExist)
         if (!this.scenes.has(id)) {
             // The box filter is the explicit dungeon-to-scene relationship.
             // Numbered [test] city labels do NOT correspond to entrust IDs.
@@ -37,7 +37,11 @@ export class EntrustCatalog {
                 city && this.tables.get('world_borthpos').find((row) => row.cityId === city.id && row.mainPoint === 1)
             // The scene table can override the dungeon row's generic victory
             // count (for example, chapter boss scenes have one container).
-            ensure(city && scene?.mapId === city.id && point, 'Entrust scene mapping unavailable', ErrorCode.GameConfig)
+            ensure(
+                city && scene?.mapId === city.id && point,
+                'Entrust scene mapping unavailable',
+                ErrorCode.InstanceSceneConfNotExist,
+            )
             this.scenes.set(id, { city, scene, point, chest })
         }
         return { entrust, dungeon, ...this.scenes.get(id) }
@@ -106,7 +110,7 @@ export class EntrustCatalog {
         ensure(
             row && row.worldmapid === this.stages(id).at(-1).row.id,
             'Entrust chest configuration unavailable',
-            ErrorCode.GameConfig,
+            ErrorCode.NoStaminaBoxDropConf,
         )
         return row
     }
@@ -364,7 +368,7 @@ export function ensureEntrustSceneObjects(tables, state, now) {
         const monsters = packs.map((_, slot) => {
             const uid = ((3n << 56n) | (BigInt(slot) << 32n) | BigInt(row.id)).toString()
             const enemy = enemyDefinition(tables, state, uid)
-            ensure(enemy, 'Entrust enemy attributes unavailable', ErrorCode.GameConfig)
+            ensure(enemy, 'Entrust enemy attributes unavailable', ErrorCode.NoEnemyConf)
             const old = battle.entities[uid]
             if (!old) {
                 battle.entities[uid] = {

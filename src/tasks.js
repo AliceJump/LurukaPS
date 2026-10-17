@@ -20,7 +20,7 @@ export class TaskGraphs {
         const config = this.tables.find('task', id)
         ensure(config, 'Unknown task')
         const filename = path.join(this.directory, `task_client_${id}.json`)
-        ensure(fs.existsSync(filename), 'Task graph unavailable', ErrorCode.GameConfig)
+        ensure(fs.existsSync(filename), 'Task graph unavailable', ErrorCode.TaskConfFail)
         const raw = JSON.parse(fs.readFileSync(filename, 'utf8'))
         ensure(raw.taskId === id, 'Mismatched task graph', ErrorCode.GameConfig)
         const nodes = new Map()
@@ -203,7 +203,7 @@ export function activeNode(task, id) {
 }
 export function makeNode(graph, id, state) {
     const n = graph.nodes.get(id)
-    ensure(n, 'Dangling task graph edge', ErrorCode.GameConfig)
+    ensure(n, 'Dangling task graph edge', ErrorCode.TaskNoNodeId)
     const conditions = nodeConditions(n)
     return {
         node_id: id,
@@ -236,7 +236,7 @@ export function advancePetChoiceBranch(graph, task, state) {
         ensure(
             graph.nodes.has(chosen) && !task.finish_nodes.includes(chosen),
             'Invalid pet-choice branch',
-            ErrorCode.GameConfig,
+            ErrorCode.InvalidLogic,
         )
         task.nodes = task.nodes.filter((n) => n.node_id !== node.node_id)
         task.finish_nodes.push(node.node_id)
@@ -324,7 +324,8 @@ export function acceptAvailableSideTasks(
             const graph = graphs.get(config.id)
             if (taskUnlocked(graph, state, { tables, accepting: true })) candidates.push(graph)
         } catch (error) {
-            if (error.code !== ErrorCode.GameConfig && error.code !== 'ENOENT') throw error
+            if (![ErrorCode.GameConfig, ErrorCode.TaskConfFail, ErrorCode.TaskNoNodeId, 'ENOENT'].includes(error.code))
+                throw error
             unavailable.push(config.id)
         }
     }

@@ -35,7 +35,7 @@ export function homeCondition(text, state) {
 export function buildingRect(tables, buildId, locate) {
     const config = tables.find('home_building', buildId),
         object = config && tables.find('home_object', config.objId)
-    ensure(object, 'Missing building footprint', ErrorCode.GameConfig)
+    ensure(object, 'Missing building footprint', ErrorCode.BuildConfNotFound)
     let size = String(object.homeItemSize).split('|').map(Number)
     ensure(
         size.length === 2 && size.every((n) => Number.isInteger(n) && n > 0),
@@ -91,7 +91,7 @@ export function validatePlacement(tables, state, buildId, locate, ignoreGuid = 0
     }
     const config = tables.find('home_building', buildId),
         group = tables.get('home_building_group').find((g) => g.groupId === config.groupId)
-    ensure(group, 'Missing building group', ErrorCode.GameConfig)
+    ensure(group, 'Missing building group', ErrorCode.BuildGroupConfNotFound)
     ensure(homeCondition(group.unlockCondi, state), 'Building group is locked')
     const rows = tables
         .get('home_building_num')

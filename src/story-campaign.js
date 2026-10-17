@@ -42,7 +42,7 @@ export function storyCampaignReturnWorld(tables, state, run) {
         .reverse()
         .find((world) => points.some((point) => point.cityId === world.map_id))
     if (previous) return previous
-    ensure(points.length > 0, 'Story dungeon return entrance unavailable', ErrorCode.GameConfig)
+    ensure(points.length > 0, 'Story dungeon return entrance unavailable', ErrorCode.NotFoundBirthPoint)
     // An internal return map is a legacy bad snapshot. Recover the actual
     // entrance from the active parent condition, never from a dungeon checkpoint.
     return tables.position(points[0])
@@ -177,7 +177,7 @@ export function storyCampaignConfig(tables, groupId, difficulty) {
     ensure(
         !taskMapping || (taskIds.length === taskPoints.length && taskPoints.every(Boolean)),
         'Campaign task scene mapping unavailable',
-        ErrorCode.GameConfig,
+        ErrorCode.InstanceSceneConfNotExist,
     )
     const savedRoute = legacyRoutes.get(dungeon.id)
     const route =
@@ -192,7 +192,7 @@ export function storyCampaignConfig(tables, groupId, difficulty) {
                 .map((id) => tables.find('world_borthpos', id)),
         ),
     )
-    ensure(transferPoints.every(Boolean), 'Campaign task transfer point unavailable', ErrorCode.GameConfig)
+    ensure(transferPoints.every(Boolean), 'Campaign task transfer point unavailable', ErrorCode.NotFoundBirthPoint)
     const scenePoints = [...taskPoints, ...transferPoints]
     const sceneIds = taskMapping ? [...new Set(scenePoints.map((point) => point.cityId))] : route.scene_ids
     const scenes = sceneIds.map((id) => {
@@ -201,7 +201,11 @@ export function storyCampaignConfig(tables, groupId, difficulty) {
         const point = taskMapping
             ? scenePoints.find((point) => point.cityId === id)
             : tables.get('world_borthpos').find((row) => row.cityId === id && row.mainPoint === 1)
-        ensure(city?.type === 2 && scene?.mapId === id && point, 'Campaign scene unavailable', ErrorCode.GameConfig)
+        ensure(
+            city?.type === 2 && scene?.mapId === id && point,
+            'Campaign scene unavailable',
+            ErrorCode.InstanceSceneConfNotExist,
+        )
         return { city, scene, point }
     })
     if (!taskMapping && route.mode !== 'table_waves') {
@@ -355,7 +359,7 @@ export function ensureStoryCampaignScene(tables, state, now) {
         const monsters = packs.map((_, slot) => {
             const uid = ((3n << 56n) | (BigInt(slot) << 32n) | BigInt(row.id)).toString()
             const definition = enemyDefinition(tables, state, uid)
-            ensure(definition, 'Campaign enemy attributes unavailable', ErrorCode.GameConfig)
+            ensure(definition, 'Campaign enemy attributes unavailable', ErrorCode.NoEnemyConf)
             const entity = (battle.entities[uid] ??= {
                 uuid: uid,
                 ...definition,

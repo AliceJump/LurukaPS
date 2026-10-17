@@ -226,7 +226,7 @@ export function registerHomeDorm(on, tables) {
             ensure(
                 info?.heroId === actor.conf_id && info.favorabilityLevel <= actor.favorability_lv,
                 'Invalid pending favorability reward',
-                ErrorCode.GameConfig,
+                ErrorCode.InvalidLogic,
             )
             rewards.push(...parseRewards(info.reward))
         }

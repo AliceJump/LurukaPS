@@ -144,7 +144,7 @@ function lockedFormation(tables, state, row) {
     ensure(
         trialIds.every((id) => tables.find('trial_pet', id)),
         'Kibo duel trial pet unavailable',
-        ErrorCode.GameConfig,
+        ErrorCode.TrialPetNotExist,
     )
     const selected = trialIds.map((id) => ({ is_trial: true, id: String(id) }))
     const usedConfigs = new Set(trialIds.map((id) => tables.find('trial_pet', id).trialPet))
@@ -190,10 +190,10 @@ export function arenaAttributePayload(tables, state) {
         let profile
         if (entry.is_trial) {
             const trial = tables.find('trial_pet', Number(entry.id))
-            ensure(trial, 'Trial pet configuration unavailable', ErrorCode.GameConfig)
+            ensure(trial, 'Trial pet configuration unavailable', ErrorCode.TrialPetNotExist)
             const source =
                 state.pets.find((p) => p.config_id === trial.trialPet) ?? state.kiboDuelTrialProfiles?.[entry.id]
-            ensure(source, 'Trial pet profile unavailable', ErrorCode.GameConfig)
+            ensure(source, 'Trial pet profile unavailable', ErrorCode.PetNotExist)
             profile = { ...source, guid: entry.guid, config_id: trial.trialPet, lv: trial.trialPetLevel, hero_id: '0' }
         } else profile = state.pets.find((p) => p.guid === entry.id)
         ensure(profile, 'Arena pet unavailable')
@@ -236,7 +236,7 @@ export function registerKiboDuel(on, tables, protocol) {
         ensure(row, 'Unknown Kibo duel')
         for (const id of ids(row.kiboList)) {
             const trial = tables.find('trial_pet', id)
-            ensure(trial, 'Trial pet configuration unavailable', ErrorCode.GameConfig)
+            ensure(trial, 'Trial pet configuration unavailable', ErrorCode.TrialPetNotExist)
             if (c.state.pets.some((p) => p.config_id === trial.trialPet) || c.state.kiboDuelTrialProfiles?.[id])
                 continue
             const profile = petData(tables, trial.trialPet, arenaPetGuid(c.state, { is_trial: true, id }), 0)
@@ -339,7 +339,11 @@ export function registerKiboDuel(on, tables, protocol) {
         )
         const map = tables.find('kibo_duel_map', duel.mapId),
             scene = Number(map?.art)
-        ensure(Number.isInteger(scene) && scene > 0, 'Invalid arena scene configuration', ErrorCode.GameConfig)
+        ensure(
+            Number.isInteger(scene) && scene > 0,
+            'Invalid arena scene configuration',
+            ErrorCode.KiboDuelConfArtMapNone,
+        )
         npcDuelEntry(tables, duel.id)
         // SceneData.Init(KiboArenaMapMono) takes the blue trainer position.
         // The generic dungeon.position is reused across different arenas.
@@ -437,7 +441,7 @@ export function registerKiboDuel(on, tables, protocol) {
         ensure(
             tables.get('train_task').some((row) => row.groupType === 3 && row.dungeonId === duel.id),
             'Not a configured duel teaching entry',
-            ErrorCode.GameConfig,
+            ErrorCode.TrainTaskConfNone,
         )
         prepare(c, { u32: duel.id })
         return createNpcArena(c, { dungeon_id: duel.dungeonId })

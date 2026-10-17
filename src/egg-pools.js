@@ -34,7 +34,7 @@ function draw(rows, rng) {
 export function eggSpeciesPools(tables, eggId) {
     const config = tables.find('pet_egg', eggId),
         pools = tables.find('egg_poolitem', eggId)
-    ensure(config && pools, 'Missing egg species configuration', ErrorCode.GameConfig)
+    ensure(config && pools, 'Missing egg species configuration', ErrorCode.EggConfNotExist)
     const probability = tables.get('egg_prob_list').find((r) => r.probList === config.probList)
     ensure(probability, 'Missing egg probability list', ErrorCode.GameConfig)
     // Native PagePetEggInfoTip.RefreshPageData RVA 0x29837C0 groups R4+R5 and R1+R2+R3.
@@ -64,7 +64,7 @@ export function eggSpeciesPools(tables, eggId) {
                 ensure(
                     tables.find('pet', row.id) && tables.find('template_value', row.id),
                     `Missing hatch pet configuration ${row.id}`,
-                    ErrorCode.GameConfig,
+                    ErrorCode.PetConfNotExist,
                 )
             return { name, weight, id, candidates }
         })

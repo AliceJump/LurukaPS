@@ -9,7 +9,7 @@ export const secondsToArenaMs = (seconds) => Math.round(seconds * 1000)
 
 export function arenaMillis(c) {
     const value = c.arena_now_ms ?? secondsToArenaMs(c.now)
-    ensure(Number.isSafeInteger(value) && value >= 0, 'Arena millisecond clock unavailable', ErrorCode.GameConfig)
+    ensure(Number.isSafeInteger(value) && value >= 0, 'Arena millisecond clock unavailable', ErrorCode.InvalidTime)
     return value
 }
 

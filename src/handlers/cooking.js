@@ -17,15 +17,16 @@ export function registerCooking(on, tables) {
         const build = home.builds.find((entry) => entry.guid === r.build_guid)
         ensure(build && [1, 4].includes(build.status), 'Cooking/processing station is not owned or placed')
         const station = tables.find('home_building_production', build.build_id)
+        ensure(station, 'Cooking station configuration is missing', ErrorCode.BuildProductConfNotFound)
         ensure(
-            product &&
-                station &&
-                String(product.group).split('|').map(Number).includes(station.groupId) &&
-                product.rewardId === `3#${r.cook_id}#1` &&
-                Number.isInteger(product.time) &&
-                product.time > 0,
+            String(product.group).split('|').map(Number).includes(station.groupId),
+            'Recipe cannot be cooked at this building',
+            ErrorCode.InvalidArgument,
+        )
+        ensure(
+            product.rewardId === `3#${r.cook_id}#1` && Number.isInteger(product.time) && product.time > 0,
             'Cooking queue configuration is missing',
-            ErrorCode.GameConfig,
+            ErrorCode.HomeNoProductConf,
         )
         ensure(!product.notReleased && homeCondition(product.unlockCondition, c.state), 'Cooking recipe locked')
         ensure(

@@ -26,7 +26,7 @@ export class WorldObjectCatalog {
         const row = this.find('worldmap_' + map, id)
         ensure(row && row.cityId === map, 'Object is not in current map')
         const spawner = this.find('world_spawner', row.spawnerId)
-        ensure(spawner, 'World spawner missing', ErrorCode.GameConfig)
+        ensure(spawner, 'World spawner missing', ErrorCode.SpawnerConfIsNull)
         const position = String(row.position).split('|').map(Number)
         ensure(
             position.length === 3 && position.every(Number.isFinite),
@@ -52,7 +52,7 @@ export class WorldObjectCatalog {
             ensure(
                 !row.tacticsGroup && !row.tacticsWeight && !row.tacticsValue && !row.allowanceValue,
                 'World drop tactics are not implemented',
-                ErrorCode.GameConfig,
+                ErrorCode.FunctionClosed,
             )
             if (!groups.has(row.dropGroupId)) groups.set(row.dropGroupId, [])
             groups.get(row.dropGroupId).push(row)

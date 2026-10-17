@@ -7,10 +7,11 @@ import { WorldObjectCatalog } from '../world-objects.js'
 
 export function syncAIHeroBeforeCreate(c, uuid) {
     const definition = enemyDefinition(c.tables, c.state, uuid)
+    ensure(definition, 'AI hero attributes unavailable', ErrorCode.NoEnemyConf)
     ensure(
-        definition && c.tables.find('enemy_pack', definition.pack_id)?.specialCreateType === 1,
-        'AI hero attributes unavailable',
-        ErrorCode.GameConfig,
+        c.tables.find('enemy_pack', definition.pack_id)?.specialCreateType === 1,
+        'Combat actor is not an AI hero',
+        ErrorCode.InvalidTarget,
     )
     const battle = combatState(c.state, c.now)
     const entity = (battle.entities[uuid] ??= {

@@ -32,7 +32,7 @@ export function arenaFormulaEntity(c, input, item, options = {}) {
     }
     // Grade does not require a battle-attribute dictionary, but ordinary
     // property/resource reads still require their complete actor provider.
-    ensure(actor?.base_properties, 'Arena formula actor unavailable', ErrorCode.GameConfig)
+    ensure(actor?.base_properties, 'Arena formula actor unavailable', ErrorCode.InvalidLogic)
     if (operation >= 0) {
         ensure(Number.isInteger(item.custom_int), 'Arena formula component unavailable', ErrorCode.GameConfig)
         ensure(
@@ -58,13 +58,13 @@ export function arenaFormulaEntity(c, input, item, options = {}) {
         }
     }
     const state = phase === 'before' ? input.record.before_execution?.[uuid] : c.state.combat.entities[uuid]
-    ensure(Number.isInteger(state?.alive_state), 'Arena formula life state unavailable', ErrorCode.GameConfig)
+    ensure(Number.isInteger(state?.alive_state), 'Arena formula life state unavailable', ErrorCode.InvalidLogic)
     // Native isDead is aliveState in[1,3], not simply HP==0. It redirects
     // property/resource reads to the entity-id death snapshot key.
     ensure(
         state.alive_state < 1 || state.alive_state > 3,
         'Arena formula death snapshot unavailable',
-        ErrorCode.GameConfig,
+        ErrorCode.InvalidLogic,
     )
     if (operation >= 0)
         return arenaExecutionProperty(c, input, role, operation, false, 'snapshot-aware', phase, null, item.custom_int)

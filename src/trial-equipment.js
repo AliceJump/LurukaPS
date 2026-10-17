@@ -14,7 +14,7 @@ export function trialSoulEssence(tables, interim) {
     ensure(
         soul && tables.find('soulessence_value', soul.attribute * 1000 + level),
         'Trial soul essence attributes unavailable',
-        ErrorCode.GameConfig,
+        ErrorCode.SoulEssenceConfNotExist,
     )
     // Interim triples have no breakthrough rank. Use the first table rank whose
     // level limit permits the configured level; keep this compatibility choice documented.

@@ -54,7 +54,7 @@ function harvest(tables, c, home, build) {
         'Crop is not ready to harvest',
     )
     const config = tables.find('home_seeds', crop.seed_id)
-    ensure(config, 'Missing planted crop configuration', ErrorCode.GameConfig)
+    ensure(config, 'Missing planted crop configuration', ErrorCode.HomeSeedIdNotInSeedConf)
     const drops = String(config.homeDropId).split('|').filter(Boolean).map(Number)
     const rewards = drops.map((id) => {
         const row = tables.find('home_drop', id)
@@ -166,7 +166,7 @@ export function registerFarming(on, tables) {
             crop = build.crop_info
         ensure(crop?.seed_id && crop.state === 1, 'Crop does not need watering')
         const config = tables.find('home_seeds', crop.seed_id)
-        ensure(config, 'Missing planted crop configuration', ErrorCode.GameConfig)
+        ensure(config, 'Missing planted crop configuration', ErrorCode.HomeSeedIdNotInSeedConf)
         const { grow, pre } = growthSeconds(config)
         Object.assign(crop, {
             state: 2,

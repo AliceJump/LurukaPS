@@ -123,7 +123,7 @@ export function registerLocalPayments(on, tables, store, { enabled = true } = {}
             const matches = tables
                 .get('mall_pay_goods')
                 .filter((x) => x.purchaseSdkID === sdk.id && (!isMall || x.goodsId === r.pay_goods_id))
-            ensure(matches.length === 1, 'Offline entitlement product is not implemented', ErrorCode.GameConfig)
+            ensure(matches.length === 1, 'Offline entitlement product is not implemented', ErrorCode.FunctionClosed)
             const goods = matches[0],
                 wire = catalog.goods(true, goods.goodsId, c.state, c.now),
                 shop = tables

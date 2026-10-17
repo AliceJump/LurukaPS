@@ -61,7 +61,7 @@ export function registerCultTrial(on, tables, catalog) {
         ensure(!row.guideTaskId || catalog.taskDone(c.state, row.guideTaskId), 'Complete cultivation guide first')
         const g = catalog.growup.ensure(entry, row.systemId),
             { trial, route, dungeon, point } = cultTrialRoute(tables, catalog, r.activity_id, r.trial_id)
-        ensure(!r.archive_id, 'Archived cultivation trials are not implemented', ErrorCode.GameConfig)
+        ensure(!r.archive_id, 'Archived cultivation trials are not implemented', ErrorCode.FunctionClosed)
         ensure(
             g.cur_starting_id > 0 && g.cur_stage === trial.phase && g.cur_growup_trail_stage === trial.phase,
             'Cultivation examination is not ready',

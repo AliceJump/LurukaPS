@@ -115,7 +115,7 @@ export function dormBackground(tables, state, actor, itemid = 0) {
     ensure(
         [sceneid, night_sceneid].every((id) => Number.isInteger(id) && tables.find('world_city', id)?.type === 21),
         'Missing dorm day/night scenes',
-        ErrorCode.GameConfig,
+        ErrorCode.HomeDormSceneConfNone,
     )
     return { hero_id: actor.guid, sceneid, night_sceneid, itemid }
 }
@@ -139,7 +139,7 @@ export function dormPayload(tables, state) {
     }
 }
 export function grantDormStyle(tables, state, itemid) {
-    ensure(tables.find('home_dorm_item', itemid), 'Unknown dorm style', ErrorCode.GameConfig)
+    ensure(tables.find('home_dorm_item', itemid), 'Unknown dorm style', ErrorCode.HomeDormFurnitureConf)
     ensureHomeDormitories(tables, state)
     const rewards = state.home.dorm.back_ground_scene.rewards
     if (rewards.some((entry) => entry.itemid === itemid)) return
@@ -161,7 +161,7 @@ export function dormPosition(tables, state, background) {
     )
     const map = hour >= daytime[0] && hour < daytime[1] ? background.sceneid : background.night_sceneid
     const point = tables.get('world_borthpos').find((row) => row.cityId === map && row.mainPoint === 1)
-    ensure(point, 'Dorm scene spawn is missing', ErrorCode.GameConfig)
+    ensure(point, 'Dorm scene spawn is missing', ErrorCode.NotFoundBirthPoint)
     return tables.position(point)
 }
 export function activeDormVisit(tables, state) {
@@ -207,6 +207,7 @@ export function addHeroFavorability(tables, actor, amount) {
     exp += reward
     while (level < max) {
         const required = levels.get(level)
+        ensure(levels.has(level), 'Missing hero favorability curve', ErrorCode.HeroFavorConfNone)
         ensure(Number.isInteger(required) && required > 0, 'Invalid hero favorability curve', ErrorCode.GameConfig)
         if (exp < required) break
         exp -= required

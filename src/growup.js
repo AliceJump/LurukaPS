@@ -26,7 +26,7 @@ export class GrowupSystem {
     }
     config(id) {
         const row = this.tables.get('game_events_cul').find((x) => x.Id === id)
-        ensure(row, 'Missing cultivation configuration', ErrorCode.GameConfig)
+        ensure(row, 'Missing cultivation configuration', ErrorCode.GrowUpConfNoExist)
         return row
     }
     fresh(id) {
@@ -193,7 +193,7 @@ export class GrowupSystem {
             } else if (row.type === 0) {
                 continue
             } else if (row.type === 5 || row.type === 6) {
-                ensure(!row.param, 'Parameterized cultivation mood effect is not implemented', ErrorCode.GameConfig)
+                ensure(!row.param, 'Parameterized cultivation mood effect is not implemented', ErrorCode.FunctionClosed)
                 // Empty-param MoodLevel/MoodDown are one-step effects. This is a
                 // compatibility inference recorded in growup-cbt3.md.
                 const levels = this.tables
@@ -226,7 +226,7 @@ export class GrowupSystem {
                 ensure(
                     false,
                     `Cultivation effect ${effectId} type ${row.type} is not implemented`,
-                    ErrorCode.GameConfig,
+                    ErrorCode.FunctionClosed,
                 )
         }
     }
@@ -335,10 +335,11 @@ export class GrowupSystem {
         const ending = this.tables
             .get('game_events_cul_end')
             .find((x) => x.systemId === id && x.endingId === trial.ending && x.trial === trial.trialId)
+        ensure(ending, 'Cultivation ending configuration unavailable', ErrorCode.CultInvalidEndId)
         ensure(
-            ending && this.condition(ending.condition, g),
-            'Cultivation ending configuration unavailable',
-            ErrorCode.GameConfig,
+            this.condition(ending.condition, g),
+            'Cultivation ending conditions not met',
+            ErrorCode.CultEndNotComplete,
         )
         ensure(
             [1, 2, 3].every((phase) => {
@@ -414,7 +415,7 @@ export class GrowupSystem {
             .get('game_events_cul_train')
             .find((x) => x.systemId === id && x.trainOption === optionId && x.trainLevel === option.train_lv)
         ensure(row, 'Missing cultivation training level', ErrorCode.GameConfig)
-        ensure(!row.cost, 'Paid cultivation training is not implemented', ErrorCode.GameConfig)
+        ensure(!row.cost, 'Paid cultivation training is not implemented', ErrorCode.FunctionClosed)
         this.prepare(entry, id, randomInt)
         const assigned = option.assist_char_ids.map((x) => g.assist_chars.find((a) => a.assist_char_id === x))
         ensure(assigned.every(Boolean), 'Cultivation training assistant is unavailable')
@@ -565,7 +566,7 @@ export class GrowupSystem {
         if (!g.cur_event_data?.event_id) {
             ensure(g.cur_cost_expedition_count > 0, 'No cultivation expedition points remain')
             const first = steps.find((x) => x.isFirstStep === 1)
-            ensure(first, 'Missing cultivation event first step', ErrorCode.GameConfig)
+            ensure(first, 'Missing cultivation event first step', ErrorCode.ActivityGrowUpInvalidEvent)
             // ModuleTravelPanel sends the first step's entrance option directly;
             // there is no mandatory optional_id=0 handshake in the CBT3 UI.
             if (request.optional_id)
@@ -585,7 +586,7 @@ export class GrowupSystem {
         }
         ensure(g.cur_event_data.event_id === event.event_id, 'Another cultivation event is active')
         const step = steps.find((x) => x.step === g.cur_event_data.cur_step)
-        ensure(step, 'Missing cultivation event step', ErrorCode.GameConfig)
+        ensure(step, 'Missing cultivation event step', ErrorCode.ActivityGrowUpInvalidEvent)
         let next = step.nextStep
         let identified = true
         let selected = request.optional_id ?? 0
@@ -627,7 +628,7 @@ export class GrowupSystem {
             ensure(
                 steps.some((x) => x.step === next),
                 'Missing cultivation event next step',
-                ErrorCode.GameConfig,
+                ErrorCode.ActivityGrowUpInvalidEvent,
             )
             event.cur_step = next
             g.cur_event_data.cur_step = next

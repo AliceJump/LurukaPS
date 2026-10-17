@@ -28,7 +28,7 @@ function quality(text, rng) {
 export function createCustomOrnaments(tables, state, id, count, rng = randomInt) {
     const custom = tables.find('accessory_customed', id),
         accessory = tables.find('accessory', custom?.accessoryId)
-    ensure(custom && accessory, 'Unknown custom ornament', ErrorCode.GameConfig)
+    ensure(custom && accessory, 'Unknown custom ornament', ErrorCode.OrnamentConfFail)
     state.ornaments ??= []
     ensure(
         Number.isInteger(count) && count > 0 && count <= 1000 && state.ornaments.length + count <= 10000,
