@@ -13,7 +13,7 @@ import { updateNpcArenaPause } from './npc-kibo-pause.js'
 import { clearArenaCardControls, publishArenaControls } from './npc-kibo-controls.js'
 import { arenaBaseProperties, arenaBasePropertyValue } from './npc-kibo-properties.js'
 import { resetArenaOrigins } from './npc-kibo-origins.js'
-import { publishArenaStageBuffs } from './npc-kibo-stage-buffs.js'
+import { publishArenaStageBuffs, arenaFeverInfo } from './npc-kibo-stage-buffs.js'
 import {
     startArenaClock,
     consumeArenaPoint,
@@ -354,6 +354,23 @@ export function reportNpcArenaLoadFinish(c) {
             status: 3,
             status_endtime: String(Math.ceil(c.now + seconds)),
             enter_type: 0,
+        })
+    } else if (!wasLoaded && [3, 4].includes(info.arena_status)) {
+        if (info.arena_status === 4) {
+            c.pushBefore('SCProtoKiboDuelArenaScoreInfoSync', {
+                score_infos: [1, 2].map((camp) => ({ camp, score: run.scores[camp] })),
+            })
+            c.pushBefore('SCProtoKiboDuelArenaCardInfoSync', arenaHand(c.state))
+            publishArenaEnergy(c)
+        }
+        // Login status arrives before native HasReportedPlayerLoadFinish.
+        // CheckEnter is event-driven: repeat the same canonical status after
+        // 9602, including when pause prevents every subsequent battle tick.
+        c.pushBefore('SCProtoKiboDuelArenaInfoSync', {
+            status: info.arena_status,
+            status_endtime: String(Math.ceil(info.arena_status === 3 ? run.first_until : run.end_at)),
+            enter_type: 0,
+            ...arenaFeverInfo(c),
         })
     }
     if (c.state.world.pause?.operate) updateNpcArenaPause(c, c.state.world.pause)

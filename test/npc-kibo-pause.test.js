@@ -15,10 +15,10 @@ const cfg = configuration(),
 
 function fixture(firstOnly = false, duelId = 501) {
     let now = 1800000000,
-        seq = 1
-    const store = new Store(':memory:'),
-        game = new Game(p, store, tables, { clock: () => now }),
+        seq = 1,
         session = {}
+    const store = new Store(':memory:'),
+        game = new Game(p, store, tables, { clock: () => now })
     const call = (name, request = {}) => {
         const entry = p.byName.get('CSProto' + name)
         return game
@@ -77,8 +77,69 @@ function fixture(firstOnly = false, duelId = 501) {
             now = value
         },
         tick: () => game.tick(session.id, session),
+        relogin: () => {
+            session = {}
+            return call('EnterGame', { open_id: 'npc-pause' })
+        },
         close: () => store.close(),
     }
+}
+
+for (const firstOnly of [true, false]) {
+    test(`entity readiness resends paused ${firstOnly ? 'FIRST' : 'REGULAR'} after relogin so the 75% loading page can enter`, () => {
+        const f = fixture(firstOnly)
+        try {
+            f.call('GamePause', { operate: true })
+            const before = f.run(),
+                phase = firstOnly ? 3 : 4
+            f.set(f.now() + 600)
+            assert.equal(f.relogin().find((packet) => packet.id === 11800).data.status, phase)
+            f.call('StartDungeonClientOk')
+            if (!firstOnly) {
+                const snapshot = f.state(),
+                    original = f.game.packet
+                f.game.packet = function (name, ...args) {
+                    if (name === 'SCProtoKiboDuelArenaInfoSync') throw Error('loading readiness packet fault')
+                    return original.call(this, name, ...args)
+                }
+                assert.throws(() => f.call('MultiCampaignPlayerLoadFinish'), /loading readiness packet fault/)
+                f.game.packet = original
+                assert.deepEqual(f.state(), snapshot, 'failed status sync must not consume the readiness transition')
+            }
+            const packets = f.call('MultiCampaignPlayerLoadFinish'),
+                info = packets.find((packet) => packet.id === 11800)
+            assert.ok(
+                info,
+                'the initial login status precedes HasReportedPlayerLoadFinish; readiness must trigger CheckEnter again',
+            )
+            assert.equal(info.data.status, phase)
+            assert.equal(info.data.status_endtime, String(Math.ceil(firstOnly ? before.first_until : before.end_at)))
+            assert.equal(f.run().pause.server_at, before.pause.server_at)
+            assert.deepEqual(f.run().energy, before.energy)
+            assert.deepEqual(f.run().scores, before.scores)
+            assert.equal(f.run().start_time, before.start_time)
+            assert.deepEqual(f.tick(), [])
+            assert.ok(
+                !f.call('MultiCampaignPlayerLoadFinish').some((packet) => packet.id === 11800),
+                'duplicate readiness cannot restart UI timers',
+            )
+            if (!firstOnly) {
+                const hand = packets.find((packet) => packet.id === 11804).data.pet_guids
+                assert.ok(
+                    Object.values(f.run().actors)
+                        .filter((actor) => actor.camp === 1)
+                        .every((actor) => hand.includes(actor.source_guid) === !f.run().in_fight[actor.uuid]),
+                )
+                assert.equal(
+                    packets.find((packet) => packet.id === 11814).data.current_points,
+                    Math.floor(before.energy[1].points),
+                )
+                assert.ok(packets.some((packet) => packet.id === 11805))
+            }
+        } finally {
+            f.close()
+        }
+    })
 }
 
 test('server pause freezes battle timeout, scores, action/SP energy, paths and deadlines, then resyncs the resumed deadline', () => {
