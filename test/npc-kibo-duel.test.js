@@ -12,7 +12,7 @@ const cfg = configuration(),
     tables = new Tables(cfg.tables),
     p = new Protocol(cfg.base)
 
-test('CBT3 NPC1016 loads through9596 without9509; duplicate callbacks and relogin preserve actors', () => {
+test('CBT3 NPC1016 loads through9596 without9509; duplicate callbacks preserve actors and relogin starts a new challenge', () => {
     let now = 1800000000,
         seq = 1,
         session = {}
@@ -93,19 +93,21 @@ test('CBT3 NPC1016 loads through9596 without9509; duplicate callbacks and relogi
         now += 2
         session = {}
         call('EnterGame', { open_id: 'npc9596-loading' })
+        assert.equal(state().multiCampaign, undefined)
+        call('MultiCampaignCreate', { dungeon_id: tables.find('kibo_duel', 1016).dungeonId })
         assert.deepEqual(state().world.pos, trainerSpawn.pos)
         assert.equal(state().world.angle, trainerSpawn.angle)
         const resumed = call('MultiCampaignPlayerLoaded')
-        assert.deepEqual(resumed.find((x) => x.id === 11802).data, npcFirst)
+        assert.notEqual(resumed.find((x) => x.id === 11802).data.pet_guid, npcFirst.pet_guid)
         assert.equal(resumed.find((x) => x.id === 11055).data.mode, 9)
         assert.ok(resumed.findIndex((x) => x.id === 11055) < resumed.findIndex((x) => x.id === 11064))
-        assert.deepEqual(
-            resumed.find((x) => x.id === 11064).data.obj.map((x) => x.agent_uid),
-            uuids,
-        )
-        assert.deepEqual(state().combat.npcDuel.in_fight, fighting)
+        const restarted = resumed.find((x) => x.id === 11064).data.obj
+        assert.equal(restarted.length, uuids.length)
+        assert.ok(restarted.filter((x) => x.obj.obj_type === 20).every((x) => !uuids.includes(x.agent_uid)))
+        assert.deepEqual(state().combat.npcDuel.in_fight, {})
+        assert.ok(Object.keys(fighting).length > 0)
         call('MultiCampaignPlayerLoadFinish')
-        assert.equal(state().multiCampaign.arena_status, 4)
+        assert.equal(state().multiCampaign.arena_status, 3)
     } finally {
         store.close()
     }
@@ -181,7 +183,11 @@ test('player-selected NPC arena slot persists and supplies11801 attributes befor
         assert.ok(entered.indexOf(single) < entered.findIndex((x) => x.id === 11800))
         assert.equal(store.load(session.id).state.multiCampaign.formation_slot, 2)
         session = {}
-        const resumed = call('EnterGame', { open_id: 'npc-arena-player-formation' })
+        const returned = call('EnterGame', { open_id: 'npc-arena-player-formation' })
+        assert.ok(!returned.some((x) => x.id === 11801))
+        assert.equal(store.load(session.id).state.multiCampaign, undefined)
+        assert.equal(store.load(session.id).state.player.group_mgrs.find((group) => group.type === 6).cur_group, 2)
+        const resumed = call('MultiCampaignCreate', { dungeon_id: tables.find('kibo_duel', 2).dungeonId })
         assert.deepEqual(
             resumed.find((x) => x.id === 11801).data.attr.infos.map((x) => x.pet_guid.guid),
             pets.map((x) => x.id),

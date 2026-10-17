@@ -57,9 +57,11 @@ function fixture(duelId = 501) {
             now = value
         },
         tick: () => decode(game.tickArena(session.id, session)),
-        relogin: () => {
+        reenter: () => {
             session = {}
-            return call('EnterGame', { open_id: 'npc-buff-stage' })
+            call('EnterGame', { open_id: 'npc-buff-stage' })
+            assert.equal(state().multiCampaign, undefined)
+            return call('MultiCampaignCreate', { dungeon_id: tables.find('kibo_duel', duelId).dungeonId })
         },
     }
 }
@@ -183,18 +185,26 @@ test('delayed ticks retain all crossed permanent roots, skip defeated actors and
     }
 })
 
-test('relogin restores every elapsed root once with stable IDs, and all regular snapshots retain Fever', () => {
+test('relogin starts a new challenge without prior Fever or stage roots; later roots use new identities', () => {
     const f = fixture(1002)
     try {
         f.set(f.run().regular_started_at + 185)
         const rows = elements(f.tick())
         assert.equal(rows.length, 32)
-        const login = f.relogin().filter((packet) => packet.id === 11800)
-        assert.ok(login.length && login.every((packet) => packet.data.in_speed_stage))
+        const login = f.reenter().filter((packet) => packet.id === 11800)
+        assert.ok(login.length && login.every((packet) => !packet.data.in_speed_stage))
+        assert.equal(f.run().regular_started_at, undefined)
+        assert.deepEqual(f.state().combat.elements, {})
         assert.equal(elements(f.call('StartDungeonClientOk')).length, 0)
-        const ready = f.call('MultiCampaignPlayerLoadFinish')
-        assert.deepEqual(new Set(elements(ready).map((row) => row.uniqueId)), new Set(rows.map((row) => row.uniqueId)))
-        assert.ok(ready.filter((packet) => packet.id === 11800).every((packet) => packet.data.in_speed_stage))
+        assert.equal(elements(f.call('MultiCampaignPlayerLoadFinish')).length, 0)
+        f.call('KiboDuelArenaFirstConfirmReq')
+        f.set(f.run().intro_until)
+        f.tick()
+        f.call('ControlMapAI', { control_type: 0, status: 1 })
+        f.set(f.run().regular_started_at + 185)
+        const next = elements(f.tick())
+        assert.equal(next.length, 32)
+        assert.ok(next.every((row) => !rows.some((old) => old.uniqueId === row.uniqueId)))
         assert.equal(elements(f.call('MultiCampaignPlayerLoadFinish')).length, 0)
         f.set(f.run().regular_started_at + 186)
         assert.equal(elements(f.tick()).length, 0)

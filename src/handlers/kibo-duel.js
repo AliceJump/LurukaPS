@@ -79,29 +79,12 @@ export function repairPendingDuelEntry(state, now = Math.floor(Date.now() / 1000
         run.map_id === info.map_id &&
         (info.arena_status !== 4 || run.energy)
     ) {
-        if (tables) {
-            const { duel, dungeon, map } = npcDuelEntry(tables, info.duel_id)
-            if (duel.trialRole) {
-                const hero = prepareArenaTrainer(tables, state, duel, selectedArenaGroup(state))
-                state.combat.npcDuel = { ...run, trainer_guid: hero.guid }
-                for (const actor of Object.values(run.actors))
-                    if (actor.camp === 1 && state.combat.entities[actor.uuid])
-                        state.combat.entities[actor.uuid] = {
-                            ...state.combat.entities[actor.uuid],
-                            owner_id: hero.guid,
-                        }
-            }
-            const old = String(dungeon.position || '')
-                .split('|')
-                .map(Number)
-            const keys = ['x', 'y', 'z']
-            if (old.length === 6 && keys.every((key, i) => state.world.pos?.[key] === Math.round(old[i] * 100))) {
-                const spawn = arenaPoint(tables, map, 'nestBorthPos1')
-                state.world.pos = { ...spawn.pos }
-                state.world.angle = spawn.angle
-            }
-        }
-        return false
+        if (run.result) return false
+        // Re-enter through the original NPC preparation UI after login. The
+        // original Lua page keeps its own level cache and guide FSM; a server
+        // runtime snapshot cannot initialize either on a cold in-arena login.
+        if (tables) npcDuelEntry(tables, info.duel_id)
+        return leaveSavedNpcArena(state)
     }
     if (
         info.status === 2 &&
@@ -109,9 +92,14 @@ export function repairPendingDuelEntry(state, now = Math.floor(Date.now() / 1000
         (!Number.isFinite(Number(now)) || Number(now) - Number(info.start_time) < 60)
     )
         return false
+    return leaveSavedNpcArena(state)
+}
+function leaveSavedNpcArena(state) {
     const previous = state.worldHistory?.pop()
     if (!previous) return false
     Object.assign(state.world, previous)
+    retireNpcArenaActors(state)
+    delete state.world.pause
     delete state.multiCampaign
     delete state.combat
     clearArenaTrialTrainer(state)

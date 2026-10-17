@@ -95,7 +95,7 @@ function fixture() {
     game.tick(session.id, session)
     const run = state().combat.npcDuel,
         active = Object.values(run.actors).filter((actor) => run.in_fight[actor.uuid])
-    const self = active.find((actor) => actor.camp === 1),
+    let self = active.find((actor) => actor.camp === 1),
         enemy = active.find((actor) => actor.camp === 2)
     const hit = (index, extra = {}) => ({
         from_id: '1',
@@ -118,16 +118,28 @@ function fixture() {
         call,
         report,
         hit,
-        self,
-        enemy,
+        get self() {
+            return self
+        },
+        get enemy() {
+            return enemy
+        },
         get session() {
             return session
         },
         reconnect() {
             session = {}
             login()
+            assert.equal(state().multiCampaign, undefined)
+            call('MultiCampaignCreate', { dungeon_id: 40007 })
             call('MultiCampaignPlayerLoaded')
             call('MultiCampaignPlayerLoadFinish')
+            call('KiboDuelArenaFirstConfirmReq')
+            now = state().combat.npcDuel.intro_until
+            game.tick(session.id, session)
+            const actors = Object.values(state().combat.npcDuel.actors)
+            self = actors.find((actor) => actor.camp === 1)
+            enemy = actors.find((actor) => actor.camp === 2)
         },
     }
 }
@@ -206,18 +218,19 @@ test('hurt receipts and HP roll back together on packet faults or conflicting re
     }
 })
 
-test('entity rebuild starts a new client counter generation and terminal persistence strips temporary receipts', () => {
+test('new challenge uses new actors and damage counters; terminal persistence strips temporary receipts', () => {
     const f = fixture()
     try {
         f.report(f.hit(1))
         const hp = f.state().combat.entities[f.enemy.uuid].hp
-        const epoch = f.state().combat.npcDuel.origin_epoch
+        const generation = f.state().combat.npcDuel.generation
         f.reconnect()
-        assert.equal(f.state().combat.entities[f.enemy.uuid].hp, hp)
-        assert.ok(f.state().combat.npcDuel.origin_epoch > epoch)
+        assert.equal(f.state().combat.entities[f.enemy.uuid].hp, f.enemy.max_hp)
+        assert.equal(f.enemy.max_hp, hp + 7)
+        assert.ok(f.state().combat.npcDuel.generation > generation)
         assert.equal(f.state().combat.npcDuel.hurt_receipts, undefined)
         f.report(f.hit(1))
-        assert.equal(f.state().combat.entities[f.enemy.uuid].hp, hp - 7)
+        assert.equal(f.state().combat.entities[f.enemy.uuid].hp, f.enemy.max_hp - 7)
         const before = structuredClone(f.state()),
             original = f.game.packet
         f.game.packet = function (name, ...args) {

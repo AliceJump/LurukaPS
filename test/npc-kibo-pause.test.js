@@ -77,65 +77,44 @@ function fixture(firstOnly = false, duelId = 501) {
             now = value
         },
         tick: () => game.tick(session.id, session),
-        relogin: () => {
+        reenter: () => {
             session = {}
-            return call('EnterGame', { open_id: 'npc-pause' })
+            call('EnterGame', { open_id: 'npc-pause' })
+            assert.equal(state().multiCampaign, undefined)
+            return call('MultiCampaignCreate', { dungeon_id: tables.find('kibo_duel', duelId).dungeonId })
         },
         close: () => store.close(),
     }
 }
 
 for (const firstOnly of [true, false]) {
-    test(`entity readiness resends paused ${firstOnly ? 'FIRST' : 'REGULAR'} after relogin so the 75% loading page can enter`, () => {
+    test(`paused ${firstOnly ? 'FIRST' : 'REGULAR'} login restarts and publishes FIRST after readiness without stranding the 75% loading page`, () => {
         const f = fixture(firstOnly)
         try {
             f.call('GamePause', { operate: true })
-            const before = f.run(),
-                phase = firstOnly ? 3 : 4
+            const before = f.run()
             f.set(f.now() + 600)
-            assert.equal(f.relogin().find((packet) => packet.id === 11800).data.status, phase)
+            assert.equal(f.reenter().find((packet) => packet.id === 11800).data.status, 2)
             f.call('StartDungeonClientOk')
-            if (!firstOnly) {
-                const snapshot = f.state(),
-                    original = f.game.packet
-                f.game.packet = function (name, ...args) {
-                    if (name === 'SCProtoKiboDuelArenaInfoSync') throw Error('loading readiness packet fault')
-                    return original.call(this, name, ...args)
-                }
-                assert.throws(() => f.call('MultiCampaignPlayerLoadFinish'), /loading readiness packet fault/)
-                f.game.packet = original
-                assert.deepEqual(f.state(), snapshot, 'failed status sync must not consume the readiness transition')
+            const snapshot = f.state(),
+                original = f.game.packet
+            f.game.packet = function (name, ...args) {
+                if (name === 'SCProtoKiboDuelArenaInfoSync') throw Error('loading readiness packet fault')
+                return original.call(this, name, ...args)
             }
-            const packets = f.call('MultiCampaignPlayerLoadFinish'),
-                info = packets.find((packet) => packet.id === 11800)
-            assert.ok(
-                info,
-                'the initial login status precedes HasReportedPlayerLoadFinish; readiness must trigger CheckEnter again',
-            )
-            assert.equal(info.data.status, phase)
-            assert.equal(info.data.status_endtime, String(Math.ceil(firstOnly ? before.first_until : before.end_at)))
-            assert.equal(f.run().pause.server_at, before.pause.server_at)
-            assert.deepEqual(f.run().energy, before.energy)
+            assert.throws(() => f.call('MultiCampaignPlayerLoadFinish'), /loading readiness packet fault/)
+            f.game.packet = original
+            assert.deepEqual(f.state(), snapshot)
+            const packets = f.call('MultiCampaignPlayerLoadFinish')
+            assert.equal(packets.find((packet) => packet.id === 11800).data.status, 3)
+            assert.equal(f.run().generation, before.generation + 1)
+            assert.equal(f.run().pause, undefined)
+            assert.equal(f.state().world.pause, undefined)
+            assert.equal(f.run().energy, undefined)
+            assert.deepEqual(f.run().in_fight, {})
             assert.deepEqual(f.run().scores, before.scores)
-            assert.equal(f.run().start_time, before.start_time)
             assert.deepEqual(f.tick(), [])
-            assert.ok(
-                !f.call('MultiCampaignPlayerLoadFinish').some((packet) => packet.id === 11800),
-                'duplicate readiness cannot restart UI timers',
-            )
-            if (!firstOnly) {
-                const hand = packets.find((packet) => packet.id === 11804).data.pet_guids
-                assert.ok(
-                    Object.values(f.run().actors)
-                        .filter((actor) => actor.camp === 1)
-                        .every((actor) => hand.includes(actor.source_guid) === !f.run().in_fight[actor.uuid]),
-                )
-                assert.equal(
-                    packets.find((packet) => packet.id === 11814).data.current_points,
-                    Math.floor(before.energy[1].points),
-                )
-                assert.ok(packets.some((packet) => packet.id === 11805))
-            }
+            assert.ok(!f.call('MultiCampaignPlayerLoadFinish').some((packet) => packet.id === 11800))
         } finally {
             f.close()
         }
@@ -251,7 +230,7 @@ test('first-pick pause cannot auto-confirm and resume moves only its own deadlin
     }
 })
 
-test('explicit first confirmation works under guide pause and presentation resumes without inheriting selection wait time', () => {
+test('explicit first confirmation leaves the paused selection clock and starts an unscaled presentation window', () => {
     const f = fixture(true)
     try {
         const start = f.now()
@@ -261,19 +240,18 @@ test('explicit first confirmation works under guide pause and presentation resum
         assert.ok(packets.some((packet) => packet.id === 11803))
         assert.equal(f.state().multiCampaign.arena_status, 6)
         const intro = f.run().intro_until
-        assert.ok(f.run().pause)
-        f.set(start + 200)
-        assert.deepEqual(f.tick(), [])
+        assert.equal(f.run().pause, undefined)
+        assert.equal(f.state().world.pause.operate, true)
+        f.set(start + 110)
         f.call('KiboDuelArenaFirstConfirmReq')
         assert.equal(f.run().intro_until, intro, 'retry does not restart the movie')
         const resumed = f.call('GamePause', { operate: false })
-        assert.equal(f.run().pause, undefined)
-        assert.equal(f.run().intro_until, intro + 100)
-        assert.equal(resumed.find((packet) => packet.id === 11800).data.status, 6)
-        f.set(intro + 99)
+        assert.ok(!resumed.some((packet) => packet.id === 11807), 'resume must not replay the story stage')
+        assert.equal(f.run().intro_until, intro)
+        f.set(intro - 1)
         f.tick()
         assert.equal(f.state().multiCampaign.arena_status, 6)
-        f.set(intro + 100)
+        f.set(intro)
         f.tick()
         assert.equal(f.state().multiCampaign.arena_status, 4)
         assert.equal(f.run().pause, undefined)
@@ -543,23 +521,28 @@ test('a loading-screen pause is adopted by FIRST and cannot silently consume its
     }
 })
 
-test('an entry UI pause freezes presentation and resumes its remaining time before starting the battle clock', () => {
+test('world pause does not prolong the presentation; a pause still active at REGULAR freezes only combat', () => {
     const f = fixture(true)
     try {
         f.call('KiboDuelArenaFirstConfirmReq')
+        const start = f.run().intro_started_at,
+            intro = f.run().intro_until
         f.call('GamePause', { operate: true, game_time: String(f.now() * 1000) })
-        const intro = f.run().intro_until
-        assert.ok(f.run().pause)
+        assert.equal(f.run().pause, undefined)
         assert.equal(f.run().regular_started_at, undefined)
-        f.set(f.now() + 30)
+        f.set(intro)
+        const packets = f.tick()
+        assert.ok(packets.some((packet) => packet.id === 11800))
+        assert.equal(f.state().multiCampaign.arena_status, 4)
+        assert.equal(f.run().intro_started_at, start)
+        assert.equal(f.run().intro_completed_at, intro)
+        assert.equal(f.run().regular_started_at, intro)
+        assert.equal(f.run().pause.server_at, intro, 'do not inherit the story pause origin into combat')
+        const end = f.run().end_at
+        f.set(intro + 30)
         assert.deepEqual(f.tick(), [])
         f.call('GamePause', { operate: false, game_time: String(f.now() * 1000) })
-        assert.equal(f.run().pause, undefined)
-        assert.equal(f.run().intro_until, intro + 30)
-        f.set(intro + 30)
-        f.tick()
-        assert.equal(f.state().multiCampaign.arena_status, 4)
-        assert.equal(f.run().regular_started_at, intro + 30)
+        assert.equal(f.run().end_at, end + 30)
         assert.equal(f.run().energy[1].points, arenaTiming(tables, 501).initial)
     } finally {
         f.close()

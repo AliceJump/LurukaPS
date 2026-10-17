@@ -55,9 +55,11 @@ function fixture(duelId = 1002) {
             now = value
         },
         tick: () => decode(game.tickArena(session.id, session)),
-        relogin: () => {
+        reenter: () => {
             session = {}
-            return call('EnterGame', { open_id: 'npc-cost-stage' })
+            call('EnterGame', { open_id: 'npc-cost-stage' })
+            assert.equal(state().multiCampaign, undefined)
+            return call('MultiCampaignCreate', { dungeon_id: tables.find('kibo_duel', duelId).dungeonId })
         },
     }
 }
@@ -90,14 +92,23 @@ test('configured cost threshold sends one native cost event, separately from the
     }
 })
 
-test('cost stage restores after entity readiness on relogin, without repeating on duplicate readiness', () => {
+test('relogin resets the cost stage and the new challenge reaches its own threshold once', () => {
     const f = fixture()
     try {
         f.set(f.run().regular_started_at + 19)
         f.tick()
-        assert.equal(changes(f.relogin()).length, 0, 'do not consume the event before the new UI is ready')
-        assert.equal(changes(f.call('StartDungeonClientOk')).length, 0)
-        assert.equal(changes(f.call('MultiCampaignPlayerLoadFinish')).length, 1)
+        const old = f.run()
+        assert.equal(changes(f.reenter()).length, 0)
+        assert.equal(f.run().generation, old.generation + 1)
+        assert.equal(f.run().regular_started_at, undefined)
+        f.call('StartDungeonClientOk')
+        assert.equal(changes(f.call('MultiCampaignPlayerLoadFinish')).length, 0)
+        f.call('KiboDuelArenaFirstConfirmReq')
+        f.set(f.run().intro_until)
+        f.tick()
+        f.call('ControlMapAI', { control_type: 0, status: 1 })
+        f.set(f.run().regular_started_at + 18.1)
+        assert.equal(changes(f.tick()).length, 1)
         assert.equal(changes(f.call('MultiCampaignPlayerLoadFinish')).length, 0)
         f.set(f.run().regular_started_at + 20)
         assert.equal(changes(f.tick()).length, 0)
@@ -113,21 +124,13 @@ test('pause freezes the cost threshold; a fast-stage resume explicitly restores 
         f.set(start + 10)
         f.call('GamePause', { operate: true, game_time: '10000' })
         f.set(start + 110)
-        f.relogin()
-        f.call('StartDungeonClientOk')
-        assert.equal(changes(f.call('MultiCampaignPlayerLoadFinish')).length, 0, 'paused wall time is not battle time')
+        assert.equal(changes(f.tick()).length, 0, 'paused wall time is not battle time')
         assert.equal(changes(f.call('GamePause', { operate: false, game_time: '110000' })).length, 0)
         f.set(f.run().regular_started_at + 18.1)
         assert.equal(changes(f.tick()).length, 1)
         f.call('GamePause', { operate: true, game_time: '118100' })
         f.set(f.run().pause.server_at + 100)
-        f.relogin()
-        f.call('StartDungeonClientOk')
-        assert.equal(
-            changes(f.call('MultiCampaignPlayerLoadFinish')).length,
-            1,
-            'fast-stage paused rebuild retains the stage',
-        )
+        assert.equal(changes(f.tick()).length, 0)
         const resumed = f.call('GamePause', { operate: false, game_time: '218100' })
         assert.equal(changes(resumed).length, 1)
         f.set(f.run().regular_started_at + 19)

@@ -42,8 +42,10 @@ export function publishNpcArenaPresentation(c) {
 
 export function beginNpcArenaPresentation(c, replay = false) {
     c = arenaContext(c)
-    const run = c.state.combat.npcDuel
+    const { pause: selectionPause, ...run } = c.state.combat.npcDuel
     const { storyId, seconds } = npcArenaPresentation(c.tables, run.duel_id)
+    // Confirming a guide-paused FIRST ends that selection clock. Do not carry
+    // its freeze into the unscaled story window or shift the movie on resume.
     if (replay)
         c.pushBefore('SCProtoKiboDuelArenaInfoSync', {
             status: 3,

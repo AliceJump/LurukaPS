@@ -92,7 +92,10 @@ for (const duel of tables.get('kibo_duel').filter((row) => row.type === 1 && row
             assert.deepEqual(state().world.pos, destination)
             call('SkillStart', { unit_id: hero.guid, skill: { skill_id: 19999903, slot: 701 } })
             session = {}
-            const login = call('EnterGame', { open_id: openId })
+            call('EnterGame', { open_id: openId })
+            assert.equal(state().multiCampaign, undefined)
+            assert.equal(state().npcArenaTrialTrainer, undefined)
+            const login = call('MultiCampaignCreate', { dungeon_id: duel.dungeonId })
             assert.ok(
                 login.findIndex((packet) => packet.id === trialId) < login.findIndex((packet) => packet.id === 11801),
             )

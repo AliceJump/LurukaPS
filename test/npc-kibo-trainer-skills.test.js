@@ -194,7 +194,7 @@ test('the matching millisecond skill stop cancels only unexecuted frames and can
     assert.equal(h.run().trainer_effects.length, 1, 'already authoritative effects are not retroactively undone')
 })
 
-test('live trainer protocol preserves effect receipts across reconnect and rolls back failures without immediate SQLite writes', () => {
+test('live trainer protocol deduplicates casts, rolls back failures and resets skill charges for a restarted challenge', () => {
     let now = 1800000000,
         seq = 1,
         session = {}
@@ -245,11 +245,24 @@ test('live trainer protocol preserves effect receipts across reconnect and rolls
         const receipts = structuredClone(state().combat.npcDuel.trainer_skills)
         session = {}
         call('EnterGame', { open_id: 'npc-trainer-skills' })
+        assert.equal(state().multiCampaign, undefined)
+        call('MultiCampaignCreate', { dungeon_id: 40007 })
         call('MultiCampaignPlayerLoaded')
         call('MultiCampaignPlayerLoadFinish')
-        assert.deepEqual(state().combat.npcDuel.trainer_skills, receipts)
+        assert.equal(state().combat.npcDuel.trainer_skills, undefined)
+        assert.equal(receipts[19999903].charges, 2)
+        call('KiboDuelArenaFirstConfirmReq')
+        now = state().combat.npcDuel.intro_until
+        game.tick(session.id, session)
         call('SkillStart', request)
-        assert.deepEqual(state().combat.npcDuel.trainer_skills, receipts)
+        assert.equal(
+            state().combat.npcDuel.trainer_skills[19999903].charges,
+            2,
+            'new challenge starts with fresh charges and cast indices',
+        )
+        const paid = structuredClone(state().combat.npcDuel.trainer_skills)
+        call('SkillStart', request)
+        assert.deepEqual(state().combat.npcDuel.trainer_skills, paid)
     } finally {
         store.close()
     }

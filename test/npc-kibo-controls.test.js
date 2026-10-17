@@ -378,7 +378,7 @@ test('returning a rebuilt frozen pet retires its replay and a delayed add acknow
     assert.equal(f.run().controls[id], undefined)
 })
 
-test('actual reconnect waits for entity readiness, rebuilds controls once and explicitly ends their original remaining duration', () => {
+test('new-login challenge discards old controls, and new controls retain expiry and packet rollback checks', () => {
     let now = 1800000000,
         seq = 1,
         session = {}
@@ -401,12 +401,13 @@ test('actual reconnect waits for entity readiness, rebuilds controls once and ex
         now = state().combat.npcDuel.intro_until
         game.tick(session.id, session)
         call('ControlMapAI', { control_type: 0, status: 1 })
-        const actors = Object.values(state().combat.npcDuel.actors),
+        let actors = Object.values(state().combat.npcDuel.actors),
             self = actors.find((a) => a.camp === 1),
-            enemy = actors.find((a) => a.camp === 2)
+            enemy = actors.find((a) => a.camp === 2),
+            reportAt = now
         const report = () =>
             call('BattleInfoReduce', {
-                base_time: String(now * 1000),
+                base_time: String(reportAt * 1000),
                 uint64_dic: [self.uuid, enemy.uuid, '970', '50300011'],
                 battle_info: [
                     {
@@ -427,33 +428,46 @@ test('actual reconnect waits for entity readiness, rebuilds controls once and ex
                 ],
             })
         report()
-        const expires = state().combat.npcDuel.controls['970'].expires_ms
+        let expires = state().combat.npcDuel.controls['970'].expires_ms
         now += 1
         session = {}
         call('EnterGame', { open_id: 'npc-control-reload' })
+        assert.equal(state().multiCampaign, undefined)
+        call('MultiCampaignCreate', { dungeon_id: 40007 })
+        assert.equal(state().combat.npcDuel.controls, undefined)
+        assert.deepEqual(state().combat.elements, {})
         assert.ok(!call('MultiCampaignPlayerLoaded').some((p) => p.id === 10706))
         const beforeReady = state(),
             original = game.packet
         game.packet = function (name, ...args) {
-            if (name === 'SCProtoBattleInfoReduceNtf') throw Error('control rebuild packet fault')
+            if (name === 'SCProtoKiboDuelArenaInfoSync') throw Error('control rebuild packet fault')
             return original.call(this, name, ...args)
         }
         assert.throws(() => call('MultiCampaignPlayerLoadFinish'), /control rebuild packet fault/)
         game.packet = original
         assert.deepEqual(state(), beforeReady)
         const ready = call('MultiCampaignPlayerLoadFinish')
-        const row = receivedElements(ready.find((p) => p.id === 10706).data)[0]
-        assert.equal(row.op, 10)
-        assert.equal(row.buff.executor_id, self.uuid)
+        assert.equal(ready.find((p) => p.id === 11800).data.status, 3)
+        assert.ok(!ready.some((p) => p.id === 10706), 'old controls are not replayed into the new challenge')
         assert.ok(!call('MultiCampaignPlayerLoadFinish').some((p) => p.id === 10706))
+        call('KiboDuelArenaFirstConfirmReq')
+        now = state().combat.npcDuel.intro_until
+        game.tick(session.id, session)
+        call('ControlMapAI', { control_type: 0, status: 1 })
+        actors = Object.values(state().combat.npcDuel.actors)
+        self = actors.find((a) => a.camp === 1)
+        enemy = actors.find((a) => a.camp === 2)
+        reportAt = now
         const writes = store.db.prepare('SELECT total_changes() AS n').get().n
+        report()
+        expires = state().combat.npcDuel.controls['970'].expires_ms
         now += 1
         report()
         assert.equal(state().combat.npcDuel.controls['970'].expires_ms, expires)
         now = Number(expires) / 1000
         const beforeEnd = state()
         game.packet = function (name, ...args) {
-            if (name === 'SCProtoBattleInfoReduceNtf') throw Error('control end packet fault')
+            if (name === 'SCProtoKiboDuelArenaActionPointSync') throw Error('control end packet fault')
             return original.call(this, name, ...args)
         }
         assert.throws(() => game.tick(session.id, session), /control end packet fault/)
@@ -462,8 +476,15 @@ test('actual reconnect waits for entity readiness, rebuilds controls once and ex
         const ended = game
             .tick(session.id, session)
             .map((packet) => ({ id: packet.id, data: p.decode(p.byId.get(packet.id).rsp, packet.payload) }))
-        assert.equal(receivedElements(ended.find((p) => p.id === 10706).data)[0].op, 2)
+        assert.ok(
+            !ended.some((p) => p.id === 10706),
+            'native original controls expire locally; only replayed lifetimes need server removal',
+        )
+        assert.equal(state().combat.npcDuel.controls['970'], undefined)
         report()
+        assert.equal(arenaControlState({ state: state(), now }, self.uuid).can_move, true)
+        now += 0.1
+        game.tick(session.id, session)
         assert.equal(state().combat.npcDuel.controls['970'], undefined)
         assert.equal(store.db.prepare('SELECT total_changes() AS n').get().n, writes)
     } finally {

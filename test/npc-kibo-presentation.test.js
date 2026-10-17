@@ -66,8 +66,8 @@ test('first confirmation plays STINGER FIRST before opening combat, including in
         assert.equal(state().combat.npcDuel.regular_started_at, undefined)
         assert.deepEqual(state().combat.npcDuel.in_fight, {}, 'card state remains in hand throughout the story')
         assert.ok(!first.some((x) => x.id === 11814))
-        const own = Object.values(state().combat.npcDuel.actors).find((x) => x.camp === 1)
-        const enemy = Object.values(state().combat.npcDuel.actors).find((x) => x.camp === 2)
+        let own = Object.values(state().combat.npcDuel.actors).find((x) => x.camp === 1)
+        let enemy = Object.values(state().combat.npcDuel.actors).find((x) => x.camp === 2)
         call('BattleInfoReduce', {
             uint64_dic: [own.uuid, enemy.uuid],
             battle_info: [{ hurt_info: { from_id: '1', tar_id: '2', hp_change: -enemy.max_hp } }],
@@ -76,7 +76,9 @@ test('first confirmation plays STINGER FIRST before opening combat, including in
         now += 5
         session = {}
         const login = call('EnterGame', { open_id: 'npc-intro' })
-        assert.equal(login.find((x) => x.id === 11800).data.status, 2)
+        assert.ok(!login.some((x) => x.id === 11800))
+        assert.equal(state().multiCampaign, undefined)
+        call('MultiCampaignCreate', { dungeon_id: 40007 })
         const reloaded = call('MultiCampaignPlayerLoaded')
         assert.ok(
             reloaded
@@ -88,8 +90,11 @@ test('first confirmation plays STINGER FIRST before opening combat, including in
         const resumed = call('MultiCampaignPlayerLoadFinish')
         assert.deepEqual(
             resumed.filter((x) => x.id === 11800).map((x) => x.data.status),
-            [3, 6],
+            [3],
         )
+        call('KiboDuelArenaFirstConfirmReq')
+        own = Object.values(state().combat.npcDuel.actors).find((x) => x.camp === 1)
+        enemy = Object.values(state().combat.npcDuel.actors).find((x) => x.camp === 2)
         const until = state().combat.npcDuel.intro_until
         now++
         call('MultiCampaignPlayerLoadFinish')

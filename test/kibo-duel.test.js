@@ -227,10 +227,11 @@ test('duel501 enters its table-linked arena through one-way 9510 and can leave w
         assert(store.load(session.id).state.kiboDuelLoadingCompleteAt > 0)
         session = {}
         const resumed = call('EnterGame', { open_id: 'arena-entry' })
-        for (const id of [10747, 9512, 9513, 9567, 11874, 11801, 10007, 11804, 11802])
-            assert(resumed.some((x) => x.id === id))
-        assert.equal(resumed.find((x) => x.id === 11800).data.status, 3)
-        assert.equal(store.load(session.id).state.world.map_id, info.map_id)
+        assert.ok(!resumed.some((x) => x.id === 11800))
+        assert.equal(store.load(session.id).state.world.map_id, before.map_id)
+        assert.equal(store.load(session.id).state.multiCampaign, undefined)
+        const restarted = call('MultiCampaignCreate', { dungeon_id: 40007 })
+        assert.equal(restarted.find((x) => x.id === 11800).data.status, 2)
         call('StartDungeonClientOk')
         call('MultiCampaignPlayerLoadFinish')
         const confirmed = call('KiboDuelArenaFirstConfirmReq')
@@ -285,7 +286,8 @@ test('relogin recovers legacy and timed-out READY duel entries without losing fr
         call('MultiCampaignCreate', { dungeon_id: 40007 })
         session = {}
         call('EnterGame', { open_id: 'stranded-duel' })
-        assert.equal(store.load(session.id).state.world.map_id, 1054)
+        assert.equal(store.load(session.id).state.world.map_id, home.map_id)
+        call('MultiCampaignCreate', { dungeon_id: 40007 })
         store.transact(session.id, 0, (s) => {
             s.multiCampaign.start_time = '1'
         })

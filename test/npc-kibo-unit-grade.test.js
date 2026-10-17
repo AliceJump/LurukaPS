@@ -225,6 +225,8 @@ test('real summon schema keeps native ownership through retry, rolls back packet
         })
         session = {}
         call('EnterGame', { open_id: 'npc-native-owner' })
+        assert.equal(state().multiCampaign, undefined)
+        call('MultiCampaignCreate', { dungeon_id: 40007 })
         assert.deepEqual(arenaUnitGrade({ state: state() }, childId), { status: 'unobserved' })
         call('MultiCampaignPlayerLoaded')
         call('MultiCampaignPlayerLoadFinish')

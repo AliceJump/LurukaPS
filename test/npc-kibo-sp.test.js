@@ -450,6 +450,8 @@ test('live protocol casts are paid once, roll back on packet faults and do not i
         assert.equal(store.db.prepare('SELECT total_changes() AS n').get().n, writes)
         session = {}
         call('EnterGame', { open_id: 'arena-sp-protocol' })
+        assert.equal(state().multiCampaign, undefined)
+        call('MultiCampaignCreate', { dungeon_id: 40007 })
         call('MultiCampaignPlayerLoaded')
         assert.deepEqual(state().combat.npcDuel.arena_casts, {}, 'new entity creation clears old animation lifetimes')
         assert.deepEqual(
@@ -457,14 +459,21 @@ test('live protocol casts are paid once, roll back on packet faults and do not i
             {},
             'client entity rebuild begins a new cast-index lifetime',
         )
-        assert.deepEqual(
-            state().combat.entities[actor.uuid].arena_properties,
-            properties,
-            'reconnecting retains server property components',
+        assert.ok(properties)
+        assert.equal(
+            state().combat.entities[actor.uuid],
+            undefined,
+            'a new challenge retires old property components with their actors',
         )
+        const newActor = Object.values(state().combat.npcDuel.actors).find(
+            (row) => row.source_guid === actor.source_guid,
+        )
+        assert.equal(state().combat.entities[newActor.uuid].arena_properties, undefined)
         const ready = call('MultiCampaignPlayerLoadFinish')
         assert.ok(
-            ready.some((packet) => packet.id === 10009 && packet.data.infos.some((info) => info.uuid === actor.uuid)),
+            ready.some(
+                (packet) => packet.id === 10009 && packet.data.infos.some((info) => info.uuid === newActor.uuid),
+            ),
         )
     } finally {
         store.close()
