@@ -1,4 +1,5 @@
 import { ErrorCode } from '../error-codes.js'
+import { productionTables } from '../production-tables.js'
 import { claimHatch, cancelHatch } from '../hatching.js'
 import { ensure, syncPlayer } from './common.js'
 import { ensureHome } from '../home.js'
@@ -22,6 +23,7 @@ function owned(c, guid) {
     return { h, b }
 }
 export function registerProduction(on, tables) {
+    tables = productionTables(tables)
     on('ProductStart', (c, r) => {
         const { h, b } = owned(c, r.build_guid),
             recipe = tables.find('products', r.product_id),

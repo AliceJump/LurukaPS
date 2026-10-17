@@ -1,4 +1,5 @@
 import { ErrorCode } from './error-codes.js'
+import { productionTables } from './production-tables.js'
 import { ensure } from './handlers/common.js'
 
 const catalogs = new WeakMap()
@@ -107,6 +108,7 @@ export function productionSeconds(tables, state, build, recipe) {
 }
 
 export function retimeProduction(tables, state, now) {
+    tables = productionTables(tables)
     let changed = false
     for (const build of state.home?.builds ?? []) {
         const jobs = state.home.productionJobs?.[build.guid] ?? []

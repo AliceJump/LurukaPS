@@ -1,4 +1,5 @@
 import { ErrorCode } from '../error-codes.js'
+import { productionTables } from '../production-tables.js'
 import { ensure, syncPlayer } from './common.js'
 import { parseRewards, grantRewards } from '../rewards.js'
 import { spend, spendCurrency } from '../inventory.js'
@@ -12,6 +13,7 @@ import {
 } from '../simple-production.js'
 
 export function registerSimpleProduction(on, tables) {
+    tables = productionTables(tables)
     on('SimpleProductStart', (c, r) => {
         const recipe = tables.find('products', r.product_id)
         ensure(recipe?.isQuickProduct === 1 && !recipe.notReleased, 'Unknown quick-production recipe')

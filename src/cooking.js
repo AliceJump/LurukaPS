@@ -1,7 +1,9 @@
 import { ErrorCode } from './error-codes.js'
+import { productionTables } from './production-tables.js'
 import { ensure } from './handlers/common.js'
 
 export function cookingRecipe(tables, id) {
+    tables = productionTables(tables)
     const quality = tables.find('products_multi_quality', id)
     const product = quality && tables.find('products', quality.productId)
     // CookRequest also serves the mill's quality-selectable ingredient recipes.

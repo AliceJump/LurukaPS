@@ -1,4 +1,5 @@
 import { ErrorCode } from '../error-codes.js'
+import { productionTables } from '../production-tables.js'
 import { ensure, textValue, pet } from './common.js'
 import { ensurePetName } from '../pets.js'
 import { caressPet } from '../pet-caress.js'
@@ -24,6 +25,7 @@ function homeScenePosition(tables) {
 }
 
 export function registerHome(on, tables) {
+    tables = productionTables(tables)
     const change = (c) => {
         c.state.homeRevision = (c.state.homeRevision || 0) + 1
     }

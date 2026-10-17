@@ -4,6 +4,7 @@ import { configTime } from './shops.js'
 import { taskNodeCompleted, TaskGraphs, nodeConditions, asList, acceptTask, taskUnlocked } from './tasks.js'
 import { ensure } from './handlers/common.js'
 import { activityTables } from './activity-tables.js'
+import { productionTables } from './production-tables.js'
 import { GrowupSystem } from './growup.js'
 
 const policy = JSON.parse(fs.readFileSync(new URL('../configs/activity-policy.json', import.meta.url)))
@@ -11,7 +12,7 @@ export class ActivityCatalog {
     constructor(tables) {
         this.external = tables
         this.graphs = new TaskGraphs(tables)
-        tables = activityTables(tables)
+        tables = activityTables(productionTables(tables))
         this.tables = tables
         this.growup = new GrowupSystem(tables)
         this.rows = tables.get('game_events')
