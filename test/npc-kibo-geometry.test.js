@@ -25,6 +25,36 @@ const rectangle = {
     side_radius: 8,
 }
 const circle = { ...rectangle, shape: 'circle', radius: 12 }
+
+test('trainer and first-summon headings face the opposite side across every linked NPC scene', () => {
+    for (const duel of tables.get('kibo_duel').filter((row) => row.type === 1 && row.id !== 20001)) {
+        const map = tables.find('kibo_duel_map', duel.mapId)
+        for (const [from, to] of [
+            ['nestBorthPos1', 'nestBorthPos2'],
+            ['nestBorthPos2', 'nestBorthPos1'],
+            ['SummonPos1', 'SummonPos2'],
+            ['SummonPos2', 'SummonPos1'],
+        ]) {
+            const a = arenaPoint(tables, map, from),
+                b = arenaPoint(tables, map, to)
+            const dx = b.pos.x - a.pos.x,
+                dz = b.pos.z - a.pos.z
+            const yaw = (a.angle * Math.PI) / 180
+            const dot = (Math.sin(yaw) * dx + Math.cos(yaw) * dz) / Math.hypot(dx, dz)
+            // Arena headings round to whole degrees; source positions and
+            // wire centimeters add a small angular quantization at slants.
+            assert.ok(dot > Math.cos((0.6 * Math.PI) / 180), `${duel.id}/${from} must face inward`)
+        }
+    }
+})
+
+test('normal player movement uses hundredths of a degree while arena actor appearance uses whole degrees', () => {
+    const map = tables.find('kibo_duel_map', 20008)
+    assert.equal(arenaPoint(tables, map, 'nestBorthPos1', 100).angle, 27000)
+    assert.equal(arenaPoint(tables, map, 'nestBorthPos2').angle, 90)
+    assert.equal(arenaPoint(tables, map, 'SummonPos1').angle, 270)
+    assert.equal(arenaPoint(tables, map, 'SummonPos2').angle, 90)
+})
 // AzurProto.ToServerPos uses float multiplication and conv.i4, not rounding.
 const wire = (pos) =>
     Object.fromEntries(

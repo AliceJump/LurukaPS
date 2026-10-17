@@ -335,7 +335,7 @@ export function registerKiboDuel(on, tables, protocol) {
         npcDuelEntry(tables, duel.id)
         // SceneData.Init(KiboArenaMapMono) takes the blue trainer position.
         // The generic dungeon.position is reused across different arenas.
-        const trainerSpawn = arenaPoint(tables, map, 'nestBorthPos1')
+        const trainerSpawn = arenaPoint(tables, map, 'nestBorthPos1', 100)
         const arena = ensureArenaFormationManager(c.state),
             formation =
                 duel.kiboLock || duel.levelType === 2

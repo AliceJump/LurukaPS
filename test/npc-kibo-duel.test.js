@@ -35,7 +35,7 @@ test('CBT3 NPC1016 loads through9596 without9509; duplicate callbacks preserve a
             if (group.pet_guids[i].id === '0') group.pet_guids[i] = { id: owned.next().value.guid, is_trial: false }
         call('KiboDuelGroupChange', { type: 6, group })
         call('MultiCampaignCreate', { dungeon_id: tables.find('kibo_duel', 1016).dungeonId })
-        const trainerSpawn = arenaPoint(tables, tables.find('kibo_duel_map', 20006), 'nestBorthPos1')
+        const trainerSpawn = arenaPoint(tables, tables.find('kibo_duel_map', 20006), 'nestBorthPos1', 100)
         assert.deepEqual(state().world.pos, trainerSpawn.pos)
         // Reproduce the real trace:9510 ->9596, with no9509.
         const loaded = call('MultiCampaignPlayerLoaded')

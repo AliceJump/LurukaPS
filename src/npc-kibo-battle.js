@@ -24,25 +24,48 @@ import {
     advanceArenaScores,
 } from './npc-kibo-clock.js'
 
-export function arenaPoint(tables, map, field) {
-    const tuple = String(map[field]).split('|').map(Number)
-    const point = tables
-        .get('world_pos_path')
-        .find((row) => row.sceneId === map.prefabID && row.group === tuple[1] && row.index === tuple[2])
-    const xyz = String(point?.posPoint ?? '')
-        .split('|')
-        .map(Number)
-    const rotation = String(point?.posRot ?? '')
-        .split('|')
-        .map(Number)
-    ensure(
-        tuple.length === 3 && point && xyz.length === 3 && xyz.every(Number.isFinite),
-        'Arena spawn point unavailable',
-        ErrorCode.GameConfig,
-    )
+export function arenaPoint(tables, map, field, angleScale = 1) {
+    const read = (key) => {
+        const tuple = String(map[key]).split('|').map(Number)
+        const point = tables
+            .get('world_pos_path')
+            .find((row) => row.sceneId === map.prefabID && row.group === tuple[1] && row.index === tuple[2])
+        const xyz = String(point?.posPoint ?? '')
+            .split('|')
+            .map(Number)
+        ensure(
+            tuple.length === 3 && point && xyz.length === 3 && xyz.every(Number.isFinite),
+            'Arena spawn point unavailable',
+            ErrorCode.GameConfig,
+        )
+        return {
+            xyz,
+            rotation: String(point.posRot ?? '')
+                .split('|')
+                .map(Number),
+        }
+    }
+    const { xyz, rotation } = read(field)
+    const opposite = {
+        nestBorthPos1: 'nestBorthPos2',
+        nestBorthPos2: 'nestBorthPos1',
+        SummonPos1: 'SummonPos2',
+        SummonPos2: 'SummonPos1',
+    }[field]
+    let degrees = rotation[1] || 0
+    if (opposite) {
+        const target = read(opposite).xyz,
+            dx = target[0] - xyz[0],
+            dz = target[2] - xyz[2]
+        ensure(Math.hypot(dx, dz) > 0, 'Arena opposing spawn points coincide', ErrorCode.GameConfig)
+        degrees = ((Math.atan2(dx, dz) * 180) / Math.PI + 360) % 360
+    }
+    // ProtoHelper.ToClientRot divides normal world movement by100. Arena
+    // OnObjAppear/OnInFightChange instead consume plain-degree rotations.
+    ensure(angleScale === 1 || angleScale === 100, 'Invalid arena angle unit', ErrorCode.GameConfig)
     return {
         pos: { x: Math.round(xyz[0] * 100), y: Math.round(xyz[1] * 100), z: Math.round(xyz[2] * 100) },
-        angle: Math.round(rotation[1] || 0),
+        angle: Math.round(degrees * angleScale) % (360 * angleScale),
     }
 }
 
