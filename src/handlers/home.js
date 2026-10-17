@@ -1,3 +1,4 @@
+import { ErrorCode } from '../error-codes.js'
 import { ensure, textValue, pet } from './common.js'
 import { ensurePetName } from '../pets.js'
 import { caressPet } from '../pet-caress.js'
@@ -13,11 +14,11 @@ import { dormTopics } from '../home-dorm.js'
 
 function homeScenePosition(tables) {
     const homeMapId = Number(tables.get('game').find((row) => row.title === 'HOME_ID')?.value)
-    ensure(Number.isInteger(homeMapId) && homeMapId > 0, 'Missing home map id', 1007)
+    ensure(Number.isInteger(homeMapId) && homeMapId > 0, 'Missing home map id', ErrorCode.GameConfig)
 
     const point = tables.get('world_borthpos').find((row) => row.cityId === homeMapId && Number(row.mainPoint) === 1)
     const area = tables.get('world_area').find((row) => row.sceneId === homeMapId)
-    ensure(point && area, 'Missing home scene spawn configuration', 1007)
+    ensure(point && area, 'Missing home scene spawn configuration', ErrorCode.GameConfig)
 
     return { ...tables.position(point), area_id: area.id }
 }
@@ -90,7 +91,11 @@ export function registerHome(on, tables) {
         return {}
     })
     on('EnterHome', (c, r) => {
-        ensure(!r.creator_id || r.creator_id === c.id, 'Visiting other homes is not implemented', 1021)
+        ensure(
+            !r.creator_id || r.creator_id === c.id,
+            'Visiting other homes is not implemented',
+            ErrorCode.InvalidProtoID,
+        )
         ensureHome(tables, c.state)
         const position = homeScenePosition(tables)
         rememberMap(c, position.map_id)
@@ -151,7 +156,7 @@ export function registerHome(on, tables) {
         ensure(tables.find('products', r.product_id), 'Unknown product')
         ensure(Number.isInteger(r.count) && r.count > 0, 'Invalid wishlist quantity')
         const limit = Number(tables.get('game').find((x) => x.title === 'HOME_WISHLIST_LIMIT')?.value)
-        ensure(Number.isInteger(limit) && limit > 0, 'Invalid wishlist limit', 1007)
+        ensure(Number.isInteger(limit) && limit > 0, 'Invalid wishlist limit', ErrorCode.GameConfig)
         if (r.uid) {
             const index = home.wishlist.findIndex((x) => x.uid === r.uid)
             ensure(index >= 0, 'Wishlist entry not owned')

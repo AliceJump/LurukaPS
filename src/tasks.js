@@ -1,3 +1,4 @@
+import { ErrorCode } from './error-codes.js'
 import { WorldObjectCatalog } from './world-objects.js'
 import { deliveryComplete, deliveryKey } from './task-delivery.js'
 import { taskItemSnapshot } from './task-items.js'
@@ -19,17 +20,21 @@ export class TaskGraphs {
         const config = this.tables.find('task', id)
         ensure(config, 'Unknown task')
         const filename = path.join(this.directory, `task_client_${id}.json`)
-        ensure(fs.existsSync(filename), 'Task graph unavailable', 1007)
+        ensure(fs.existsSync(filename), 'Task graph unavailable', ErrorCode.GameConfig)
         const raw = JSON.parse(fs.readFileSync(filename, 'utf8'))
-        ensure(raw.taskId === id, 'Mismatched task graph', 1007)
+        ensure(raw.taskId === id, 'Mismatched task graph', ErrorCode.GameConfig)
         const nodes = new Map()
         for (const entry of asList(raw.nodes)) {
             const n = entry.__type_TaskBaseNodeData
-            ensure(n && Number.isInteger(n.id) && n.id > 0 && !nodes.has(n.id), 'Invalid graph node', 1007)
+            ensure(
+                n && Number.isInteger(n.id) && n.id > 0 && !nodes.has(n.id),
+                'Invalid graph node',
+                ErrorCode.GameConfig,
+            )
             nodes.set(n.id, n)
         }
         const start = [...nodes.values()].filter((n) => n.nodeType === 10)
-        ensure(start.length === 1 && nodes.has(raw.endNodeId), 'Task graph missing start/end', 1007)
+        ensure(start.length === 1 && nodes.has(raw.endNodeId), 'Task graph missing start/end', ErrorCode.GameConfig)
         const graph = {
             config,
             dungeonId: this.tables
@@ -55,12 +60,12 @@ export function conditionValue(condition, state, context) {
     }
     if (condition.conditionId === 2004) {
         const level = base.__type_TaskCondLevelData?.level
-        ensure(Number.isInteger(level), 'Invalid level condition', 1007)
+        ensure(Number.isInteger(level), 'Invalid level condition', ErrorCode.GameConfig)
         return state.player.basic_info.lv >= level ? 1 : 0
     }
     if (condition.conditionId === 2007) {
         const id = base.__type_TaskCondCompleteTaskData?.taskId
-        ensure(Number.isInteger(id), 'Invalid task prerequisite', 1007)
+        ensure(Number.isInteger(id), 'Invalid task prerequisite', ErrorCode.GameConfig)
         return (state.taskRecords || []).some((r) => r.task_id === id && r.count > 0) ? 1 : 0
     }
     if (condition.conditionId === 2521) {
@@ -198,7 +203,7 @@ export function activeNode(task, id) {
 }
 export function makeNode(graph, id, state) {
     const n = graph.nodes.get(id)
-    ensure(n, 'Dangling task graph edge', 1007)
+    ensure(n, 'Dangling task graph edge', ErrorCode.GameConfig)
     const conditions = nodeConditions(n)
     return {
         node_id: id,
@@ -228,7 +233,11 @@ export function advancePetChoiceBranch(graph, task, state) {
         const matches = values.flatMap((value, index) => (value > 0 ? [index] : []))
         if (matches.length !== 1) continue
         const chosen = next[matches[0]]
-        ensure(graph.nodes.has(chosen) && !task.finish_nodes.includes(chosen), 'Invalid pet-choice branch', 1007)
+        ensure(
+            graph.nodes.has(chosen) && !task.finish_nodes.includes(chosen),
+            'Invalid pet-choice branch',
+            ErrorCode.GameConfig,
+        )
         task.nodes = task.nodes.filter((n) => n.node_id !== node.node_id)
         task.finish_nodes.push(node.node_id)
         if (!task.nodes.some((n) => n.node_id === chosen)) task.nodes.push(makeNode(graph, chosen, state))
@@ -315,7 +324,7 @@ export function acceptAvailableSideTasks(
             const graph = graphs.get(config.id)
             if (taskUnlocked(graph, state, { tables, accepting: true })) candidates.push(graph)
         } catch (error) {
-            if (error.code !== 1007 && error.code !== 'ENOENT') throw error
+            if (error.code !== ErrorCode.GameConfig && error.code !== 'ENOENT') throw error
             unavailable.push(config.id)
         }
     }
@@ -334,7 +343,7 @@ export function advanceStartNodes(graph, task, state) {
         ensure(
             next.length > 0 && next.every((id) => graph.nodes.has(id) && graph.nodes.get(id).nodeType !== 10),
             'Invalid task entry edges',
-            1007,
+            ErrorCode.GameConfig,
         )
         task.finish_nodes ??= []
         if (!task.finish_nodes.includes(node.node_id)) task.finish_nodes.push(node.node_id)

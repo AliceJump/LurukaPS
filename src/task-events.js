@@ -1,3 +1,4 @@
+import { ErrorCode } from './error-codes.js'
 import {
     TaskGraphs,
     activeTask,
@@ -27,10 +28,10 @@ function ownsFractalPet(c, data) {
             .split('|')
             .filter(Boolean)
             .map(Number)
-    ensure(ids.length === 1, 'Task catch pet group unavailable', 1007)
+    ensure(ids.length === 1, 'Task catch pet group unavailable', ErrorCode.GameConfig)
     const petId = petTables.enemy.find((r) => r.id === ids[0])?.petId,
         petGroup = petTables.pet_rank.find((r) => r.petId === petId)?.petGroup
-    ensure(Number.isInteger(petGroup) && petGroup > 0, 'Task catch pet configuration unavailable', 1007)
+    ensure(Number.isInteger(petGroup) && petGroup > 0, 'Task catch pet configuration unavailable', ErrorCode.GameConfig)
     return c.state.pets.some((p) => petTables.pet_rank.some((r) => r.petId === p.config_id && r.petGroup === petGroup))
 }
 function recordScopedEvent(c, r, graphs) {
@@ -233,7 +234,7 @@ export function recordTaskBehaviour(c, r) {
     ensure(
         data,
         `Task event configuration unavailable (${taskId}/${nodeId}/${index}, content ${condition.contentType})`,
-        1007,
+        ErrorCode.GameConfig,
     )
     if (virtualState)
         ensure(
@@ -244,7 +245,7 @@ export function recordTaskBehaviour(c, r) {
                 typeof virtualState.virtualState === 'string' &&
                 virtualState.virtualState.length > 0,
             'Invalid world virtual-state condition',
-            1007,
+            ErrorCode.GameConfig,
         )
     const area = areaTrigger ? c.tables.find('world_area_unit_define', areaTrigger.configId) : null
     if (areaTrigger)
@@ -255,7 +256,7 @@ export function recordTaskBehaviour(c, r) {
                 Number.isInteger(area.sceneId) &&
                 area.sceneId > 0,
             'Task area trigger configuration unavailable',
-            1007,
+            ErrorCode.GameConfig,
         )
     // The exported NPC-trigger payload calls its storyId `sceneId`; the CBT3
     // TaskCondNPCTriggerData/TaskCondActiveNPCTriggerData classes confirm that
@@ -298,7 +299,11 @@ export function recordTaskBehaviour(c, r) {
     const key = deliveryKey(c.state, taskId, nodeId, index),
         events = (c.state.taskEvents ??= {})
     const required = Math.max(1, Number(data.count) || 1)
-    ensure(Number.isSafeInteger(required) && required <= 0xffffffff, 'Invalid task event requirement', 1007)
+    ensure(
+        Number.isSafeInteger(required) && required <= 0xffffffff,
+        'Invalid task event requirement',
+        ErrorCode.GameConfig,
+    )
     events[key] = Math.min(required, (events[key] ?? 0) + 1)
     node.node_values[index] = conditionValue(condition, c.state, { taskId, nodeId, index })
     reconcileTaskBefore(c.tables, graph, task, node, c.state)

@@ -1,3 +1,4 @@
+import { ErrorCode } from '../src/error-codes.js'
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { configuration } from '../src/config.js'
@@ -49,6 +50,18 @@ for (const placementProtocol of ['BuildLocate', 'BuildCreate'])
                 ])
             })
             assert.equal(store.load(session.id).state.home.builds[0].build_id, 10000)
+            store.transact(session.id, 0, (state) => {
+                state.player.attr_infos.attrs.find((a) => a.attr_id === 103).attr_val = '0'
+            })
+            const beforeFailure = store.load(session.id).state
+            assert.throws(
+                () => call('ProductStart', { build_guid: 1, product_id: 710018, count: 1 }),
+                (error) => error.code === ErrorCode.ItemNotEnough && error.message === 'Insufficient currency',
+            )
+            assert.deepEqual(store.load(session.id).state, beforeFailure)
+            store.transact(session.id, 0, (state) => {
+                grantRewards(tables, state, [{ itemtype: 10, itemid: 103, itemnum: 300 }])
+            })
             call('ProductStart', { build_guid: 1, product_id: 710018, count: 1 })
             now += 5
             call('ProductFinish', { guid: 1, is_all: true })

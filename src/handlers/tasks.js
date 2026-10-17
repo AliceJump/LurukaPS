@@ -1,3 +1,4 @@
+import { ErrorCode } from '../error-codes.js'
 import { rewardSource } from '../reward-source.js'
 import { submitTaskItems, deliveryKey, deliveryComplete } from '../task-delivery.js'
 import { applyTaskItemActions } from '../task-items.js'
@@ -240,7 +241,11 @@ export function registerTasks(register, tables) {
         }
         const { graph, task, node, config } = current(c, r)
         ensure(node.client_before, 'Node pre-action is not acknowledged')
-        ensure([10, 20, 30, 50].includes(config.nodeType), 'Task node type is not implemented', 1021)
+        ensure(
+            [10, 20, 30, 50].includes(config.nodeType),
+            'Task node type is not implemented',
+            ErrorCode.InvalidProtoID,
+        )
         const conditions = nodeConditions(config)
         node.node_values = conditions.map((q, index) =>
             conditionValue(q, c.state, { taskId: r.task_id, nodeId: r.node_id, index }),
@@ -274,12 +279,12 @@ export function registerTasks(register, tables) {
             return taskRewards(tables, rewards)
         }
         const next = asList(config.nextNodeIdList)
-        ensure(next.length > 0, 'Task node has no successor', 1007)
-        ensure(new Set(next).size === next.length, 'Duplicate task edges', 1007)
+        ensure(next.length > 0, 'Task node has no successor', ErrorCode.GameConfig)
+        ensure(new Set(next).size === next.length, 'Duplicate task edges', ErrorCode.GameConfig)
         ensure(
             next.every((id) => !task.finish_nodes.includes(id)),
             'Cyclic task graph requires loop state',
-            1007,
+            ErrorCode.GameConfig,
         )
         task.nodes = task.nodes.filter((n) => n.node_id !== r.node_id)
         if (!task.finish_nodes.includes(r.node_id)) task.finish_nodes.push(r.node_id)

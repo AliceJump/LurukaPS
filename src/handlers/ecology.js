@@ -1,3 +1,4 @@
+import { ErrorCode } from '../error-codes.js'
 import { ensure } from './common.js'
 export function registerEcology(on, tables) {
     const configs = tables.get('world_eep'),
@@ -16,12 +17,12 @@ export function registerEcology(on, tables) {
                         ensure(
                             !extra.length && Number.isSafeInteger(weight) && weight > 0 && templates.has(id),
                             'Invalid ecology template configuration',
-                            1007,
+                            ErrorCode.GameConfig,
                         )
                         return { weight, id }
                     })
                 const total = choices.reduce((n, x) => n + x.weight, 0)
-                ensure(total > 0 && total <= 0x7fffffff, 'Invalid ecology template weights', 1007)
+                ensure(total > 0 && total <= 0x7fffffff, 'Invalid ecology template weights', ErrorCode.GameConfig)
                 let draw = c.randomInt(total),
                     selected
                 for (const choice of choices) {

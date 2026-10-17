@@ -1,3 +1,4 @@
+import { ErrorCode } from './error-codes.js'
 import fs from 'node:fs'
 import { TaskGraphs, asList } from './tasks.js'
 import { ensure } from './handlers/common.js'
@@ -27,7 +28,7 @@ export function taskBirthPoint(tables, id, map) {
         fs.readFileSync(new URL('../configs/task-tables/world_borthpos.json', import.meta.url), 'utf8'),
     )
     const point = id ? points.find((p) => p.id === id) : points.find((p) => p.cityId === map && p.mainPoint === 1)
-    ensure(point && (!map || point.cityId === map), 'Task scene birth point unavailable', 1007)
+    ensure(point && (!map || point.cityId === map), 'Task scene birth point unavailable', ErrorCode.GameConfig)
     return point
 }
 export function moveTaskScene(tables, state, point, remember = true) {

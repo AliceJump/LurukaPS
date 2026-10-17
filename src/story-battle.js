@@ -1,3 +1,4 @@
+import { ErrorCode } from './error-codes.js'
 import { finishEnemyGroupRelations } from './handlers/world-combat.js'
 import fs from 'node:fs'
 import { ensure } from './handlers/common.js'
@@ -86,7 +87,7 @@ export function registerStoryBattle(on, tables) {
             const profile = profiles.find((p) => p.battleFsmType === group?.battleFsmType)
             ensure(group?.canForceKill === 1 && profile, 'Enemy group has no configured story kill')
             const rules = profile.rules.filter((rule) => !rule.validation || rule.validation === 'story')
-            ensure(rules.length > 0, 'Story-kill client-condition validation is not implemented', 1007)
+            ensure(rules.length > 0, 'Story-kill client-condition validation is not implemented', ErrorCode.GameConfig)
             const matchedRule = rules.find(
                 (rule) => rule.stories.length && rule.stories.every((id) => c.state.storyIds?.includes(id)),
             )
@@ -131,7 +132,7 @@ export function recoverFailedStoryKills(c, protocol, filename, handler) {
             record.phase !== 'dispatch' ||
             record.account_id !== c.id ||
             record.message_id !== 10799 ||
-            record.error_code !== 1024 ||
+            record.error_code !== ErrorCode.InvalidArgument ||
             record.error !== 'Enemy group has no configured story kill' ||
             !Array.isArray(record.request?.guid)
         )

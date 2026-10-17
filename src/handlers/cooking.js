@@ -1,3 +1,4 @@
+import { ErrorCode } from '../error-codes.js'
 import { ensureHome } from '../home.js'
 import { spend } from '../inventory.js'
 import { refreshProduction } from '../production.js'
@@ -24,7 +25,7 @@ export function registerCooking(on, tables) {
                 Number.isInteger(product.time) &&
                 product.time > 0,
             'Cooking queue configuration is missing',
-            1007,
+            ErrorCode.GameConfig,
         )
         ensure(!product.notReleased && homeCondition(product.unlockCondition, c.state), 'Cooking recipe locked')
         ensure(

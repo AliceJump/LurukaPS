@@ -1,9 +1,10 @@
+import { ErrorCode } from './error-codes.js'
 import { ensure } from './handlers/common.js'
 const zone = 8 * 3600
 export function configTime(value) {
     if (!value) return 0
     const m = /^(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})(\d{2})$/.exec(value)
-    ensure(m, 'Invalid shop date', 1007)
+    ensure(m, 'Invalid shop date', ErrorCode.GameConfig)
     const [y, mo, d, h, mi, s] = m.slice(1).map(Number)
     const n = Date.UTC(y, mo - 1, d, h, mi, s) / 1000 - zone
     const date = new Date((n + zone) * 1000)
@@ -15,7 +16,7 @@ export function configTime(value) {
             mi < 60 &&
             s < 60,
         'Invalid shop date',
-        1007,
+        ErrorCode.GameConfig,
     )
     return n
 }
@@ -31,7 +32,11 @@ export function refreshWindow(goods, now, hour = 4) {
             return { start: 0, end: 0 }
         case 3: {
             const day = Number(goods.refreshTypeParam)
-            ensure(Number.isInteger(day) && day >= 1 && day <= 28, 'Unsupported monthly reset day', 1007)
+            ensure(
+                Number.isInteger(day) && day >= 1 && day <= 28,
+                'Unsupported monthly reset day',
+                ErrorCode.GameConfig,
+            )
             start = at(y, mo, day)
             if (now < start) {
                 end = start
@@ -44,7 +49,11 @@ export function refreshWindow(goods, now, hour = 4) {
                 h = Math.floor(raw / 10000),
                 mi = Math.floor(raw / 100) % 100,
                 s = raw % 100
-            ensure(Number.isInteger(raw) && h >= 0 && h < 24 && mi < 60 && s < 60, 'Invalid daily reset time', 1007)
+            ensure(
+                Number.isInteger(raw) && h >= 0 && h < 24 && mi < 60 && s < 60,
+                'Invalid daily reset time',
+                ErrorCode.GameConfig,
+            )
             start = at(y, mo, d, h, mi, s)
             if (now < start) start -= 86400
             end = start + 86400
@@ -52,7 +61,11 @@ export function refreshWindow(goods, now, hour = 4) {
         }
         case 5: {
             const weekday = Number(goods.refreshTypeParam)
-            ensure(Number.isInteger(weekday) && weekday >= 1 && weekday <= 7, 'Invalid weekly reset day', 1007)
+            ensure(
+                Number.isInteger(weekday) && weekday >= 1 && weekday <= 7,
+                'Invalid weekly reset day',
+                ErrorCode.GameConfig,
+            )
             const today = local.getUTCDay() || 7
             start = at(y, mo, d) - ((today - weekday + 7) % 7) * 86400
             if (now < start) start -= 604800
@@ -60,7 +73,7 @@ export function refreshWindow(goods, now, hour = 4) {
             break
         }
         default:
-            ensure(false, 'Unsupported shop refresh type', 1021)
+            ensure(false, 'Unsupported shop refresh type', ErrorCode.InvalidProtoID)
     }
     return { start, end }
 }
@@ -92,7 +105,11 @@ export class ShopCatalog {
     shop(id, state, now) {
         const shop = this.shops.get(id)
         ensure(shop, 'Unknown shop')
-        ensure(!shop.timelimit && !shop.launchType, 'Event shop scheduling is not yet available', 1021)
+        ensure(
+            !shop.timelimit && !shop.launchType,
+            'Event shop scheduling is not yet available',
+            ErrorCode.InvalidProtoID,
+        )
         ensure(conditionProgress(shop.unlockCondition, state).open, 'Shop is locked')
         const start = configTime(shop.startTime),
             end = configTime(shop.endTime)
@@ -102,18 +119,26 @@ export class ShopCatalog {
     item(shop, id, state, now) {
         ensure(String(shop.goodsList).split('|').map(Number).includes(id), 'Slot does not belong to this shop')
         const slot = this.slots.get(id)
-        ensure(slot?.slotType === 1, 'Unsupported shop slot type', 1021)
+        ensure(slot?.slotType === 1, 'Unsupported shop slot type', ErrorCode.InvalidProtoID)
         const goods = this.goods.get(slot.slotParam)
-        ensure(goods, 'Missing shop goods', 1007)
-        ensure(!goods.timelimit && !goods.launchType, 'Event goods scheduling is not yet available', 1021)
-        ensure(!goods.specialPrice && !goods.recommend, 'Special pricing is not yet supported', 1021)
+        ensure(goods, 'Missing shop goods', ErrorCode.GameConfig)
+        ensure(
+            !goods.timelimit && !goods.launchType,
+            'Event goods scheduling is not yet available',
+            ErrorCode.InvalidProtoID,
+        )
+        ensure(
+            !goods.specialPrice && !goods.recommend,
+            'Special pricing is not yet supported',
+            ErrorCode.InvalidProtoID,
+        )
         const start = configTime(goods.startTime),
             end = configTime(goods.endTime),
             window = refreshWindow(goods, now, this.hour),
             key = `${shop.shopId}:${id}`,
             record = state.shopPurchases?.[key]
         const bought = record?.period === window.start ? record.count : 0
-        ensure(Number.isInteger(goods.goodsNum) && goods.goodsNum >= -1, 'Invalid shop stock', 1007)
+        ensure(Number.isInteger(goods.goodsNum) && goods.goodsNum >= -1, 'Invalid shop stock', ErrorCode.GameConfig)
         return {
             goods,
             key,

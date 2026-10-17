@@ -1,3 +1,4 @@
+import { ErrorCode } from '../error-codes.js'
 import { ensure } from './common.js'
 import { ActivityCatalog } from '../activities.js'
 import { grantRewards, parseRewards } from '../rewards.js'
@@ -50,7 +51,7 @@ export function registerActivities(on, tables) {
             const reward = activityTables
                 .get('game_events_day_attendance')
                 .find((x) => x.eventId === row.systemId && x.date === day)
-            ensure(reward, 'Missing attendance reward configuration', 1007)
+            ensure(reward, 'Missing attendance reward configuration', ErrorCode.GameConfig)
             rewards.push(...parseRewards(reward.reward))
         }
         const granted = grant(c, rewards)
@@ -102,7 +103,7 @@ export function registerActivities(on, tables) {
         for (const cost of costs) {
             if (cost.itemtype === 3) items.set(cost.itemid, (items.get(cost.itemid) ?? 0) + cost.itemnum)
             else {
-                ensure(cost.itemtype === 10, 'Unsupported activity submission resource', 1007)
+                ensure(cost.itemtype === 10, 'Unsupported activity submission resource', ErrorCode.GameConfig)
                 spendCurrency(c.state, cost.itemid, cost.itemnum)
             }
         }

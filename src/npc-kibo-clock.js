@@ -1,3 +1,4 @@
+import { ErrorCode } from './error-codes.js'
 import { arenaContext, arenaMillis, secondsToArenaMs } from './npc-kibo-time.js'
 import { ensure } from './handlers/common.js'
 import { pairs } from './battle.js'
@@ -13,7 +14,11 @@ export function arenaTiming(tables, duelId) {
     const initial = cost.get(307),
         max = cost.get(305),
         interval = cost.get(306)
-    ensure(initial >= 0 && max >= initial && interval > 0, 'Arena action point configuration unavailable', 1007)
+    ensure(
+        initial >= 0 && max >= initial && interval > 0,
+        'Arena action point configuration unavailable',
+        ErrorCode.GameConfig,
+    )
     const schedule = [
         { at: 0, interval },
         ...String(duel.costTime || '')
@@ -21,12 +26,12 @@ export function arenaTiming(tables, duelId) {
             .filter(Boolean)
             .map((text) => {
                 const [at, interval] = text.split('#').map(Number)
-                ensure(at >= 0 && interval > 0, 'Invalid arena recovery schedule', 1007)
+                ensure(at >= 0 && interval > 0, 'Invalid arena recovery schedule', ErrorCode.GameConfig)
                 return { at, interval }
             }),
     ].sort((a, b) => a.at - b.at)
     const gcd = Number(tables.get('game').find((row) => row.title === 'KIBO_DUEL_ARENA_MODE_GCD')?.value)
-    ensure(gcd >= 0, 'Arena global cooldown configuration unavailable', 1007)
+    ensure(gcd >= 0, 'Arena global cooldown configuration unavailable', ErrorCode.GameConfig)
     return { initial: initial * 100, max: max * 100, schedule, gcd }
 }
 
@@ -66,7 +71,11 @@ export function advanceArenaScores(c) {
             return { at, rate }
         })
         .sort((a, b) => a.at - b.at)
-    ensure(rates.length && rates.every((row) => row.at >= 0 && row.rate >= 0), 'Arena score rate unavailable', 1007)
+    ensure(
+        rates.length && rates.every((row) => row.at >= 0 && row.rate >= 0),
+        'Arena score rate unavailable',
+        ErrorCode.GameConfig,
+    )
     let loss = 0
     if (empty)
         for (let i = 0; i < rates.length; i++) {
@@ -133,7 +142,7 @@ export function advanceArenaEnergy(c) {
                         effect.at_ms + effect.duration_ms > middle,
                 )
                 .reduce((sum, effect) => sum + effect.value, 0)
-            ensure(1 + percent > 0, 'Invalid arena action point recovery modifier', 1007)
+            ensure(1 + percent > 0, 'Invalid arena action point recovery modifier', ErrorCode.GameConfig)
             points = Math.min(timing.max, points + (end - start) / (10 * segment.interval * (1 + percent)))
             for (const effect of events)
                 if (effect.kind === 'points' && effect.at_ms === end && effect.at_ms > fromMs)

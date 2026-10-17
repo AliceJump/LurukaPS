@@ -1,3 +1,4 @@
+import { ErrorCode } from '../error-codes.js'
 import { ensureHome } from '../home.js'
 import { validatePlacement } from '../home-grid.js'
 import { spend } from '../inventory.js'
@@ -33,7 +34,11 @@ function seed(tables, itemId, fieldType) {
 function growthSeconds(config) {
     const grow = Number(String(config.growParam).split('#')[1])
     const pre = Number(String(config.preHarvestParam).split('|')[1])
-    ensure(Number.isInteger(grow) && grow > 0 && Number.isInteger(pre) && pre >= 0, 'Invalid crop growth time', 1007)
+    ensure(
+        Number.isInteger(grow) && grow > 0 && Number.isInteger(pre) && pre >= 0,
+        'Invalid crop growth time',
+        ErrorCode.GameConfig,
+    )
     return { grow, pre }
 }
 
@@ -49,18 +54,18 @@ function harvest(tables, c, home, build) {
         'Crop is not ready to harvest',
     )
     const config = tables.find('home_seeds', crop.seed_id)
-    ensure(config, 'Missing planted crop configuration', 1007)
+    ensure(config, 'Missing planted crop configuration', ErrorCode.GameConfig)
     const drops = String(config.homeDropId).split('|').filter(Boolean).map(Number)
     const rewards = drops.map((id) => {
         const row = tables.find('home_drop', id)
         ensure(
             row && row.rate === 10000 && row.minValue === row.maxValue && /^\d+$/.test(String(row.itemId)),
             'Unsupported crop drop configuration',
-            1021,
+            ErrorCode.InvalidProtoID,
         )
         return { itemtype: row.itemType, itemid: Number(row.itemId), itemnum: row.minValue }
     })
-    ensure(rewards.length > 0, 'Crop has no harvest reward', 1007)
+    ensure(rewards.length > 0, 'Crop has no harvest reward', ErrorCode.GameConfig)
     const granted = grantRewards(tables, c.state, rewards)
     clearCrop(build)
     c.state.homeRevision = (c.state.homeRevision || 0) + 1
@@ -116,7 +121,7 @@ export function registerFarming(on, tables) {
 
     on('FieldPlant', (c, r) => {
         const home = homeInScene(tables, c.state)
-        ensure(!r.is_pet, 'Pet planting requires an assigned farm worker', 1021)
+        ensure(!r.is_pet, 'Pet planting requires an assigned farm worker', ErrorCode.InvalidProtoID)
         ensure(r.plant_info.length > 0 && r.plant_info.length <= 32, 'Invalid planting batch')
         const seen = new Set(),
             costs = new Map(),
@@ -127,7 +132,11 @@ export function registerFarming(on, tables) {
                 'Duplicate or invalid planting field',
             )
             seen.add(row.build_guid)
-            ensure(!row.follower_build_guids?.length, 'Multi-field planting is not yet supported', 1021)
+            ensure(
+                !row.follower_build_guids?.length,
+                'Multi-field planting is not yet supported',
+                ErrorCode.InvalidProtoID,
+            )
             const build = field(tables, home, row.build_guid)
             ensure(!build.crop_info?.seed_id, 'Farmland already has a crop')
             const config = seed(tables, row.seed_id, build.crop_info.field_type)
@@ -152,12 +161,12 @@ export function registerFarming(on, tables) {
 
     on('FieldWater', (c, r) => {
         const home = homeInScene(tables, c.state)
-        ensure(!r.is_pet, 'Pet watering requires an assigned farm worker', 1021)
+        ensure(!r.is_pet, 'Pet watering requires an assigned farm worker', ErrorCode.InvalidProtoID)
         const build = field(tables, home, r.build_guid),
             crop = build.crop_info
         ensure(crop?.seed_id && crop.state === 1, 'Crop does not need watering')
         const config = tables.find('home_seeds', crop.seed_id)
-        ensure(config, 'Missing planted crop configuration', 1007)
+        ensure(config, 'Missing planted crop configuration', ErrorCode.GameConfig)
         const { grow, pre } = growthSeconds(config)
         Object.assign(crop, {
             state: 2,
@@ -175,7 +184,7 @@ export function registerFarming(on, tables) {
 
     on('WaterFinish', (c, r) => {
         const home = homeInScene(tables, c.state)
-        ensure(!r.is_pet, 'Pet watering requires an assigned farm worker', 1021)
+        ensure(!r.is_pet, 'Pet watering requires an assigned farm worker', ErrorCode.InvalidProtoID)
         const build = field(tables, home, r.build_guid)
         if (build.crop_info?.is_player_water) {
             build.crop_info.is_player_water = false
@@ -195,13 +204,13 @@ export function registerFarming(on, tables) {
 
     on('FieldHarvest', (c, r) => {
         const home = homeInScene(tables, c.state)
-        ensure(!r.is_pet, 'Pet harvesting requires an assigned farm worker', 1021)
+        ensure(!r.is_pet, 'Pet harvesting requires an assigned farm worker', ErrorCode.InvalidProtoID)
         return harvest(tables, c, home, field(tables, home, r.build_guid))
     })
 
     on('FieldHarvestList', (c, r) => {
         const home = homeInScene(tables, c.state)
-        ensure(!r.is_pet, 'Pet harvesting requires an assigned farm worker', 1021)
+        ensure(!r.is_pet, 'Pet harvesting requires an assigned farm worker', ErrorCode.InvalidProtoID)
         ensure(
             r.build_guids.length > 0 &&
                 r.build_guids.length <= 32 &&

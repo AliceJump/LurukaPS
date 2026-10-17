@@ -1,3 +1,4 @@
+import { ErrorCode } from './error-codes.js'
 import { ensure } from './handlers/common.js'
 import { configTime, refreshWindow } from './shops.js'
 export class MallCatalog {
@@ -14,7 +15,7 @@ export class MallCatalog {
             end = 0
         if (row.timelimit) {
             const time = this.tables.find('common_timelimit', row.timelimit)
-            ensure(time, 'Missing mall schedule', 1007)
+            ensure(time, 'Missing mall schedule', ErrorCode.GameConfig)
             start = configTime(time.startTime)
             end = configTime(time.endTime)
         }

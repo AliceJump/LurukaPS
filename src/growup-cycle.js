@@ -1,3 +1,4 @@
+import { ErrorCode } from './error-codes.js'
 import { ensure } from './handlers/common.js'
 const ids = (text) =>
     String(text ?? '')
@@ -9,7 +10,7 @@ export function assistantLevel(system, assistant) {
         .get('game_events_cul_assistlevel')
         .filter((x) => x.assisId === assistant.assist_char_id)
         .sort((a, b) => a.bondLevel - b.bondLevel)
-    ensure(rows.length, 'Cultivation assistant level table missing', 1007)
+    ensure(rows.length, 'Cultivation assistant level table missing', ErrorCode.GameConfig)
     // TDGameEventsCulAssistlevelTable.GetLevel returns the FIRST level whose
     // needPoints is greater than the stored points, not the last passed row.
     return rows.find((x) => assistant.bond < x.needPoints) ?? rows.at(-1)

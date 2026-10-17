@@ -1,8 +1,9 @@
+import { ErrorCode } from './error-codes.js'
 import { ensure } from './handlers/common.js'
 import { parseRewards } from './rewards.js'
 function value(t, key) {
     const v = t.get('game').find((x) => x.title === key)?.value
-    ensure(v !== undefined, `Missing ${key}`, 1007)
+    ensure(v !== undefined, `Missing ${key}`, ErrorCode.GameConfig)
     return v
 }
 export function petReleaseRewards(tables, pet) {
@@ -11,7 +12,7 @@ export function petReleaseRewards(tables, pet) {
     ensure(
         !pet.soul_link_level || pet.soul_link_level === '0',
         'Star-soul release refunds are not yet implemented',
-        1021,
+        ErrorCode.InvalidProtoID,
     )
     if (Number(value(tables, 'PET_EXPERIENCE_RETURN'))) {
         const levels = new Map(tables.get('pet_level').map((r) => [r.lv, r]))
@@ -26,7 +27,11 @@ export function petReleaseRewards(tables, pet) {
         let exp = pet.exp || 0
         for (let lv = pet.base_lv; lv < pet.lv; lv++) {
             const row = levels.get(lv)
-            ensure(row && Number.isInteger(row.exp) && row.exp >= 0, 'Invalid pet experience curve', 1007)
+            ensure(
+                row && Number.isInteger(row.exp) && row.exp >= 0,
+                'Invalid pet experience curve',
+                ErrorCode.GameConfig,
+            )
             exp += row.exp
         }
         let refund = Math.floor((exp * Number(value(tables, 'PET_RETURN_RATIO'))) / 10000)
@@ -36,7 +41,7 @@ export function petReleaseRewards(tables, pet) {
             .map(Number)
             .map((id) => {
                 const n = Number(tables.find('common_item', id)?.useFunction)
-                ensure(Number.isSafeInteger(n) && n > 0, 'Invalid experience material', 1007)
+                ensure(Number.isSafeInteger(n) && n > 0, 'Invalid experience material', ErrorCode.GameConfig)
                 return { id, exp: n }
             })
             .sort((a, b) => b.exp - a.exp)
@@ -57,7 +62,7 @@ export function petReleaseRewards(tables, pet) {
         while (remaining-- > 0) {
             const previous = ranks.find((row) => row.nextPetId === id)
             if (!previous) break
-            ensure(!seen.has(previous.petId), 'Cyclic pet evolution data', 1007)
+            ensure(!seen.has(previous.petId), 'Cyclic pet evolution data', ErrorCode.GameConfig)
             seen.add(previous.petId)
             rewards.push(...parseRewards(previous.rankBreakthroughItem))
             id = previous.petId
@@ -68,7 +73,7 @@ export function petReleaseRewards(tables, pet) {
 export function releaseBonus(tables, kind, record, count) {
     const prefix = kind === 'pet' ? 'PET_FREE' : 'PET_FREEEGG',
         limit = Number(value(tables, `${prefix}_DAYLY_TIME`))
-    ensure(Number.isInteger(limit) && limit >= 0, 'Invalid release reward limit', 1007)
+    ensure(Number.isInteger(limit) && limit >= 0, 'Invalid release reward limit', ErrorCode.GameConfig)
     const eligible =
         kind === 'pet'
             ? Math.max(0, Math.min(count, limit - record.count))
@@ -79,7 +84,11 @@ export function releaseBonus(tables, kind, record, count) {
     const [id, num] = String(value(tables, `${prefix}REWARD`))
         .split('|')
         .map(Number)
-    ensure(Number.isSafeInteger(id) && id > 0 && Number.isInteger(num) && num > 0, 'Invalid release reward', 1007)
+    ensure(
+        Number.isSafeInteger(id) && id > 0 && Number.isInteger(num) && num > 0,
+        'Invalid release reward',
+        ErrorCode.GameConfig,
+    )
     record.count += eligible
     return [{ itemtype: 3, itemid: id, itemnum: num * eligible }]
 }

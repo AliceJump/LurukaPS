@@ -1,3 +1,4 @@
+import { ErrorCode } from '../error-codes.js'
 import { ensureHome, ensureHomeFarmHouses } from '../home.js'
 import { homeCondition } from '../home-grid.js'
 import { reconcileFormationPets } from '../formation-pets.js'
@@ -28,7 +29,7 @@ export function registerFarmWorkers(on, tables) {
             c.state.world.map_id === Number(tables.get('game').find((row) => row.title === 'HOME_ID')?.value),
             'Farm dispatch requires the home scene',
         )
-        ensure((r.operate_type ?? 0) === 0, 'Unsupported farm dispatch operation', 1021)
+        ensure((r.operate_type ?? 0) === 0, 'Unsupported farm dispatch operation', ErrorCode.InvalidProtoID)
         const home = ensureHome(tables, c.state),
             build = home.builds.find((item) => item.guid === r.build_guid)
         const config = build && tables.find('home_building', build.build_id)

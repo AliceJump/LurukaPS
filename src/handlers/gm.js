@@ -1,3 +1,4 @@
+import { ErrorCode } from '../error-codes.js'
 import { purchaseMonthly, monthlyPayload } from '../monthly-card.js'
 import { giveAllRewards } from '../give-all.js'
 import { ensure, syncPlayer } from './common.js'
@@ -101,7 +102,7 @@ export function registerGM(on, { enabled = true } = {}) {
                 ids.add(item.id)
                 return true
             })
-            ensure(items.length > 0, 'Hero gift catalog is empty', 1007)
+            ensure(items.length > 0, 'Hero gift catalog is empty', ErrorCode.GameConfig)
             grantRewards(
                 c.tables,
                 c.state,
@@ -183,7 +184,7 @@ export function registerGM(on, { enabled = true } = {}) {
                 node = task.nodes?.[0]
             ensure(node, 'Current task has no active flow')
             const config = graph.nodes.get(node.node_id)
-            ensure(config, 'Current task node is unavailable', 1007)
+            ensure(config, 'Current task node is unavailable', ErrorCode.GameConfig)
             const conditions = nodeConditions(config),
                 index = conditions.findIndex(
                     (condition, i) =>

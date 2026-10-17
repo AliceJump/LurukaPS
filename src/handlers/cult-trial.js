@@ -1,3 +1,4 @@
+import { ErrorCode } from '../error-codes.js'
 import { ensure } from './common.js'
 import { worldSync } from './world.js'
 import { syncBattle } from '../battle.js'
@@ -60,7 +61,7 @@ export function registerCultTrial(on, tables, catalog) {
         ensure(!row.guideTaskId || catalog.taskDone(c.state, row.guideTaskId), 'Complete cultivation guide first')
         const g = catalog.growup.ensure(entry, row.systemId),
             { trial, route, dungeon, point } = cultTrialRoute(tables, catalog, r.activity_id, r.trial_id)
-        ensure(!r.archive_id, 'Archived cultivation trials are not implemented', 1007)
+        ensure(!r.archive_id, 'Archived cultivation trials are not implemented', ErrorCode.GameConfig)
         ensure(
             g.cur_starting_id > 0 && g.cur_stage === trial.phase && g.cur_growup_trail_stage === trial.phase,
             'Cultivation examination is not ready',
@@ -145,7 +146,11 @@ export function registerCultTrial(on, tables, catalog) {
         }
         c.state.acceptedCultTrials = { ...c.state.acceptedCultTrials, [receipt]: true }
         const finalBonus = Number(String(trial.finalscore).split('|')[run.star - 1])
-        ensure(Number.isSafeInteger(finalBonus) && finalBonus >= 0, 'Missing cultivation trial final score', 1007)
+        ensure(
+            Number.isSafeInteger(finalBonus) && finalBonus >= 0,
+            'Missing cultivation trial final score',
+            ErrorCode.GameConfig,
+        )
         g.final_score = String(BigInt(g.final_score ?? '0') + BigInt(finalBonus))
         if (trial.phase === 3) catalog.growup.finish(g, row.systemId, trial)
         else {

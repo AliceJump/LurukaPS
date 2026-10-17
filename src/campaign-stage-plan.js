@@ -1,3 +1,4 @@
+import { ErrorCode } from './error-codes.js'
 import { ensure } from './handlers/common.js'
 export function campaignStagePlan(tables, mapId) {
     const scene = tables.find('dungeon_scene', mapId),
@@ -33,7 +34,7 @@ export function campaignStagePlan(tables, mapId) {
                     e.parts[4] > 0,
             ),
         'Campaign stage conditions unavailable',
-        1007,
+        ErrorCode.GameConfig,
     )
     const used = new Set()
     return entries.map(({ parts: [, spawner, , objectId, count] }) => {
@@ -43,7 +44,7 @@ export function campaignStagePlan(tables, mapId) {
         ensure(
             candidates.length >= count && candidates.every((row) => /^\d+$/.test(String(row.commonTag))),
             'Campaign stage objects unavailable',
-            1007,
+            ErrorCode.GameConfig,
         )
         const rows = candidates.slice(0, count)
         rows.forEach((row) => used.add(row.id))

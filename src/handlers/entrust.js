@@ -1,3 +1,4 @@
+import { ErrorCode } from '../error-codes.js'
 import { rewardSource } from '../reward-source.js'
 import { ensure, syncPlayer } from './common.js'
 import { syncBattle } from '../battle.js'
@@ -54,7 +55,7 @@ function claimEntrustChest(c, times = 1) {
         ensure(Number.isSafeInteger(cost.itemnum) && cost.itemnum <= 0xffffffff, 'Invalid chest cost')
         if (cost.itemtype === 10) spendCurrency(c.state, cost.itemid, cost.itemnum)
         else {
-            ensure(cost.itemtype === 3, 'Unsupported chest cost', 1007)
+            ensure(cost.itemtype === 3, 'Unsupported chest cost', ErrorCode.GameConfig)
             spend(c.state, new Map([[cost.itemid, cost.itemnum]]), 0, c.now)
         }
     }
@@ -64,7 +65,7 @@ function claimEntrustChest(c, times = 1) {
         budget = { count: 0 },
         merged = new Map()
     for (let i = 0; i < times; i++) {
-        ensure(i < 4096, 'Drop roll limit', 1007)
+        ensure(i < 4096, 'Drop roll limit', ErrorCode.GameConfig)
         for (const reward of drops.drops(chest.drop, c.randomInt, budget)) {
             const key = `${reward.itemtype}:${reward.itemid}`,
                 old = merged.get(key)
@@ -249,7 +250,7 @@ export function syncEntrust(c, run) {
 export function exitEntrust(c) {
     const entrust = c.state.entrust,
         run = entrust?.run
-    ensure(run, 'No active entrust', 10276)
+    ensure(run, 'No active entrust', ErrorCode.EntrustNotInEntrust)
     run.status = run.status === 3 ? 5 : 1
     run.end_time ??= c.now
     syncEntrust(c, run)
@@ -272,7 +273,7 @@ export function registerEntrust(on, tables) {
     const start = (c, id, restart = false) => {
         const config = catalog.get(id),
             active = c.state.entrust?.run
-        ensure(unlocked(config.entrust.taskUnlock, c.state), 'Entrust is locked', 10266)
+        ensure(unlocked(config.entrust.taskUnlock, c.state), 'Entrust is locked', ErrorCode.EntrustUnlock)
         ensure(!c.state.multiCampaign, 'Another dungeon is active')
         ensure(
             !active || (restart && active.entrust_id === id && [2, 3].includes(active.status)),
@@ -325,7 +326,7 @@ export function registerEntrust(on, tables) {
         ensure(
             run && [2, 3].includes(run.status) && (!r.scene_id || r.scene_id === run.map_id),
             'Entrust scene is not active',
-            10275,
+            ErrorCode.EntrustMapInvalid,
         )
         ensure(!r.creator_id || r.creator_id === c.id, 'Entrust creator mismatch')
         ensureEntrustSceneObjects(tables, c.state, c.now)
@@ -368,7 +369,7 @@ export function registerEntrust(on, tables) {
         if (c.state.storyCampaign) return endStoryCampaignScene(c, r)
         const entrust = c.state.entrust,
             run = entrust?.run
-        ensure(run && [2, 3].includes(run.status), 'No active entrust', 10276)
+        ensure(run && [2, 3].includes(run.status), 'No active entrust', ErrorCode.EntrustNotInEntrust)
         if (run.status === 3) return {}
         ensure([1, 3, 4].includes(r.result), 'Invalid entrust result')
         if (r.result === 3) {
@@ -404,14 +405,18 @@ export function registerEntrust(on, tables) {
             rewards = []
         for (const id of ids) {
             const row = tables.find('dungeon_entrust_reward', id)
-            ensure(row, 'Entrust star reward unavailable', 10263)
-            ensure(row.dungeonEntrustType === 1, 'Entrust reward belongs to another mode', 10263)
+            ensure(row, 'Entrust star reward unavailable', ErrorCode.EntrustStarConfigNone)
+            ensure(
+                row.dungeonEntrustType === 1,
+                'Entrust reward belongs to another mode',
+                ErrorCode.EntrustStarConfigNone,
+            )
             const total = Object.values(entrust.records).reduce(
                 (sum, record) => sum + (record.group_id === row.dungeonEntrustGroup ? record.entrust_star : 0),
                 0,
             )
-            ensure(total >= row.starNum, 'Entrust star requirement not reached', 10265)
-            ensure(!entrust.starRewards[id], 'Entrust star reward already claimed', 10264)
+            ensure(total >= row.starNum, 'Entrust star requirement not reached', ErrorCode.EntrustStarNotReached)
+            ensure(!entrust.starRewards[id], 'Entrust star reward already claimed', ErrorCode.EntrustStarAlready)
             rewards.push(
                 ...grantRewards(
                     tables,

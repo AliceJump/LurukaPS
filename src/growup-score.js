@@ -1,3 +1,4 @@
+import { ErrorCode } from './error-codes.js'
 import fs from 'node:fs'
 import { ensure } from './handlers/common.js'
 import { assistantLevel } from './growup-cycle.js'
@@ -13,7 +14,7 @@ export function cultivationScore(system, id, { attrs, chrs, trails }) {
             new Set(attrs.map((x) => x.attr_id)).size === expected.length &&
             attrs.every((x) => expected.includes(x.attr_id) && Number.isSafeInteger(x.attr_value) && x.attr_value >= 0),
         'Incomplete cultivation score attributes',
-        1007,
+        ErrorCode.GameConfig,
     )
     const attributes = attrs.reduce((sum, x) => sum + x.attr_value, 0) * policy.attributeMultiplier
     ensure(
@@ -21,10 +22,10 @@ export function cultivationScore(system, id, { attrs, chrs, trails }) {
             new Set(chrs.map((x) => x.assist_char_id)).size === chrs.length &&
             chrs.every((x) => Number.isSafeInteger(x.bond) && x.bond >= 0),
         'Invalid cultivation score assistants',
-        1007,
+        ErrorCode.GameConfig,
     )
     const assistants = chrs.reduce((sum, x) => sum + assistantLevel(system, x).finalscore, 0)
-    ensure(trails?.length === 3, 'Incomplete cultivation score examinations', 1007)
+    ensure(trails?.length === 3, 'Incomplete cultivation score examinations', ErrorCode.GameConfig)
     const phases = new Set()
     const examinations = trails.reduce((sum, result) => {
         const trial = system.tables
@@ -38,14 +39,14 @@ export function cultivationScore(system, id, { attrs, chrs, trails }) {
                 result.star >= 1 &&
                 result.star <= 3,
             'Invalid cultivation score examination',
-            1007,
+            ErrorCode.GameConfig,
         )
         phases.add(trial.phase)
         const bonus = Number(String(trial.finalscore).split('|')[result.star - 1])
-        ensure(Number.isSafeInteger(bonus) && bonus >= 0, 'Missing cultivation score star bonus', 1007)
+        ensure(Number.isSafeInteger(bonus) && bonus >= 0, 'Missing cultivation score star bonus', ErrorCode.GameConfig)
         return sum + bonus
     }, 0)
     const total = attributes + assistants + examinations
-    ensure(Number.isSafeInteger(total) && total >= 0, 'Invalid cultivation final score', 1007)
+    ensure(Number.isSafeInteger(total) && total >= 0, 'Invalid cultivation final score', ErrorCode.GameConfig)
     return { version: policy.version, attributes, assistants, examinations, total }
 }

@@ -1,3 +1,4 @@
+import { ErrorCode } from './error-codes.js'
 import fs from 'node:fs'
 import { createHash } from 'node:crypto'
 import { TaskGraphs, nodeConditions } from './tasks.js'
@@ -62,7 +63,7 @@ export function recoverFailedSpecialNpcEvents(c, protocol, filename, records) {
                 record.account_id === c.id &&
                 record.message_id === 9904 &&
                 record.request?.key === 2519 &&
-                record.error_code === 1007 &&
+                record.error_code === ErrorCode.GameConfig &&
                 String(record.error).startsWith('Task event configuration unavailable') &&
                 record.payload_sha256 === candidate.hash &&
                 Number.isFinite(Date.parse(record.time)) &&

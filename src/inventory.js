@@ -1,3 +1,4 @@
+import { ErrorCode } from './error-codes.js'
 import { ensure } from './handlers/common.js'
 import { syncCurrencyMirrors } from './currency.js'
 import { pruneAutoCropShortcuts } from './home.js'
@@ -48,13 +49,13 @@ export function aggregateCosts(items) {
 export function spend(state, costs, gold = 0, now = Math.floor(Date.now() / 1000)) {
     ensure(Number.isSafeInteger(gold) && gold >= 0, 'Invalid gold cost')
     const bag = state.player.sbag_infos.items
-    ensure(state.player.basic_info.gold >= gold, 'Insufficient gold')
+    ensure(state.player.basic_info.gold >= gold, 'Insufficient gold', ErrorCode.ItemNotEnough)
     const plan = []
     for (const [id, count] of costs) {
         const stacks = bag
             .filter((i) => i.itemid === id && (!i.deadtime || i.deadtime > now))
             .sort((a, b) => (a.deadtime || Infinity) - (b.deadtime || Infinity))
-        ensure(stacks.reduce((n, i) => n + i.itemnum, 0) >= count, 'Insufficient items')
+        ensure(stacks.reduce((n, i) => n + i.itemnum, 0) >= count, 'Insufficient items', ErrorCode.ItemNotEnough)
         let left = count
         for (const stack of stacks) {
             const take = Math.min(left, stack.itemnum)
@@ -72,16 +73,18 @@ export function spend(state, costs, gold = 0, now = Math.floor(Date.now() / 1000
 }
 
 export function spendCurrency(state, id, amount) {
+    // CBT3 proto_errcode/errorCode: 10015 = ErrCodeItemNotEnough (物品不足).
+    // Resource shortages are business failures, not malformed requests (1024).
     ensure(Number.isSafeInteger(amount) && amount > 0, 'Invalid currency cost')
     if (id === 1 || id === 2) {
         const key = id === 1 ? 'diamond' : 'gold'
-        ensure(state.player.basic_info[key] >= amount, 'Insufficient currency')
+        ensure(state.player.basic_info[key] >= amount, 'Insufficient currency', ErrorCode.ItemNotEnough)
         state.player.basic_info[key] -= amount
         syncCurrencyMirrors(state.player)
         return
     }
     const attr = state.player.attr_infos.attrs.find((a) => a.attr_id === id)
-    ensure(attr && BigInt(attr.attr_val) >= BigInt(amount), 'Insufficient currency')
+    ensure(attr && BigInt(attr.attr_val) >= BigInt(amount), 'Insufficient currency', ErrorCode.ItemNotEnough)
     attr.attr_val = String(BigInt(attr.attr_val) - BigInt(amount))
 }
 export function addItems(state, items) {

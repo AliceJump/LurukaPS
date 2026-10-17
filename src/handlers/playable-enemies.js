@@ -1,3 +1,4 @@
+import { ErrorCode } from '../error-codes.js'
 import fs from 'node:fs'
 import { ensure } from './common.js'
 import { WorldObjectCatalog } from '../world-objects.js'
@@ -9,7 +10,7 @@ export function registerPlayableEnemies(on, tables, store) {
         world = new WorldObjectCatalog(tables)
     on('WorldObjEnemyInfo', (c, r) => {
         const asset = assets.get(r.play_id)
-        ensure(asset, 'Playable enemy configuration unavailable', 1007)
+        ensure(asset, 'Playable enemy configuration unavailable', ErrorCode.GameConfig)
         if (r.obj_id) {
             const { row, spawner } = world.object(c.state.world.map_id, r.obj_id)
             ensure(spawner.objectType === 101 && row.expandId === r.play_id, 'Playable does not belong to world object')
@@ -29,7 +30,7 @@ export function registerPlayableEnemies(on, tables, store) {
                     entities.push({ uuid, config_id: group.enemies[slot], container, index: group.index, slot })
                 }
             }
-            ensure(monsters.length <= 4096, 'Playable enemy count exceeds limit', 1007)
+            ensure(monsters.length <= 4096, 'Playable enemy count exceeds limit', ErrorCode.GameConfig)
             entry = {
                 config_fingerprint: asset.fingerprint,
                 source_sha256: asset.source_sha256,

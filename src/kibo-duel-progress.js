@@ -1,3 +1,4 @@
+import { ErrorCode } from './error-codes.js'
 import { ensure } from './handlers/common.js'
 import { maximumLevel, advanceLevel } from './handlers/progression.js'
 
@@ -8,14 +9,18 @@ export function grantDuelAreaExperience(tables, state, currencyId, amount) {
         .get('kibo_duel_area_level')
         .filter((row) => row.areaType === area.Id)
         .sort((a, b) => a.level - b.level)
-    ensure(levels.length && Number.isSafeInteger(amount) && amount > 0, 'Invalid duel area experience', 1007)
+    ensure(
+        levels.length && Number.isSafeInteger(amount) && amount > 0,
+        'Invalid duel area experience',
+        ErrorCode.GameConfig,
+    )
     const areas = (state.kiboDuelAreas ??= {})
     const info = (areas[area.Id] ??= { id: area.Id, lvl: 1, exp: 0, got_lvl_reward: [1] })
     info.exp += amount
     ensure(Number.isSafeInteger(info.exp) && info.exp <= 0xffffffff, 'Duel area experience overflow')
     while (info.lvl < levels.at(-1).level) {
         const level = levels.find((row) => row.level === info.lvl)
-        ensure(level?.exp > 0, 'Duel area level curve unavailable', 1007)
+        ensure(level?.exp > 0, 'Duel area level curve unavailable', ErrorCode.GameConfig)
         if (info.exp < level.exp) break
         info.exp -= level.exp
         info.lvl++

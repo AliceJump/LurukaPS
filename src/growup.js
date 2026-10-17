@@ -1,3 +1,4 @@
+import { ErrorCode } from './error-codes.js'
 import { ensure } from './handlers/common.js'
 import { randomInt as secureRandomInt } from 'node:crypto'
 import { assistantLevel, prepareGrowupCycle, populateGrowupEvents, growupCommonTriggers } from './growup-cycle.js'
@@ -25,7 +26,7 @@ export class GrowupSystem {
     }
     config(id) {
         const row = this.tables.get('game_events_cul').find((x) => x.Id === id)
-        ensure(row, 'Missing cultivation configuration', 1007)
+        ensure(row, 'Missing cultivation configuration', ErrorCode.GameConfig)
         return row
     }
     fresh(id) {
@@ -142,7 +143,7 @@ export class GrowupSystem {
     weighted(rows, key, randomInt) {
         const choices = rows.filter((x) => Number.isSafeInteger(x[key]) && x[key] > 0)
         const total = choices.reduce((n, x) => n + x[key], 0)
-        ensure(total > 0 && Number.isSafeInteger(total), 'Empty cultivation probability table', 1007)
+        ensure(total > 0 && Number.isSafeInteger(total), 'Empty cultivation probability table', ErrorCode.GameConfig)
         let draw = randomInt(total)
         for (const row of choices) {
             draw -= row[key]
@@ -154,19 +155,23 @@ export class GrowupSystem {
         const config = this.config(id)
         for (const effectId of ids(value)) {
             const row = this.tables.get('game_events_cul_effect').find((x) => x.Id === effectId)
-            ensure(row, `Unknown cultivation effect ${effectId}`, 1007)
+            ensure(row, `Unknown cultivation effect ${effectId}`, ErrorCode.GameConfig)
             if (row.type === 1 || row.type === 2) {
                 const n = Number(row.param)
-                ensure(Number.isFinite(n), 'Invalid cultivation stamina effect', 1007)
+                ensure(Number.isFinite(n), 'Invalid cultivation stamina effect', ErrorCode.GameConfig)
                 g.growup_stamina.stamina = Math.max(
                     0,
                     Math.min(config.maxStamina, g.growup_stamina.stamina + (row.type === 1 ? n : -n)),
                 )
             } else if (row.type === 3) {
                 for (const [attr, value, mode = 0] of pairs(row.param)) {
-                    ensure([0, 1, 2, 3].includes(mode), 'Unknown cultivation attribute change source', 1007)
+                    ensure(
+                        [0, 1, 2, 3].includes(mode),
+                        'Unknown cultivation attribute change source',
+                        ErrorCode.GameConfig,
+                    )
                     const target = g.growup_train_attr.find((x) => x.attr_id === attr)
-                    ensure(target, 'Unknown cultivation attribute', 1007)
+                    ensure(target, 'Unknown cultivation attribute', ErrorCode.GameConfig)
                     target.attr_value = Math.max(0, Math.min(config.maxAttr, target.attr_value + value))
                 }
             } else if (row.type === 13) {
@@ -176,7 +181,7 @@ export class GrowupSystem {
                             .get('game_events_cul_assist')
                             .some((x) => x.assistId === assistantId && x.systemId === id),
                         'Unknown cultivation assistant',
-                        1007,
+                        ErrorCode.GameConfig,
                     )
                     let assistant = g.assist_chars.find((x) => x.assist_char_id === assistantId)
                     if (!assistant)
@@ -188,7 +193,7 @@ export class GrowupSystem {
             } else if (row.type === 0) {
                 continue
             } else if (row.type === 5 || row.type === 6) {
-                ensure(!row.param, 'Parameterized cultivation mood effect is not implemented', 1007)
+                ensure(!row.param, 'Parameterized cultivation mood effect is not implemented', ErrorCode.GameConfig)
                 // Empty-param MoodLevel/MoodDown are one-step effects. This is a
                 // compatibility inference recorded in growup-cbt3.md.
                 const levels = this.tables
@@ -207,7 +212,7 @@ export class GrowupSystem {
                     const status = this.tables
                         .get('game_events_cul_status')
                         .find((x) => x.statusID === statusId && x.activityid === id)
-                    ensure(status, 'Unknown cultivation status', 1007)
+                    ensure(status, 'Unknown cultivation status', ErrorCode.GameConfig)
                     const old = g.growup_status.find((x) => x.status_id === statusId)
                     if (old) old.cur_duration_time = status.duration
                     else
@@ -217,7 +222,12 @@ export class GrowupSystem {
                             cur_enable_time: g.cur_growup_stage,
                         })
                 }
-            } else ensure(false, `Cultivation effect ${effectId} type ${row.type} is not implemented`, 1007)
+            } else
+                ensure(
+                    false,
+                    `Cultivation effect ${effectId} type ${row.type} is not implemented`,
+                    ErrorCode.GameConfig,
+                )
         }
     }
     populateEvents(g, id, randomInt = secureRandomInt) {
@@ -325,7 +335,11 @@ export class GrowupSystem {
         const ending = this.tables
             .get('game_events_cul_end')
             .find((x) => x.systemId === id && x.endingId === trial.ending && x.trial === trial.trialId)
-        ensure(ending && this.condition(ending.condition, g), 'Cultivation ending configuration unavailable', 1007)
+        ensure(
+            ending && this.condition(ending.condition, g),
+            'Cultivation ending configuration unavailable',
+            ErrorCode.GameConfig,
+        )
         ensure(
             [1, 2, 3].every((phase) => {
                 const result = g.trails[phase - 1],
@@ -399,8 +413,8 @@ export class GrowupSystem {
         const row = this.tables
             .get('game_events_cul_train')
             .find((x) => x.systemId === id && x.trainOption === optionId && x.trainLevel === option.train_lv)
-        ensure(row, 'Missing cultivation training level', 1007)
-        ensure(!row.cost, 'Paid cultivation training is not implemented', 1007)
+        ensure(row, 'Missing cultivation training level', ErrorCode.GameConfig)
+        ensure(!row.cost, 'Paid cultivation training is not implemented', ErrorCode.GameConfig)
         this.prepare(entry, id, randomInt)
         const assigned = option.assist_char_ids.map((x) => g.assist_chars.find((a) => a.assist_char_id === x))
         ensure(assigned.every(Boolean), 'Cultivation training assistant is unavailable')
@@ -424,10 +438,10 @@ export class GrowupSystem {
         const statusModifiers = new Map(g.growup_train_attr.map((x) => [x.attr_id, 10000]))
         for (const status of g.growup_status) {
             const source = this.tables.get('game_events_cul_status').find((x) => x.statusID === status.status_id)
-            ensure(source, 'Unknown cultivation status', 1007)
+            ensure(source, 'Unknown cultivation status', ErrorCode.GameConfig)
             for (const effectId of ids(source.effect)) {
                 const effect = this.tables.get('game_events_cul_effect').find((x) => x.Id === effectId)
-                ensure(effect, 'Cultivation status training effect missing', 1007)
+                ensure(effect, 'Cultivation status training effect missing', ErrorCode.GameConfig)
                 if (effect.type === 15)
                     for (const [attr, bonus] of pairs(effect.param))
                         statusModifiers.set(attr, (statusModifiers.get(attr) ?? 10000) + bonus)
@@ -463,13 +477,13 @@ export class GrowupSystem {
         const mood = this.tables
             .get('game_events_cul_mood')
             .find((x) => x.systemId === id && x.moodLevel === g.growup_mood.mood_level)
-        ensure(mood, 'Unknown cultivation mood', 1007)
+        ensure(mood, 'Unknown cultivation mood', ErrorCode.GameConfig)
         const modifier =
             result === 1 ? config.failModifier : result === 3 ? config.greatSuccessModifier : config.successModifier
         const changes = []
         for (const [attr, value] of pairs(row.addTrainAttr)) {
             const target = g.growup_train_attr.find((x) => x.attr_id === attr)
-            ensure(target, 'Unknown cultivation training attribute', 1007)
+            ensure(target, 'Unknown cultivation training attribute', ErrorCode.GameConfig)
             let amount = BigInt(value + (additions.get(attr) ?? 0)) * 10000n
             amount = (amount * BigInt(modifier)) / 10000n
             amount = (amount * BigInt(statusModifiers.get(attr))) / 10000n
@@ -551,7 +565,7 @@ export class GrowupSystem {
         if (!g.cur_event_data?.event_id) {
             ensure(g.cur_cost_expedition_count > 0, 'No cultivation expedition points remain')
             const first = steps.find((x) => x.isFirstStep === 1)
-            ensure(first, 'Missing cultivation event first step', 1007)
+            ensure(first, 'Missing cultivation event first step', ErrorCode.GameConfig)
             // ModuleTravelPanel sends the first step's entrance option directly;
             // there is no mandatory optional_id=0 handshake in the CBT3 UI.
             if (request.optional_id)
@@ -571,7 +585,7 @@ export class GrowupSystem {
         }
         ensure(g.cur_event_data.event_id === event.event_id, 'Another cultivation event is active')
         const step = steps.find((x) => x.step === g.cur_event_data.cur_step)
-        ensure(step, 'Missing cultivation event step', 1007)
+        ensure(step, 'Missing cultivation event step', ErrorCode.GameConfig)
         let next = step.nextStep
         let identified = true
         let selected = request.optional_id ?? 0
@@ -594,7 +608,7 @@ export class GrowupSystem {
             ensure(option.costPoints <= g.cur_cost_expedition_count, 'No cultivation expedition points remain')
             if (option.checkType) {
                 const attr = g.growup_train_attr.find((x) => x.attr_id === option.checkType)
-                ensure(attr, 'Unknown cultivation check attribute', 1007)
+                ensure(attr, 'Unknown cultivation check attribute', ErrorCode.GameConfig)
                 const rank = this.tables
                     .get('game_events_cul_attrRate')
                     .filter((x) => x.eventid === id && attr.attr_value >= x.needAttr)
@@ -613,7 +627,7 @@ export class GrowupSystem {
             ensure(
                 steps.some((x) => x.step === next),
                 'Missing cultivation event next step',
-                1007,
+                ErrorCode.GameConfig,
             )
             event.cur_step = next
             g.cur_event_data.cur_step = next

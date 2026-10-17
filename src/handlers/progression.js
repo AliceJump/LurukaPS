@@ -1,22 +1,23 @@
+import { ErrorCode } from '../error-codes.js'
 import { ensure, hero, pet, syncPlayer, syncPets } from './common.js'
 import { aggregateCosts, spend } from '../inventory.js'
 import { syncBattle } from '../battle.js'
 function gameValue(tables, key) {
     const row = tables.get('game').find((r) => r.title === key)
-    ensure(row, `Missing game setting ${key}`, 1007)
+    ensure(row, `Missing game setting ${key}`, ErrorCode.GameConfig)
     return row.value
 }
 export function maximumLevel(rows, playerLevel) {
     let max = 1
     for (const row of rows.slice().sort((a, b) => a.lv - b.lv)) {
         if (row.lv <= 1) continue
-        ensure(row.lv === max + 1, 'Non-contiguous level table', 1007)
+        ensure(row.lv === max + 1, 'Non-contiguous level table', ErrorCode.GameConfig)
         const condition = String(row.condition || '')
             .split('|')
             .filter(Boolean)
             .map(Number)
         if (condition.length) {
-            ensure(condition.length === 2 && condition[0] === 2004, 'Unsupported level condition', 1007)
+            ensure(condition.length === 2 && condition[0] === 2004, 'Unsupported level condition', ErrorCode.GameConfig)
             if (playerLevel < condition[1]) break
         }
         max = row.lv
@@ -31,7 +32,7 @@ export function advanceLevel(rows, level, experience, gain, cap) {
     const byLevel = new Map(rows.map((r) => [r.lv, r]))
     while (level < cap) {
         const need = byLevel.get(level)?.exp
-        ensure(Number.isSafeInteger(need) && need > 0, 'Invalid level curve', 1007)
+        ensure(Number.isSafeInteger(need) && need > 0, 'Invalid level curve', ErrorCode.GameConfig)
         if (exp < need) break
         exp -= need
         level++
@@ -52,7 +53,7 @@ export function registerProgression(on) {
                 ensure(allowed.includes(id), 'Not an experience material')
                 const config = c.tables.find('common_item', id)
                 const exp = Number(config?.useFunction)
-                ensure(Number.isSafeInteger(exp) && exp > 0, 'Invalid material config', 1007)
+                ensure(Number.isSafeInteger(exp) && exp > 0, 'Invalid material config', ErrorCode.GameConfig)
                 gain += exp * count
                 ensure(Number.isSafeInteger(gain), 'Experience overflow')
             }
@@ -66,7 +67,7 @@ export function registerProgression(on) {
                 cap,
             )
             const ratio = Number(gameValue(c.tables, isHero ? 'HERO_LEVELUP_GOLD' : 'PET_LEVELUP_GOLD'))
-            ensure(Number.isSafeInteger(ratio) && ratio >= 0, 'Invalid gold ratio', 1007)
+            ensure(Number.isSafeInteger(ratio) && ratio >= 0, 'Invalid gold ratio', ErrorCode.GameConfig)
             const product = BigInt(gain) * BigInt(ratio)
             const gold = Number(product / 10000n)
             ensure(Number.isSafeInteger(gold), 'Gold cost overflow')

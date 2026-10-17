@@ -1,3 +1,4 @@
+import { ErrorCode } from './error-codes.js'
 import { visibleEnemySlots } from './enemy-group-visibility.js'
 import { ensure } from './handlers/common.js'
 import { combatState } from './combat-state.js'
@@ -23,9 +24,9 @@ export class EntrustCatalog {
     get(id) {
         ensure(Number.isInteger(id) && id > 0, 'Invalid entrust ID')
         const entrust = this.tables.find('dungeon_entrust', id)
-        ensure(entrust, 'Unknown entrust', 10259)
+        ensure(entrust, 'Unknown entrust', ErrorCode.EntrustConfigNone)
         const dungeon = this.tables.find('dungeon', entrust.dungeonId)
-        ensure(dungeon, 'Entrust dungeon configuration unavailable', 1007)
+        ensure(dungeon, 'Entrust dungeon configuration unavailable', ErrorCode.GameConfig)
         if (!this.scenes.has(id)) {
             // The box filter is the explicit dungeon-to-scene relationship.
             // Numbered [test] city labels do NOT correspond to entrust IDs.
@@ -36,7 +37,7 @@ export class EntrustCatalog {
                 city && this.tables.get('world_borthpos').find((row) => row.cityId === city.id && row.mainPoint === 1)
             // The scene table can override the dungeon row's generic victory
             // count (for example, chapter boss scenes have one container).
-            ensure(city && scene?.mapId === city.id && point, 'Entrust scene mapping unavailable', 1007)
+            ensure(city && scene?.mapId === city.id && point, 'Entrust scene mapping unavailable', ErrorCode.GameConfig)
             this.scenes.set(id, { city, scene, point, chest })
         }
         return { entrust, dungeon, ...this.scenes.get(id) }
@@ -48,16 +49,16 @@ export class EntrustCatalog {
         ensure(
             kind === 2500 && spawner > 0 && count > 0 && !extra.length,
             'Unsupported entrust victory condition',
-            1007,
+            ErrorCode.GameConfig,
         )
         const rows = this.tables.get(`worldmap_${scene.id}`).filter((row) => row.spawnerId === spawner)
-        ensure(rows.length === count, 'Entrust victory objects do not match configuration', 1007)
+        ensure(rows.length === count, 'Entrust victory objects do not match configuration', ErrorCode.GameConfig)
         return rows.map((row) => {
             const group = this.tables.find('world_enemy_group', row.expandId)
             const enemies = String(group?.enemyList ?? '')
                 .split('|')
                 .filter(Boolean)
-            ensure(enemies.length > 0 && enemies.length <= 24, 'Entrust enemy group unavailable', 1007)
+            ensure(enemies.length > 0 && enemies.length <= 24, 'Entrust enemy group unavailable', ErrorCode.GameConfig)
             return { objectId: row.id, count: enemies.length }
         })
     }
@@ -77,7 +78,7 @@ export class EntrustCatalog {
                     ensure(
                         Number.isInteger(index) && index > 0 && [13, 30, 50].includes(type),
                         'Unsupported entrust stage',
-                        1007,
+                        ErrorCode.GameConfig,
                     )
                     return [{ index, type, row }]
                 })
@@ -89,7 +90,7 @@ export class EntrustCatalog {
                     rows.slice(1, -1).every((row) => row.type === 50) &&
                     rows.every((row, index) => index === 0 || row.index > rows[index - 1].index),
                 'Invalid entrust stage order',
-                1007,
+                ErrorCode.GameConfig,
             )
             this.stageCache.set(id, rows)
         }
@@ -102,7 +103,11 @@ export class EntrustCatalog {
             const [type, target] = String(entry.worldFilter).split('|').map(Number)
             return type === 1 && target === dungeon.id
         })
-        ensure(row && row.worldmapid === this.stages(id).at(-1).row.id, 'Entrust chest configuration unavailable', 1007)
+        ensure(
+            row && row.worldmapid === this.stages(id).at(-1).row.id,
+            'Entrust chest configuration unavailable',
+            ErrorCode.GameConfig,
+        )
         return row
     }
 }
@@ -302,7 +307,11 @@ export function ensureEntrustSceneObjects(tables, state, now) {
         const key = `${run.map_id}:${row.id}`
         if (records[key]) continue
         const coordinates = String(row.position).split('|').map(Number)
-        ensure(coordinates.length === 3 && coordinates.every(Number.isFinite), 'Invalid entrust object position', 1007)
+        ensure(
+            coordinates.length === 3 && coordinates.every(Number.isFinite),
+            'Invalid entrust object position',
+            ErrorCode.GameConfig,
+        )
         records[key] = {
             obj_id: row.id,
             active: true,
@@ -351,11 +360,11 @@ export function ensureEntrustSceneObjects(tables, state, now) {
             packs = String(group?.enemyList ?? '')
                 .split('|')
                 .filter(Boolean)
-        ensure(packs.length > 0 && packs.length <= 24, 'Entrust enemy group unavailable', 1007)
+        ensure(packs.length > 0 && packs.length <= 24, 'Entrust enemy group unavailable', ErrorCode.GameConfig)
         const monsters = packs.map((_, slot) => {
             const uid = ((3n << 56n) | (BigInt(slot) << 32n) | BigInt(row.id)).toString()
             const enemy = enemyDefinition(tables, state, uid)
-            ensure(enemy, 'Entrust enemy attributes unavailable', 1007)
+            ensure(enemy, 'Entrust enemy attributes unavailable', ErrorCode.GameConfig)
             const old = battle.entities[uid]
             if (!old) {
                 battle.entities[uid] = {

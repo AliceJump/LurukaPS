@@ -1,3 +1,4 @@
+import { ErrorCode } from './error-codes.js'
 import { arenaContext } from './npc-kibo-time.js'
 import fs from 'node:fs'
 import { pairs } from './battle.js'
@@ -45,10 +46,10 @@ export function arenaElementParameter(tables, element, skill, level, index, end 
     ensure(
         config,
         conflicts[element] ? 'Ambiguous arena damage configuration' : 'Arena damage configuration unavailable',
-        1007,
+        ErrorCode.GameConfig,
     )
     ensure(Number.isInteger(index) && index >= 0, 'Invalid arena element parameter index')
-    ensure(!end || config.kind === 'dot', 'Arena end-damage parameters unavailable', 1007)
+    ensure(!end || config.kind === 'dot', 'Arena end-damage parameters unavailable', ErrorCode.GameConfig)
     const entry = levelRow(tables, element, skill, level)
     // Formula arguments use zero-based indexes; override keys are one-based.
     if (entry?.parameters.has(index + 1)) return entry.parameters.get(index + 1)
@@ -191,7 +192,7 @@ export function recordArenaDamageElement(c, event) {
     }
     if (event.buff?.damage_cri_pct !== undefined) record = { ...record, critical_random: event.buff.damage_cri_pct }
     const serial = (run.damage_input_serial ?? 0) + 1
-    ensure(Number.isSafeInteger(serial), 'Arena damage input sequence exhausted', 1007)
+    ensure(Number.isSafeInteger(serial), 'Arena damage input sequence exhausted', ErrorCode.GameConfig)
     record = { ...record, observed_serial: serial }
     const records = { ...run.damage_elements }
     records[id] = record
@@ -235,7 +236,7 @@ function recordFormulaAttempt(c, id) {
         const formula = arenaOutputFormulaId(input.config)
         try {
             const value = arenaExecutionFormula(c, input)
-            ensure(Number.isFinite(value), 'Arena base formula result is not finite', 1007)
+            ensure(Number.isFinite(value), 'Arena base formula result is not finite', ErrorCode.GameConfig)
             trace = {
                 status: 'calculated',
                 formula_id: formula,

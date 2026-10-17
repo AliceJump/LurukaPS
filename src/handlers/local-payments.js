@@ -1,6 +1,7 @@
+import { ErrorCode, LocalErrorCode } from '../error-codes.js'
 import { monthlyPayload, purchaseMonthly } from '../monthly-card.js'
 // Client callback sentinel closes the order mask without opening the SDK.
-export const LOCAL_CALLBACK_NOTICE = -9999 >>> 0
+export const LOCAL_CALLBACK_NOTICE = LocalErrorCode.OfflinePaymentCallback
 import { ensure, syncPlayer } from './common.js'
 import { grantRewards, parseRewards } from '../rewards.js'
 import { MallCatalog } from '../mall.js'
@@ -122,7 +123,7 @@ export function registerLocalPayments(on, tables, store, { enabled = true } = {}
             const matches = tables
                 .get('mall_pay_goods')
                 .filter((x) => x.purchaseSdkID === sdk.id && (!isMall || x.goodsId === r.pay_goods_id))
-            ensure(matches.length === 1, 'Offline entitlement product is not implemented', 1007)
+            ensure(matches.length === 1, 'Offline entitlement product is not implemented', ErrorCode.GameConfig)
             const goods = matches[0],
                 wire = catalog.goods(true, goods.goodsId, c.state, c.now),
                 shop = tables

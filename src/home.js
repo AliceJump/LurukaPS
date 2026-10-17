@@ -1,3 +1,4 @@
+import { ErrorCode } from './error-codes.js'
 import { technologyPayload } from './technology.js'
 import { ensure } from './handlers/common.js'
 import { ensureHomeDormitories, dormPayload } from './home-dorm.js'
@@ -10,13 +11,13 @@ export function ensureHome(tables, state) {
     ensure(
         values.length === 5 && values.every(Number.isInteger) && values[0] === 13,
         'Invalid default home placement',
-        1007,
+        ErrorCode.GameConfig,
     )
     const [, id, block, anchor, direction] = values,
         config = tables.find('home_building', id)
-    ensure(config && tables.find('home_block', block), 'Missing initial home configuration', 1007)
+    ensure(config && tables.find('home_block', block), 'Missing initial home configuration', ErrorCode.GameConfig)
     const group = tables.get('home_building_group').find((g) => g.groupId === config.groupId)
-    ensure(group, 'Missing home building group', 1007)
+    ensure(group, 'Missing home building group', ErrorCode.GameConfig)
     state.home = {
         name: Buffer.from('我的家园').toString('base64'),
         level: state.player.basic_info.home_lv || 1,
@@ -98,7 +99,7 @@ export function homePayload(tables, state) {
             .filter((row) => row.title === 'HOME_BELT_NUM_PC' || row.title === 'HOME_BELT_NUM_MOBILE')
             .map((row) => Number(row.value)),
     )
-    ensure(Number.isInteger(shortcutSlots) && shortcutSlots > 0, 'Invalid home shortcut capacity', 1007)
+    ensure(Number.isInteger(shortcutSlots) && shortcutSlots > 0, 'Invalid home shortcut capacity', ErrorCode.GameConfig)
     return {
         technology: technologyPayload(tables, state),
         home_lv: h.level,
@@ -216,7 +217,7 @@ export function reconcileHomeBuildShortcuts(tables, state) {
 
 export function addHomeBuildings(tables, state, id, count) {
     const config = tables.find('home_building', id)
-    ensure(config, 'Unknown building reward', 1007)
+    ensure(config, 'Unknown building reward', ErrorCode.GameConfig)
     const home = ensureHome(tables, state)
     let row = home.inventory.find((b) => b.build_id === id)
     if (!row) {

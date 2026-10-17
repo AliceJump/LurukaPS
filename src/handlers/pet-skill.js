@@ -1,3 +1,4 @@
+import { ErrorCode } from '../error-codes.js'
 import { ensure, pet } from './common.js'
 import { isRetiredTrialActor, temporaryPets } from '../trial-actors.js'
 export function skillFailureRate(tables, state, p) {
@@ -10,7 +11,7 @@ export function skillFailureRate(tables, state, p) {
     if (!row) return 0 // Mirrors the client's exact lvDif lookup and missing-row fallback.
     const rate =
         row[p.original_type === 1 ? 'bossSkillFail' : p.original_type === 2 ? 'eliteSkillFail' : 'normalSkillFail']
-    ensure(Number.isInteger(rate) && rate >= 0 && rate <= 10000, 'Invalid pet skill failure rate', 1007)
+    ensure(Number.isInteger(rate) && rate >= 0 && rate <= 10000, 'Invalid pet skill failure rate', ErrorCode.GameConfig)
     return rate
 }
 export function registerPetSkill(on) {

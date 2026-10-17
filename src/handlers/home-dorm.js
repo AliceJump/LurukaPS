@@ -1,3 +1,4 @@
+import { ErrorCode } from '../error-codes.js'
 import { ensure, hero } from './common.js'
 import { ensureHome, homePayload } from '../home.js'
 import {
@@ -187,7 +188,7 @@ export function registerHomeDorm(on, tables) {
             favor = furniture.value
         } else {
             const gift = tables.find('hero_favorability_gift', item.id)
-            ensure(gift, 'Gift configuration is missing', 1007)
+            ensure(gift, 'Gift configuration is missing', ErrorCode.GameConfig)
             const basic = c.state.player.basic_info
             const perHero = Number(tables.get('game').find((row) => row.title === 'HERO_FAVORABILITY_GIFT_NUM')?.value)
             const total = Number(
@@ -225,7 +226,7 @@ export function registerHomeDorm(on, tables) {
             ensure(
                 info?.heroId === actor.conf_id && info.favorabilityLevel <= actor.favorability_lv,
                 'Invalid pending favorability reward',
-                1007,
+                ErrorCode.GameConfig,
             )
             rewards.push(...parseRewards(info.reward))
         }

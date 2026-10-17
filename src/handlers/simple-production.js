@@ -1,3 +1,4 @@
+import { ErrorCode } from '../error-codes.js'
 import { ensure, syncPlayer } from './common.js'
 import { parseRewards, grantRewards } from '../rewards.js'
 import { spend, spendCurrency } from '../inventory.js'
@@ -16,29 +17,29 @@ export function registerSimpleProduction(on, tables) {
         ensure(recipe?.isQuickProduct === 1 && !recipe.notReleased, 'Unknown quick-production recipe')
         ensure(!r.build_guid, 'Quick production must not use a building')
         ensure(homeCondition(recipe.unlockCondition, c.state), 'Production recipe locked')
-        ensure(!recipe.isNeedPet, 'Pet-assisted quick production is not implemented', 1021)
+        ensure(!recipe.isNeedPet, 'Pet-assisted quick production is not implemented', ErrorCode.InvalidProtoID)
         ensure(
             !recipe.materialSelect && !(r.select_material ?? []).length,
             'Selectable materials are not implemented',
-            1021,
+            ErrorCode.InvalidProtoID,
         )
         ensure(Number.isInteger(r.count) && r.count > 0 && r.count <= recipe.numberLimit, 'Invalid production count')
         ensure(
             Number.isInteger(recipe.time) && recipe.time > 0 && c.now + r.count * recipe.time <= 0xffffffff,
             'Invalid production duration',
-            1007,
+            ErrorCode.GameConfig,
         )
         const costs = parseRewards(recipe.material),
             rewards = parseRewards(recipe.rewardId)
         ensure(
             costs.length && costs.every((x) => [3, 10].includes(x.itemtype)),
             'Unsupported quick-production material',
-            1021,
+            ErrorCode.InvalidProtoID,
         )
         ensure(
             rewards.length && rewards.every((x) => [3, 10].includes(x.itemtype)),
             'Unsupported quick-production reward',
-            1021,
+            ErrorCode.InvalidProtoID,
         )
         const settled = settleSimpleProducts(tables, c.state, c.now)
         // CBT3 ProductManager.onIsHadIdleQueueWithFastProduct uses four slots.

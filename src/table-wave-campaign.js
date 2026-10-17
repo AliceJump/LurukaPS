@@ -1,3 +1,4 @@
+import { ErrorCode } from './error-codes.js'
 import fs from 'node:fs'
 import path from 'node:path'
 import { campaignStagePlan } from './campaign-stage-plan.js'
@@ -61,7 +62,7 @@ export function tableWaveCampaignRoute(tables, dungeon) {
         try {
             plan = campaignStagePlan(tables, scene.id)
         } catch (error) {
-            if (error.code === 1007) continue
+            if (error.code === ErrorCode.GameConfig) continue
             throw error
         }
         if (plan[end]?.length !== rows.length || !plan[end].every((r) => rows.some((x) => x.id === r.id))) continue

@@ -1,3 +1,4 @@
+import { ErrorCode } from './error-codes.js'
 import { ensure } from './handlers/common.js'
 
 export function taskItemCount(state, id) {
@@ -5,7 +6,7 @@ export function taskItemCount(state, id) {
 }
 
 export function changeTaskItem(tables, state, id, delta) {
-    ensure(tables.find('task_item', id), 'Unknown task item', 1007)
+    ensure(tables.find('task_item', id), 'Unknown task item', ErrorCode.GameConfig)
     const count = taskItemCount(state, id) + delta
     ensure(
         Number.isSafeInteger(delta) && Number.isSafeInteger(count) && count >= 0 && count <= 99,
@@ -41,7 +42,7 @@ function itemActions(config, phase) {
         ensure(
             data && Number.isInteger(data.itemId) && Number.isInteger(data.itemCount) && data.itemCount > 0,
             'Invalid task item action',
-            1007,
+            ErrorCode.GameConfig,
         )
         return [{ index, data, create: action.contentType === 1300 }]
     })

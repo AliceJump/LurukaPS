@@ -1,3 +1,4 @@
+import { ErrorCode } from '../error-codes.js'
 import fs from 'node:fs'
 import { ensure, syncPlayer } from './common.js'
 import { spend, spendCurrency } from '../inventory.js'
@@ -129,7 +130,7 @@ export function registerPlayableLifecycle(on, tables) {
                             Number.isInteger(drop) &&
                             drop > 0,
                         'Invalid playable stage reward mapping',
-                        1007,
+                        ErrorCode.GameConfig,
                     )
                     return [step, drop]
                 }),
@@ -144,7 +145,7 @@ export function registerPlayableLifecycle(on, tables) {
         ensure(
             task && tables.get('drop').some((d) => d.dropId === drop && d.type === 30),
             'Invalid playable pet choice drop',
-            1007,
+            ErrorCode.GameConfig,
         )
         const key = `${task.task_id}:${c.state.taskEpochs?.[task.task_id] ?? 0}:${row.id}`
         const receipts = (c.state.playableChoiceReceipts ??= {})
@@ -155,14 +156,18 @@ export function registerPlayableLifecycle(on, tables) {
             ensure(
                 c.state.pets.some((p) => p.guid === receipt.pet_guid),
                 'Recorded playable pet is missing',
-                1007,
+                ErrorCode.GameConfig,
             )
         } else {
             rewards = grantRewards(tables, c.state, world.drops(drop, c.randomInt))
-            ensure(rewards.length === 1 && rewards[0].itemtype === 30, 'Playable pet choice must grant one pet', 1007)
+            ensure(
+                rewards.length === 1 && rewards[0].itemtype === 30,
+                'Playable pet choice must grant one pet',
+                ErrorCode.GameConfig,
+            )
             const pet = c.state.pets.find((p) => p.guid === rewards[0].guid)
             const group = tables.get('pet_rank').find((rank) => rank.petId === pet?.config_id)?.petGroup
-            ensure(Number.isInteger(group) && group > 0, 'Playable pet group unavailable', 1007)
+            ensure(Number.isInteger(group) && group > 0, 'Playable pet group unavailable', ErrorCode.GameConfig)
             receipt = { step, drop_id: drop, pet_guid: pet.guid, pet_group: group }
             receipts[key] = receipt
         }
@@ -199,7 +204,7 @@ export function registerPlayableLifecycle(on, tables) {
         ensure(
             costs.every((cost) => [3, 10].includes(cost.itemtype)),
             'Unsupported playable entry cost',
-            1007,
+            ErrorCode.GameConfig,
         )
         const bag = new Map()
         for (const cost of costs) {
@@ -280,7 +285,7 @@ export function registerPlayableLifecycle(on, tables) {
                 ensure(
                     world.get('drop').some((entry) => entry.dropId === drop),
                     `Unknown world drop ${drop} for playable ${row.id} stage ${step}`,
-                    1007,
+                    ErrorCode.GameConfig,
                 )
                 rewards = grantRewards(tables, c.state, world.drops(drop, c.randomInt))
                 dropIds = [drop]

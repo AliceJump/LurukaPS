@@ -96,6 +96,36 @@ test('both camps approach beyond lock range; movement remains a client path comm
     assert.equal(f.c.state.combat.npcDuel.in_fight[f.self.uuid].move.pos.z, 13400)
 })
 
+test('the native capsule half-height cap prevents casting just beyond actual melee surface range', () => {
+    assert.equal(arenaPetAIProfile(tables, 500001).radius, 0.9)
+    assert.equal(arenaPetAIProfile(tables, 500022).radius, 0.9)
+    const f = context()
+    f.self.config_id = 500022
+    f.enemy.config_id = 500083
+    const run = f.c.state.combat.npcDuel
+    run.in_fight[f.self.uuid].move.pos.z = 14060
+    const initial = f.tick(101)
+    assert.equal(initial.filter((packet) => packet.name === 'SCProtoSkillStartSync').length, 0)
+    const move = initial.find((packet) => packet.name === 'SCProtoKiboStartMove' && packet.data.uuid === f.self.uuid)
+    assert.ok(Math.abs(move.data.precision - 3.3) < 1e-5)
+    recordNpcArenaMovement(f.c, { uuid: f.self.uuid, info: { pos: { x: 13000, y: 9995, z: 14100 } } })
+    assert.ok(
+        f.tick(102).some((packet) => packet.name === 'SCProtoSkillStartSync' && packet.data.unit_id === f.self.uuid),
+    )
+})
+
+test('the arena collider runtime override takes precedence over the raw unit collider', () => {
+    const isolated = new Tables(cfg.tables),
+        pet = isolated.find('pet', 500022)
+    isolated.cache.set(
+        'unit_collider_runtime',
+        isolated
+            .get('unit_collider_runtime')
+            .map((row) => (row.id === pet.unitId ? { ...row, kiboColliderList: '0|0.3|0.5|1.8' } : row)),
+    )
+    assert.equal(arenaPetAIProfile(isolated, pet.id).radius, 0.5)
+})
+
 test('actual movement receipts enable table-timed skills, shared cooldowns and priority without replaying subskills', () => {
     const f = context()
     f.tick(100)

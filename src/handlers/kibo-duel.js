@@ -1,3 +1,4 @@
+import { ErrorCode } from '../error-codes.js'
 import { registerNpcArenaResults } from '../npc-kibo-result.js'
 import { duelProgressSnapshot } from '../kibo-duel-progress.js'
 import { clearArenaStageBuffs } from '../npc-kibo-stage-buffs.js'
@@ -143,7 +144,7 @@ function lockedFormation(tables, state, row) {
     ensure(
         trialIds.every((id) => tables.find('trial_pet', id)),
         'Kibo duel trial pet unavailable',
-        1007,
+        ErrorCode.GameConfig,
     )
     const selected = trialIds.map((id) => ({ is_trial: true, id: String(id) }))
     const usedConfigs = new Set(trialIds.map((id) => tables.find('trial_pet', id).trialPet))
@@ -189,10 +190,10 @@ export function arenaAttributePayload(tables, state) {
         let profile
         if (entry.is_trial) {
             const trial = tables.find('trial_pet', Number(entry.id))
-            ensure(trial, 'Trial pet configuration unavailable', 1007)
+            ensure(trial, 'Trial pet configuration unavailable', ErrorCode.GameConfig)
             const source =
                 state.pets.find((p) => p.config_id === trial.trialPet) ?? state.kiboDuelTrialProfiles?.[entry.id]
-            ensure(source, 'Trial pet profile unavailable', 1007)
+            ensure(source, 'Trial pet profile unavailable', ErrorCode.GameConfig)
             profile = { ...source, guid: entry.guid, config_id: trial.trialPet, lv: trial.trialPetLevel, hero_id: '0' }
         } else profile = state.pets.find((p) => p.guid === entry.id)
         ensure(profile, 'Arena pet unavailable')
@@ -235,7 +236,7 @@ export function registerKiboDuel(on, tables, protocol) {
         ensure(row, 'Unknown Kibo duel')
         for (const id of ids(row.kiboList)) {
             const trial = tables.find('trial_pet', id)
-            ensure(trial, 'Trial pet configuration unavailable', 1007)
+            ensure(trial, 'Trial pet configuration unavailable', ErrorCode.GameConfig)
             if (c.state.pets.some((p) => p.config_id === trial.trialPet) || c.state.kiboDuelTrialProfiles?.[id])
                 continue
             const profile = petData(tables, trial.trialPet, arenaPetGuid(c.state, { is_trial: true, id }), 0)
@@ -331,10 +332,14 @@ export function registerKiboDuel(on, tables, protocol) {
     const createNpcArena = (c, r, restarting = false) => {
         const dungeon = tables.find('dungeon', r.dungeon_id),
             duel = dungeon && tables.find('kibo_duel', dungeon.gameplayID)
-        ensure(dungeon?.dungeonType === 400 && duel?.dungeonId === dungeon.id, 'Unsupported dungeon', 1021)
+        ensure(
+            dungeon?.dungeonType === 400 && duel?.dungeonId === dungeon.id,
+            'Unsupported dungeon',
+            ErrorCode.InvalidProtoID,
+        )
         const map = tables.find('kibo_duel_map', duel.mapId),
             scene = Number(map?.art)
-        ensure(Number.isInteger(scene) && scene > 0, 'Invalid arena scene configuration', 1007)
+        ensure(Number.isInteger(scene) && scene > 0, 'Invalid arena scene configuration', ErrorCode.GameConfig)
         npcDuelEntry(tables, duel.id)
         // SceneData.Init(KiboArenaMapMono) takes the blue trainer position.
         // The generic dungeon.position is reused across different arenas.
@@ -432,7 +437,7 @@ export function registerKiboDuel(on, tables, protocol) {
         ensure(
             tables.get('train_task').some((row) => row.groupType === 3 && row.dungeonId === duel.id),
             'Not a configured duel teaching entry',
-            1007,
+            ErrorCode.GameConfig,
         )
         prepare(c, { u32: duel.id })
         return createNpcArena(c, { dungeon_id: duel.dungeonId })
@@ -464,7 +469,7 @@ export function registerKiboDuel(on, tables, protocol) {
     on('ArenaRestartConfirm', (c, r) => {
         ensure([0, 1, 2].includes(r.op ?? 0), 'Invalid arena restart operation')
         if (r.op !== 2) restart(c)
-        return { op: r.op === 2 ? 2 : 1, ret_code: 0 }
+        return { op: r.op === 2 ? 2 : 1, ret_code: ErrorCode.Succ }
     })
     on('StartDungeonClientOk', (c) => {
         if (c.state.storyCampaign) {

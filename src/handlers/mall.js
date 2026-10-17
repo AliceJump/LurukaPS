@@ -1,3 +1,4 @@
+import { ErrorCode } from '../error-codes.js'
 import { ensure, syncPlayer } from './common.js'
 import { MallCatalog } from '../mall.js'
 import { spend, spendCurrency } from '../inventory.js'
@@ -18,7 +19,7 @@ export function registerMall(on, tables) {
         ensure(
             !shop.unlockCondition && !shop.timelimit && !goods.specialPrice,
             'Unsupported mall purchase condition',
-            1021,
+            ErrorCode.InvalidProtoID,
         )
         const wire = catalog.goods(false, goods.goodsId, c.state, c.now)
         ensure(
@@ -35,7 +36,7 @@ export function registerMall(on, tables) {
             ensure(Number.isSafeInteger(amount) && amount <= 0xffffffff, 'Purchase cost overflow')
             if (cost.itemtype === 3) spend(c.state, new Map([[cost.itemid, amount]]), 0, c.now)
             else {
-                ensure(cost.itemtype === 10, 'Unsupported mall currency', 1021)
+                ensure(cost.itemtype === 10, 'Unsupported mall currency', ErrorCode.InvalidProtoID)
                 if ([901, 902].includes(cost.itemid)) spendStars(c, amount)
                 else spendCurrency(c.state, cost.itemid, amount)
             }
@@ -46,12 +47,16 @@ export function registerMall(on, tables) {
             ensure(Number.isSafeInteger(quantity) && quantity > 0 && quantity <= 0xffffffff, 'Reward quantity overflow')
             if (goods.autoOpen && reward.itemtype === 3) {
                 const item = drops.find('common_item', reward.itemid)
-                ensure(item?.type === 5 && /^\d+$/.test(String(item.useFunction)), 'Unsupported automatic gift', 1021)
+                ensure(
+                    item?.type === 5 && /^\d+$/.test(String(item.useFunction)),
+                    'Unsupported automatic gift',
+                    ErrorCode.InvalidProtoID,
+                )
                 ensure(quantity <= 512, 'Gift roll limit')
                 for (let i = 0; i < quantity; i++) output.push(...drops.drops(Number(item.useFunction), c.randomInt))
             } else output.push({ ...reward, itemnum: quantity })
         }
-        ensure(output.length, 'Mall reward is empty', 1007)
+        ensure(output.length, 'Mall reward is empty', ErrorCode.GameConfig)
         const rewards = grantRewards(tables, c.state, output)
         const mall = (c.state.mall ??= {})
         mall.purchases ??= {}

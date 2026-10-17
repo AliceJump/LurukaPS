@@ -1,3 +1,4 @@
+import { ErrorCode } from './error-codes.js'
 import { visibleEnemySlots } from './enemy-group-visibility.js'
 import fs from 'node:fs'
 import { ensure } from './handlers/common.js'
@@ -24,7 +25,7 @@ export function cultTrialStarMask(goals, score) {
     ensure(
         thresholds.length <= 31 && thresholds.every((x) => Number.isSafeInteger(x) && x >= 0),
         'Invalid cultivation score goals',
-        1007,
+        ErrorCode.GameConfig,
     )
     return thresholds.reduce((mask, goal, index) => mask + (score >= goal ? 2 ** index : 0), 0)
 }
@@ -49,7 +50,7 @@ export function refreshCultTrialResult(tables, state) {
             )
             for (const member of members) {
                 const type = tables.find('enemy', member.config_id)?.enemyType
-                ensure([1, 2, 3].includes(type), 'Unknown cultivation scoring enemy type', 1007)
+                ensure([1, 2, 3].includes(type), 'Unknown cultivation scoring enemy type', ErrorCode.GameConfig)
                 base += wave[type === 1 ? 'bossScore' : type === 2 ? 'eliteScore' : 'commonScore']
             }
         }
@@ -70,7 +71,7 @@ export function refreshCultTrialResult(tables, state) {
             const effect = current
                 .get('game_events_cul_effect')
                 .find((x) => x.Id === Number(String(trial.effect1).split('|')[run.star - 1]))
-            ensure(effect?.type === 3, 'Cultivation trial reward effect unavailable', 1007)
+            ensure(effect?.type === 3, 'Cultivation trial reward effect unavailable', ErrorCode.GameConfig)
             run.attr_changes = String(effect.param)
                 .split('|')
                 .map((x) => {
@@ -78,7 +79,7 @@ export function refreshCultTrialResult(tables, state) {
                     ensure(
                         source === 3 && growup.growup_train_attr.some((x) => x.attr_id === attr_id),
                         'Unsupported cultivation trial attribute reward',
-                        1007,
+                        ErrorCode.GameConfig,
                     )
                     return { attr_id, attr_value }
                 })
@@ -99,7 +100,7 @@ export function cultTrialRoute(tables, catalog, activityId, trialId) {
     ensure(
         route && trial.dungeonId === dungeon?.id && city?.type === 27 && point?.cityId === city.id,
         'Cultivation trial scene mapping unavailable',
-        1007,
+        ErrorCode.GameConfig,
     )
     return { activity, trial, route, dungeon, point }
 }
@@ -141,7 +142,11 @@ export function ensureCultTrialScene(tables, state, now) {
             values = String(row.position)
                 .split('|')
                 .map((x) => Math.round(Number(x) * 100))
-        ensure(values.length === 3 && values.every(Number.isFinite), 'Invalid cultivation trial object position', 1007)
+        ensure(
+            values.length === 3 && values.every(Number.isFinite),
+            'Invalid cultivation trial object position',
+            ErrorCode.GameConfig,
+        )
         const record = (records[key] ??= {
             obj_id: row.id,
             active: row.initStatus !== 1,
@@ -163,11 +168,11 @@ export function ensureCultTrialScene(tables, state, now) {
             packs = String(group?.enemyList ?? '')
                 .split('|')
                 .filter(Boolean)
-        ensure(packs.length, 'Missing cultivation trial enemy group', 1007)
+        ensure(packs.length, 'Missing cultivation trial enemy group', ErrorCode.GameConfig)
         const monsters = packs.map((_, slot) => {
             const uid = ((3n << 56n) | (BigInt(slot) << 32n) | BigInt(row.id)).toString(),
                 definition = enemyDefinition(tables, state, uid)
-            ensure(definition, 'Missing cultivation trial enemy attributes', 1007)
+            ensure(definition, 'Missing cultivation trial enemy attributes', ErrorCode.GameConfig)
             const entity = (battle.entities[uid] ??= {
                 uuid: uid,
                 ...definition,
@@ -223,7 +228,7 @@ function cultTrialWaves(tables, run) {
         waves.length &&
             waves.every((wave) => wave.object_ids.length && wave.object_ids.every((id) => run.object_ids.includes(id))),
         'Cultivation trial wave configuration unavailable',
-        1007,
+        ErrorCode.GameConfig,
     )
     return waves
 }

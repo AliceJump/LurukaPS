@@ -1,3 +1,4 @@
+import { ErrorCode } from '../error-codes.js'
 import { ensure, syncPlayer } from './common.js'
 import { WorldObjectCatalog } from '../world-objects.js'
 import { grantRewards } from '../rewards.js'
@@ -20,11 +21,15 @@ export function registerWorldEvents(on, tables) {
             .split('|')
             .filter(Boolean)) {
             const id = Number(token)
-            ensure(Number.isInteger(id) && id > 0, 'Invalid world event drop', 1007)
+            ensure(Number.isInteger(id) && id > 0, 'Invalid world event drop', ErrorCode.GameConfig)
             if (!configuredDrops.has(id)) {
                 // CBT3 keeps disabled placeholder events (100/107/108/109/117)
                 // with drop IDs absent from the shipped drop table.
-                ensure(row.probability === 0 && row.weight === 0, 'Active world event references an unknown drop', 1007)
+                ensure(
+                    row.probability === 0 && row.weight === 0,
+                    'Active world event references an unknown drop',
+                    ErrorCode.GameConfig,
+                )
                 continue
             }
             rewards.push(...drops.drops(id, c.randomInt))
@@ -34,8 +39,8 @@ export function registerWorldEvents(on, tables) {
     const config = (c, id) => {
         const row = tables.find('world_event', id)
         ensure(row && row.worldMapID === c.state.world.map_id, 'Event not in current map')
-        ensure(!row.conditionID, 'Event condition evaluation is not implemented', 1007)
-        ensure(row.stepCount >= 2, 'Invalid event step configuration', 1007)
+        ensure(!row.conditionID, 'Event condition evaluation is not implemented', ErrorCode.GameConfig)
+        ensure(row.stepCount >= 2, 'Invalid event step configuration', ErrorCode.GameConfig)
         return row
     }
     const trigger = (c, row) => {
@@ -239,7 +244,7 @@ export function registerWorldEvents(on, tables) {
     on('TaskRandomArea', (c, r) => {
         ensure(Number.isInteger(r.u32) && r.u32 > 0, 'Invalid random task group')
         const groups = tables.get('task_randomgroup')
-        ensure(groups.length === 0, 'Configured random task selection needs scheduling support', 1007)
+        ensure(groups.length === 0, 'Configured random task selection needs scheduling support', ErrorCode.GameConfig)
         c.state.randomTaskQuery = { group_id: r.u32, time: c.now }
         c.pushBefore('CSProtoTaskRandomAreaSync', { time: c.now, areas_ids: [], task_ids: [] })
         return {}

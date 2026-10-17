@@ -1,10 +1,11 @@
+import { ErrorCode } from '../error-codes.js'
 export class GameError extends Error {
-    constructor(message, code = 1024) {
+    constructor(message, code = ErrorCode.InvalidArgument) {
         super(message)
         this.code = code
     }
 }
-export function ensure(condition, message = 'Invalid argument', code = 1024) {
+export function ensure(condition, message = 'Invalid argument', code = ErrorCode.InvalidArgument) {
     if (!condition) throw new GameError(message, code)
 }
 export function textValue(value, max = 64) {

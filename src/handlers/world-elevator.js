@@ -1,3 +1,4 @@
+import { ErrorCode } from '../error-codes.js'
 import fs from 'node:fs'
 import { ensure } from './common.js'
 import { WorldObjectCatalog } from '../world-objects.js'
@@ -18,7 +19,7 @@ export function registerWorldElevator(on, tables) {
         const { row, spawner } = catalog.object(map, r.obj_id)
         const blueprint = tables.find('world_blueprint', row.blueprint || spawner.blueprint)
         const steps = blueprints.get(blueprint?.path)
-        ensure(steps, 'World elevator or puzzle configuration unavailable', 1007)
+        ensure(steps, 'World elevator or puzzle configuration unavailable', ErrorCode.GameConfig)
         ensure(Number.isInteger(r.floor) && steps.includes(r.floor), 'Elevator target is not configured')
         const records = (c.state.worldObjects ??= {}),
             key = map + ':' + r.obj_id,

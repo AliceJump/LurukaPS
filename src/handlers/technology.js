@@ -1,3 +1,4 @@
+import { ErrorCode } from '../error-codes.js'
 import { ensureHome } from '../home.js'
 import { homeCondition } from '../home-grid.js'
 import { technologyState, technologyPoints, technologyParents, technologyType } from '../technology.js'
@@ -38,7 +39,7 @@ export function registerTechnology(on, tables) {
         ensure(row, 'Technology is at maximum level')
         ensure(technologyParents(tree, tech), 'Prerequisite technology missing')
         ensure(homeCondition(row.unlockCondi1, c.state), 'Technology level requirement not met')
-        ensure(Number.isInteger(row.point) && row.point >= 0, 'Invalid technology cost', 1007)
+        ensure(Number.isInteger(row.point) && row.point >= 0, 'Invalid technology cost', ErrorCode.GameConfig)
         ensure(technologyPoints(tables, c.state).available >= row.point, 'Insufficient technology points')
         tech.spent += row.point
         tech.levels[tree.id] = { level: level + 1, lastTime: c.now }

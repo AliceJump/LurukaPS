@@ -1,3 +1,4 @@
+import { ErrorCode } from './error-codes.js'
 import { grantDuelAreaExperience, grantDuelPetExperience } from './kibo-duel-progress.js'
 import { recordResourceAcquisition } from './item-acquisition.js'
 import { createPets, createCustomizedPets } from './pets.js'
@@ -25,13 +26,13 @@ export function parseRewards(value, allowZero = false) {
                     itemnum >= (allowZero ? 0 : 1) &&
                     itemnum <= 0xffffffff,
                 'Malformed reward configuration',
-                1007,
+                ErrorCode.GameConfig,
             )
             return { itemtype, itemid, itemnum }
         })
 }
 export function grantRewards(tables, state, rewards, depth = 0, context = {}) {
-    ensure(depth <= 100, 'Reward recursion limit', 1007)
+    ensure(depth <= 100, 'Reward recursion limit', ErrorCode.GameConfig)
     const granted = []
     for (const reward of rewards) {
         const { itemtype, itemid, itemnum } = reward
@@ -43,14 +44,18 @@ export function grantRewards(tables, state, rewards, depth = 0, context = {}) {
             ensure(
                 itemnum === 1 && tables.find('hero', itemid)?.isUsable === 1,
                 'Unknown or nonunique reward hero',
-                1007,
+                ErrorCode.GameConfig,
             )
             const heroes = state.player.heros_info.heros
             let hero = heroes.find((h) => h.conf_id === itemid)
             if (!hero) {
                 const mainId = mainHeroConfigId(tables, state.player.basic_info.sex)
                 hero = heroData(itemid, state.player.basic_info.id, itemid === mainId ? 1 : 0)
-                ensure(!heroes.some((h) => h.guid === hero.guid), 'Reward hero identity collision', 1007)
+                ensure(
+                    !heroes.some((h) => h.guid === hero.guid),
+                    'Reward hero identity collision',
+                    ErrorCode.GameConfig,
+                )
                 heroes.push(hero)
             }
             if (state.home) ensureHomeDormitories(tables, state)
@@ -58,7 +63,7 @@ export function grantRewards(tables, state, rewards, depth = 0, context = {}) {
             continue
         }
         if (itemtype === 3) {
-            ensure(tables.find('common_item', itemid), 'Unknown reward item', 1007)
+            ensure(tables.find('common_item', itemid), 'Unknown reward item', ErrorCode.GameConfig)
             recordResourceAcquisition(state, itemtype, itemid, itemnum)
             addItems(state, [reward])
             if (state.home) refreshAutoCropShortcut(tables, state, itemid)
@@ -73,7 +78,7 @@ export function grantRewards(tables, state, rewards, depth = 0, context = {}) {
             granted.push(...pets.map((p) => ({ itemtype: 30, itemid, itemnum: 1, guid: p.guid })))
             continue
         } else if (itemtype === 9) {
-            ensure(tables.find('soulessence', itemid), 'Unknown equipment', 1007)
+            ensure(tables.find('soulessence', itemid), 'Unknown equipment', ErrorCode.GameConfig)
             const bag = state.player.soulessence_infos.soulessences
             ensure(itemnum <= 1000 && bag.length + itemnum <= 10000, 'Equipment bag limit')
             let next = Math.max(state.nextEssenceGuid ?? 1, ...bag.map((e) => e.guid + 1))
@@ -86,14 +91,14 @@ export function grantRewards(tables, state, rewards, depth = 0, context = {}) {
             state.nextEssenceGuid = next
             continue
         } else if (itemtype === 25) {
-            ensure(tables.find('mount_saddle', itemid), 'Unknown mount saddle', 1007)
+            ensure(tables.find('mount_saddle', itemid), 'Unknown mount saddle', ErrorCode.GameConfig)
             state.mountSaddles ??= tables.get('mount_saddle').map((r) => r.id)
             if (!state.mountSaddles.includes(itemid)) state.mountSaddles.push(itemid)
         } else if (itemtype === 40) {
             ensureHome(tables, state)
             grantDormStyle(tables, state, itemid)
         } else if (itemtype === 28) {
-            ensure(tables.find('library_readings', itemid), 'Unknown reading', 1007)
+            ensure(tables.find('library_readings', itemid), 'Unknown reading', ErrorCode.GameConfig)
             const books = (state.readingBooks ??= {})
             if (books[itemid]) continue
             books[itemid] = { book_id: itemid, book_state: 0 }
@@ -136,7 +141,11 @@ export function grantRewards(tables, state, rewards, depth = 0, context = {}) {
                     max = Math.max(...rows.map((x) => x.id))
                 while (basic.lv < max) {
                     const row = tables.find('player_level', basic.lv)
-                    ensure(row && Number.isSafeInteger(row.exp) && row.exp > 0, 'Invalid player level curve', 1007)
+                    ensure(
+                        row && Number.isSafeInteger(row.exp) && row.exp > 0,
+                        'Invalid player level curve',
+                        ErrorCode.GameConfig,
+                    )
                     if (basic.exp < row.exp) break
                     basic.exp -= row.exp
                     basic.lv++
@@ -154,7 +163,7 @@ export function grantRewards(tables, state, rewards, depth = 0, context = {}) {
                 ensure(n <= 0xffffffffffffffffn, 'Currency overflow')
                 a.attr_val = String(n)
             }
-        } else ensure(false, `Unsupported reward type ${itemtype}`, 1021)
+        } else ensure(false, `Unsupported reward type ${itemtype}`, ErrorCode.InvalidProtoID)
         granted.push(reward)
     }
     return granted

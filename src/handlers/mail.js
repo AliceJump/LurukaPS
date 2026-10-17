@@ -1,3 +1,4 @@
+import { ErrorCode } from '../error-codes.js'
 import { grantRewards } from '../rewards.js'
 export { addItems } from '../inventory.js'
 import { ensure } from './common.js'
@@ -34,7 +35,7 @@ export function registerMail(on) {
         }
         c.push('CSProtoSyncPlayerData', c.state.player)
         c.push('CSProtoMailSync', { mails: selected })
-        return { guids: selected.map((m) => m.guid), rewards: { rewards }, errcode: 0 }
+        return { guids: selected.map((m) => m.guid), rewards: { rewards }, errcode: ErrorCode.Succ }
     })
     on('DelMail', (c, r) => {
         const selected = c.state.mail.filter(

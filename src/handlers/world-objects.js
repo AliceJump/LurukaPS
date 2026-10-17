@@ -1,3 +1,4 @@
+import { ErrorCode } from '../error-codes.js'
 import { petPuzzleRule } from '../pet-puzzles.js'
 import { registerWorldElevator } from './world-elevator.js'
 import { rewardSource } from '../reward-source.js'
@@ -39,15 +40,19 @@ export function worldCondition(value, state) {
         .split('|')
         .every((part) => {
             const [kind, a, b, ...extra] = part.split('#').map(Number)
-            ensure(!extra.length && [kind, a].every(Number.isInteger), 'Invalid world object condition', 1007)
+            ensure(
+                !extra.length && [kind, a].every(Number.isInteger),
+                'Invalid world object condition',
+                ErrorCode.GameConfig,
+            )
             if (kind === 2004) return state.player.basic_info.lv >= a
             if (kind === 2007)
                 return (state.taskRecords ?? []).some((record) => record.task_id === a && record.count > 0)
             if (kind === 12045) {
-                ensure(Number.isInteger(b) && b > 0, 'Invalid task-step appearance condition', 1007)
+                ensure(Number.isInteger(b) && b > 0, 'Invalid task-step appearance condition', ErrorCode.GameConfig)
                 return taskNodeCompleted(state, a, b)
             }
-            ensure(false, `Unsupported world object condition ${kind}`, 1007)
+            ensure(false, `Unsupported world object condition ${kind}`, ErrorCode.GameConfig)
         })
 }
 function stateData(input, depth = 0) {
@@ -123,11 +128,11 @@ export function registerWorldObjects(on, tables) {
     const catalog = new WorldObjectCatalog(tables)
     on('WorldCommonRepair', (c, r) => {
         const config = tables.find('common_world_repair', r.repair_id)
-        ensure(config, 'Unknown world repair', 12045)
+        ensure(config, 'Unknown world repair', ErrorCode.CommonRepairConfNot)
         ensure(
             config.cityId === c.state.world.map_id && config.worldmapId === r.obj_id,
             'Repair does not belong to this object/map',
-            12046,
+            ErrorCode.CommonRepairNotEqual,
         )
         const { row } = catalog.object(c.state.world.map_id, r.obj_id)
         ensure(worldCondition(row.appearCond, c.state), 'Repair object is not available')
@@ -156,7 +161,7 @@ export function registerWorldObjects(on, tables) {
         ensure(
             costs.every((item) => [3, 10].includes(item.itemtype)),
             'Unsupported repair material',
-            1007,
+            ErrorCode.GameConfig,
         )
         for (const cost of costs) {
             if (cost.itemtype === 3) bag.set(cost.itemid, (bag.get(cost.itemid) ?? 0) + cost.itemnum)
@@ -166,7 +171,7 @@ export function registerWorldObjects(on, tables) {
         const budget = { count: 0 }
         const rewardRows = parseRewards(config.reward).flatMap((reward) => {
             if (reward.itemtype !== 27) return [reward]
-            ensure(reward.itemnum <= 512, 'Repair drop roll limit', 1007)
+            ensure(reward.itemnum <= 512, 'Repair drop roll limit', ErrorCode.GameConfig)
             return Array.from({ length: reward.itemnum }, () =>
                 catalog.drops(reward.itemid, c.randomInt, budget),
             ).flat()
@@ -231,7 +236,7 @@ export function registerWorldObjects(on, tables) {
             ensure(
                 drops.every((x) => Number.isInteger(x) && x > 0),
                 'Invalid world reward mapping',
-                1007,
+                ErrorCode.GameConfig,
             )
             const record = {
                 ...old,

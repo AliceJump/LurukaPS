@@ -1,3 +1,4 @@
+import { ErrorCode } from './error-codes.js'
 import { arenaContext } from './npc-kibo-time.js'
 import fs from 'node:fs'
 import { ensure } from './handlers/common.js'
@@ -10,7 +11,11 @@ export function npcArenaPresentation(tables, duelId) {
     const storyId = Number(map.KiboEnterStoryID)
     const story = tables.find('story', storyId),
         timing = config.stories[storyId]
-    ensure(story && timing && timing.timeline_seconds > 0, 'Arena entry presentation configuration unavailable', 1007)
+    ensure(
+        story && timing && timing.timeline_seconds > 0,
+        'Arena entry presentation configuration unavailable',
+        ErrorCode.GameConfig,
+    )
     // The server controls the FIRST story window. The extracted Timeline also
     // contains a long held final camera shot; its container length is not the
     // stage duration. StoryStage.OnExit handles ending that presentation.
@@ -19,7 +24,7 @@ export function npcArenaPresentation(tables, duelId) {
     ensure(
         Number.isInteger(seconds) && seconds > timing.client_delay_seconds,
         'Arena entry stage duration configuration unavailable',
-        1007,
+        ErrorCode.GameConfig,
     )
     return { storyId, seconds }
 }

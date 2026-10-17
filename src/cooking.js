@@ -1,3 +1,4 @@
+import { ErrorCode } from './error-codes.js'
 import { ensure } from './handlers/common.js'
 
 export function cookingRecipe(tables, id) {
@@ -10,9 +11,9 @@ export function cookingRecipe(tables, id) {
             tables.find('common_item', id) &&
             (product?.type === 2 || (product?.type === 3 && tables.find('food', id))),
         'Unknown cooking recipe',
-        1021,
+        ErrorCode.InvalidProtoID,
     )
-    ensure(product.rewardId === `3#${id}#1`, 'Cooking product configuration is missing', 1007)
+    ensure(product.rewardId === `3#${id}#1`, 'Cooking product configuration is missing', ErrorCode.GameConfig)
     const requirements = String(quality.needMaterial ?? '')
         .split('|')
         .filter(Boolean)
@@ -21,11 +22,11 @@ export function cookingRecipe(tables, id) {
             ensure(
                 parts.length === 3 && parts.every((value) => Number.isSafeInteger(value) && value > 0),
                 'Invalid cooking material requirement',
-                1007,
+                ErrorCode.GameConfig,
             )
             const [groupId, count, minimumQuality] = parts
             const group = tables.find('food_material_group', groupId)
-            ensure(group, 'Cooking material group is missing', 1007)
+            ensure(group, 'Cooking material group is missing', ErrorCode.GameConfig)
             const choices = String(group.includeItems ?? '')
                 .split('|')
                 .filter(Boolean)
@@ -34,16 +35,16 @@ export function cookingRecipe(tables, id) {
                     ensure(
                         pair.length === 2 && pair.every((value) => Number.isSafeInteger(value) && value > 0),
                         'Invalid cooking material group',
-                        1007,
+                        ErrorCode.GameConfig,
                     )
                     return pair
                 })
                 .filter(([, quality]) => quality >= minimumQuality)
                 .map(([id]) => id)
-            ensure(choices.length, 'Cooking material quality is unavailable', 1007)
+            ensure(choices.length, 'Cooking material quality is unavailable', ErrorCode.GameConfig)
             return { count, choices }
         })
-    ensure(requirements.length > 0 && requirements.length <= 4, 'Invalid cooking material slots', 1007)
+    ensure(requirements.length > 0 && requirements.length <= 4, 'Invalid cooking material slots', ErrorCode.GameConfig)
     return { product, requirements }
 }
 

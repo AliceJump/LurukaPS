@@ -1,7 +1,8 @@
+import { ErrorCode } from './error-codes.js'
 import { ensure } from './handlers/common.js'
 import { homeCondition } from './home-grid.js'
 export function technologyState(tables, state) {
-    ensure(state.home, 'Home state missing', 1007)
+    ensure(state.home, 'Home state missing', ErrorCode.GameConfig)
     if (!state.home.technology) {
         state.home.technology = { levels: {}, spent: 0 }
         state.homeRevision = (state.homeRevision || 0) + 1
@@ -49,7 +50,7 @@ export function technologyPoints(tables, state) {
         .get('home_technology_level')
         .filter((r) => r.id <= state.player.basic_info.lv)
         .reduce((n, r) => n + r.technologyCount, 0)
-    ensure(Number.isSafeInteger(total) && total >= 0, 'Invalid technology point schedule', 1007)
+    ensure(Number.isSafeInteger(total) && total >= 0, 'Invalid technology point schedule', ErrorCode.GameConfig)
     return { total, available: Math.max(0, total - tech.spent) }
 }
 export function technologyParents(tree, tech) {

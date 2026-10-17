@@ -1,3 +1,4 @@
+import { ErrorCode } from './error-codes.js'
 import { ensure } from './handlers/common.js'
 import { selectBaseHatchSpecies } from './egg-pools.js'
 import { createPets } from './pets.js'
@@ -9,7 +10,11 @@ export function hatchBuilding(state, guid) {
 }
 export function startHatch(c, buildGuid, eggGuid) {
     const b = hatchBuilding(c.state, buildGuid)
-    ensure(!b.station_pet_guid || b.station_pet_guid === '0', 'Pet-assisted incubation is not yet implemented', 1021)
+    ensure(
+        !b.station_pet_guid || b.station_pet_guid === '0',
+        'Pet-assisted incubation is not yet implemented',
+        ErrorCode.InvalidProtoID,
+    )
     const egg = (c.state.petEggs || []).find((e) => e.guid === eggGuid)
     ensure(egg, 'Pet egg not owned')
     ensure(!egg.lock_state, 'Pet egg is locked')
@@ -17,12 +22,12 @@ export function startHatch(c, buildGuid, eggGuid) {
     ensure(
         !egg.egg_affix?.length && !egg.main_parents && !egg.secondary_parents,
         'Affix and inherited hatch generation is not yet implemented',
-        1021,
+        ErrorCode.InvalidProtoID,
     )
     const config = c.tables.find('pet_egg', egg.configid),
         station = c.tables.find('home_building_production', b.build_id)
-    ensure(config && station, 'Missing hatch configuration', 1007)
-    ensure(Number.isInteger(config.eggTime) && config.eggTime > 0, 'Invalid incubation duration', 1007)
+    ensure(config && station, 'Missing hatch configuration', ErrorCode.GameConfig)
+    ensure(Number.isInteger(config.eggTime) && config.eggTime > 0, 'Invalid incubation duration', ErrorCode.GameConfig)
     const home = c.state.home
     home.productionJobs ??= {}
     const jobs = home.productionJobs[b.guid] || []
@@ -61,7 +66,7 @@ export function claimHatch(c, job) {
     const egg = (c.state.petEggs || []).find((e) => e.guid === job.eggGuid)
     ensure(egg && egg.hatch_build_guid, 'Hatch egg missing')
     const builderRuleId = c.tables.find('pet_egg', egg.configid)?.petBuilderRuleId
-    ensure(c.tables.find('pet_builder_rule', builderRuleId), 'Missing egg pet builder', 1007)
+    ensure(c.tables.find('pet_builder_rule', builderRuleId), 'Missing egg pet builder', ErrorCode.GameConfig)
     const [pet] = createPets(c.tables, c.state, job.petId, 1, builderRuleId)
     c.state.petEggs = c.state.petEggs.filter((e) => e.guid !== job.eggGuid)
     delete c.state.eggOutcomes[job.eggGuid]

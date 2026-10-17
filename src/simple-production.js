@@ -1,3 +1,4 @@
+import { ErrorCode } from './error-codes.js'
 import { ensure } from './handlers/common.js'
 import { completed } from './production.js'
 import { grantRewards } from './rewards.js'
@@ -43,7 +44,11 @@ export function settleSimpleProducts(tables, state, now) {
         const done = completed(job, now),
             paid = credited(job),
             quantity = done - paid
-        ensure(Number.isInteger(paid) && paid >= 0 && paid <= job.count, 'Invalid quick-production receipt', 1007)
+        ensure(
+            Number.isInteger(paid) && paid >= 0 && paid <= job.count,
+            'Invalid quick-production receipt',
+            ErrorCode.GameConfig,
+        )
         if (quantity > 0) {
             const granted = grantRewards(tables, state, multiplied(job.rewards, quantity))
             rewards.push(...granted)

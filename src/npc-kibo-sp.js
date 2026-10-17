@@ -1,3 +1,4 @@
+import { ErrorCode } from './error-codes.js'
 import { arenaContext, arenaMillis, secondsToArenaMs } from './npc-kibo-time.js'
 import { arenaPetSkills, arenaSkillLogic } from './kibo-arena-attributes.js'
 import { ensure, GameError } from './handlers/common.js'
@@ -42,7 +43,11 @@ export function arenaSpConfig(tables, petId) {
             pets: new Map(),
             passive: Number(tables.get('game').find((row) => row.title === 'KiBo_Passive_Sp_Regen')?.value),
         }
-        ensure(Number.isFinite(catalog.passive) && catalog.passive >= 0, 'Arena SP regeneration unavailable', 1007)
+        ensure(
+            Number.isFinite(catalog.passive) && catalog.passive >= 0,
+            'Arena SP regeneration unavailable',
+            ErrorCode.GameConfig,
+        )
         catalogs.set(tables, catalog)
     }
     if (!catalog.pets.has(petId)) {
@@ -51,7 +56,7 @@ export function arenaSpConfig(tables, petId) {
             logic: arenaSkillLogic(tables, skill.skill_id),
         }))
         const ultimate = skills.find((skill) => skill.skill_slot === 206)
-        ensure(ultimate?.logic?.kiBoSpMax > 0, 'Arena ultimate energy configuration unavailable', 1007)
+        ensure(ultimate?.logic?.kiBoSpMax > 0, 'Arena ultimate energy configuration unavailable', ErrorCode.GameConfig)
         catalog.pets.set(petId, {
             skills,
             ultimate,

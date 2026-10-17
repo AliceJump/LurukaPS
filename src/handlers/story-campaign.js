@@ -1,3 +1,4 @@
+import { ErrorCode } from '../error-codes.js'
 import { visibleEnemySlots } from '../enemy-group-visibility.js'
 import { storyCampaignStagePlan } from '../table-wave-campaign.js'
 import { ensure } from './common.js'
@@ -47,7 +48,11 @@ export function syncStoryCampaignEnemies(c) {
 export function enterStoryCampaignScene(c, r) {
     const run = c.state.storyCampaign
     const requestedScene = r.scene_id || run?.map_id
-    ensure(run?.status === 2 && run.scenes.includes(requestedScene), 'Story dungeon is not active', 10275)
+    ensure(
+        run?.status === 2 && run.scenes.includes(requestedScene),
+        'Story dungeon is not active',
+        ErrorCode.EntrustMapInvalid,
+    )
     ensure(!r.creator_id || r.creator_id === c.id, 'Dungeon creator mismatch')
     if (requestedScene !== run.map_id) {
         ensure(
@@ -296,7 +301,7 @@ export function endStoryCampaignScene(c, r) {
 
 export function exitStoryCampaign(c) {
     const run = c.state.storyCampaign
-    ensure(run, 'No active story dungeon', 10276)
+    ensure(run, 'No active story dungeon', ErrorCode.EntrustNotInEntrust)
     if (
         run.status === 2 &&
         (!run.stage_conditions || run.map_id === run.scenes.at(-1)) &&

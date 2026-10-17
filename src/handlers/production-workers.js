@@ -1,3 +1,4 @@
+import { ErrorCode } from '../error-codes.js'
 import { ensureHome } from '../home.js'
 import { homeCondition } from '../home-grid.js'
 import { reconcileFormationPets } from '../formation-pets.js'
@@ -17,7 +18,11 @@ export function registerProductionWorkers(on, tables) {
             'Production dispatch requires the home scene',
         )
         // Despite its name, build_type carries PSWST_HOME_REST/HOME_WORK here.
-        ensure([1, 2].includes(r.build_type) && !r.sub_work_type, 'Unsupported production dispatch operation', 1021)
+        ensure(
+            [1, 2].includes(r.build_type) && !r.sub_work_type,
+            'Unsupported production dispatch operation',
+            ErrorCode.InvalidProtoID,
+        )
         const build = home.builds.find((entry) => entry.guid === r.build_guid)
         const station = build && tables.find('home_building_production', build.build_id)
         ensure(

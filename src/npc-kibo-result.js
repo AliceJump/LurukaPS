@@ -1,3 +1,4 @@
+import { ErrorCode } from './error-codes.js'
 import { arenaContext } from './npc-kibo-time.js'
 import { advanceArenaScores } from './npc-kibo-clock.js'
 import { stopArenaPetAI } from './npc-kibo-pet-ai.js'
@@ -72,7 +73,11 @@ export function settleNpcArena(c, outcome) {
     if (outcome.result === 1) {
         goals.forEach((text, index) => {
             const [kind, seconds] = text.split('#').map(Number)
-            ensure(kind === 50001 && Number.isFinite(seconds), 'NPC duel challenge rule unavailable', 1007)
+            ensure(
+                kind === 50001 && Number.isFinite(seconds),
+                'NPC duel challenge rule unavailable',
+                ErrorCode.GameConfig,
+            )
             if (remaining >= seconds) mask |= 1 << index
         })
         const previousMask = c.state.kiboDuelChallengeClaims?.[duel.id] ?? old?.star ?? 0
@@ -85,7 +90,7 @@ export function settleNpcArena(c, outcome) {
             .split('|')
             .filter(Boolean)
             .map(Number)
-        ensure(tiers.length === goals.length, 'NPC challenge reward mapping unavailable', 1007)
+        ensure(tiers.length === goals.length, 'NPC challenge reward mapping unavailable', ErrorCode.GameConfig)
         tiers.forEach((drop, index) => {
             if (newMask & (1 << index)) rewards.push(...drops.drops(drop, c.randomInt))
         })
@@ -114,7 +119,7 @@ export function settleNpcArena(c, outcome) {
     const settlementSeconds = Number(
         c.tables.get('game').find((row) => row.title === 'KIBO_DUEL_ARENA_MODE_SETTLEMENT_TIME')?.value,
     )
-    ensure(settlementSeconds > 0, 'NPC settlement duration unavailable', 1007)
+    ensure(settlementSeconds > 0, 'NPC settlement duration unavailable', ErrorCode.GameConfig)
     stopArenaPetAI(c)
     clearArenaStageBuffs(c)
     c.state.combat.npcDuel = {

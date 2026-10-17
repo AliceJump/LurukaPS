@@ -1,3 +1,4 @@
+import { ErrorCode } from './error-codes.js'
 import fs from 'node:fs'
 import { ensure } from './handlers/common.js'
 
@@ -9,7 +10,7 @@ export function arenaGeometry(tables, duelId) {
     const duel = tables.find('kibo_duel', duelId),
         map = tables.find('kibo_duel_map', duel?.mapId)
     const area = prefabs[map?.prefabID]
-    ensure(area, 'Arena deployment geometry unavailable', 1007)
+    ensure(area, 'Arena deployment geometry unavailable', ErrorCode.GameConfig)
     return area
 }
 
@@ -19,7 +20,7 @@ export function arenaPlacementRules(tables, petId) {
     ensure(
         unit && Number.isFinite(unit.colliderParm) && unit.colliderParm >= 0,
         'Arena deployment collider unavailable',
-        1007,
+        ErrorCode.GameConfig,
     )
     return {
         margin: unit.colliderParm,

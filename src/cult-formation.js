@@ -1,3 +1,4 @@
+import { ErrorCode } from './error-codes.js'
 import { ensure } from './handlers/common.js'
 import { petData } from './pets.js'
 import { mainHeroConfigId } from './main-hero.js'
@@ -28,13 +29,17 @@ export function ensureCultFormation(tables, catalog, state, accountId) {
     const config = catalog.growup.config(catalog.rows.find((x) => x.id === run.activity_id).systemId)
     const heroIds = list(config.herointerimid),
         petIds = list(config.petinterimid)
-    ensure(heroIds.length === 3 && petIds.length === heroIds.length, 'Invalid cultivation formation table', 1007)
+    ensure(
+        heroIds.length === 3 && petIds.length === heroIds.length,
+        'Invalid cultivation formation table',
+        ErrorCode.GameConfig,
+    )
     const heroes = heroIds.map((id) => {
         const cfg = catalog.tables.find('hero_interim', id)
         ensure(
             cfg && tables.find('hero', cfg.heroId) && !cfg.talentrune && !cfg.accessorySet && !cfg.soulessence,
             'Cultivation interim equipment is unavailable',
-            1007,
+            ErrorCode.GameConfig,
         )
         return {
             guid: ((5n << 56n) | (BigInt(id) << 32n) | BigInt(accountId)).toString(),
@@ -54,7 +59,7 @@ export function ensureCultFormation(tables, catalog, state, accountId) {
     })
     const pets = petIds.map((id, index) => {
         const cfg = catalog.tables.find('pet_interim', id)
-        ensure(cfg && tables.find('pet', cfg.petId), 'Unknown cultivation interim pet', 1007)
+        ensure(cfg && tables.find('pet', cfg.petId), 'Unknown cultivation interim pet', ErrorCode.GameConfig)
         const guid = ((9n << 56n) | (BigInt(id) << 32n) | BigInt(accountId)).toString(),
             pet = petData(tables, cfg.petId, guid, 0)
         pet.type = 2

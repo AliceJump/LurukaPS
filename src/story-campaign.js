@@ -1,3 +1,4 @@
+import { ErrorCode } from './error-codes.js'
 import { visibleEnemySlots } from './enemy-group-visibility.js'
 import { tableWaveCampaignRoute, storyCampaignStagePlan } from './table-wave-campaign.js'
 import { ensure } from './handlers/common.js'
@@ -41,7 +42,7 @@ export function storyCampaignReturnWorld(tables, state, run) {
         .reverse()
         .find((world) => points.some((point) => point.cityId === world.map_id))
     if (previous) return previous
-    ensure(points.length > 0, 'Story dungeon return entrance unavailable', 1007)
+    ensure(points.length > 0, 'Story dungeon return entrance unavailable', ErrorCode.GameConfig)
     // An internal return map is a legacy bad snapshot. Recover the actual
     // entrance from the active parent condition, never from a dungeon checkpoint.
     return tables.position(points[0])
@@ -67,7 +68,7 @@ export function preserveCampaignTaskTransfer(tables, state, request, point) {
         if (!scenes.includes(point.cityId)) return false
         run.scenes = scenes
     }
-    ensure(run.status === 2, 'Story dungeon is not active', 10275)
+    ensure(run.status === 2, 'Story dungeon is not active', ErrorCode.EntrustMapInvalid)
     if (run.map_id !== point.cityId) {
         if (!run.completed_scenes.includes(run.map_id)) run.completed_scenes.push(run.map_id)
         run.map_id = point.cityId
@@ -176,12 +177,12 @@ export function storyCampaignConfig(tables, groupId, difficulty) {
     ensure(
         !taskMapping || (taskIds.length === taskPoints.length && taskPoints.every(Boolean)),
         'Campaign task scene mapping unavailable',
-        1007,
+        ErrorCode.GameConfig,
     )
     const savedRoute = legacyRoutes.get(dungeon.id)
     const route =
         savedRoute?.mode === 'table_waves' || !savedRoute ? tableWaveCampaignRoute(tables, dungeon) : savedRoute
-    ensure(taskMapping || route, 'Campaign group is not implemented', 1021)
+    ensure(taskMapping || route, 'Campaign group is not implemented', ErrorCode.InvalidProtoID)
     const graphs = taskMapping ? new TaskGraphs(tables) : null
     const transferPoints = taskIds.flatMap((id) =>
         [...graphs.get(id).nodes.values()].flatMap((node) =>
@@ -191,7 +192,7 @@ export function storyCampaignConfig(tables, groupId, difficulty) {
                 .map((id) => tables.find('world_borthpos', id)),
         ),
     )
-    ensure(transferPoints.every(Boolean), 'Campaign task transfer point unavailable', 1007)
+    ensure(transferPoints.every(Boolean), 'Campaign task transfer point unavailable', ErrorCode.GameConfig)
     const scenePoints = [...taskPoints, ...transferPoints]
     const sceneIds = taskMapping ? [...new Set(scenePoints.map((point) => point.cityId))] : route.scene_ids
     const scenes = sceneIds.map((id) => {
@@ -200,7 +201,7 @@ export function storyCampaignConfig(tables, groupId, difficulty) {
         const point = taskMapping
             ? scenePoints.find((point) => point.cityId === id)
             : tables.get('world_borthpos').find((row) => row.cityId === id && row.mainPoint === 1)
-        ensure(city?.type === 2 && scene?.mapId === id && point, 'Campaign scene unavailable', 1007)
+        ensure(city?.type === 2 && scene?.mapId === id && point, 'Campaign scene unavailable', ErrorCode.GameConfig)
         return { city, scene, point }
     })
     if (!taskMapping && route.mode !== 'table_waves') {
@@ -210,7 +211,7 @@ export function storyCampaignConfig(tables, groupId, difficulty) {
                     scene.intParam.split('|').includes('story_id_0#' + route.opening_stories[i]),
                 ),
             'Campaign story scene mapping changed',
-            1007,
+            ErrorCode.GameConfig,
         )
         if (route.mode === 'stage_conditions') {
             scenes.forEach(({ scene }) => campaignStagePlan(tables, scene.id))
@@ -229,7 +230,7 @@ export function storyCampaignConfig(tables, groupId, difficulty) {
                         plan.flat().filter((row) => row.expandId === parts[1]).length === parts[2] &&
                         last.every((row) => row.expandId === parts[1]),
                     'Campaign victory group mapping changed',
-                    1007,
+                    ErrorCode.GameConfig,
                 )
             } else
                 ensure(
@@ -238,13 +239,13 @@ export function storyCampaignConfig(tables, groupId, difficulty) {
                         count === last.length &&
                         last.some((row) => row.id === target && row.spawnerId === spawner),
                     'Campaign final target mapping changed',
-                    1007,
+                    ErrorCode.GameConfig,
                 )
         } else
             ensure(
                 dungeon.victoryCondition === scenes[0].scene.victoryCondition,
                 'Campaign story condition changed',
-                1007,
+                ErrorCode.GameConfig,
             )
     }
     return {
@@ -311,7 +312,11 @@ export function ensureStoryCampaignScene(tables, state, now) {
             const pos = String(row.position)
                 .split('|')
                 .map((n) => Math.round(Number(n) * 100))
-            ensure(pos.length === 3 && pos.every(Number.isFinite), 'Campaign object position missing', 1007)
+            ensure(
+                pos.length === 3 && pos.every(Number.isFinite),
+                'Campaign object position missing',
+                ErrorCode.GameConfig,
+            )
             record = records[key] = {
                 obj_id: row.id,
                 active: run.task_ids?.length || run.stage_conditions ? row.initStatus !== 1 : true,
@@ -340,7 +345,7 @@ export function ensureStoryCampaignScene(tables, state, now) {
         const packs = String(group?.enemyList ?? '')
             .split('|')
             .filter(Boolean)
-        ensure(packs.length > 0 && packs.length <= 24, 'Campaign enemy group unavailable', 1007)
+        ensure(packs.length > 0 && packs.length <= 24, 'Campaign enemy group unavailable', ErrorCode.GameConfig)
         // CBT3 adds 10 to next_time before testing it against time. With
         // both fields omitted, inactive waves enter its already-expired refresh
         // queue and lose server data. A run timestamp makes next_time=0 stay
@@ -350,7 +355,7 @@ export function ensureStoryCampaignScene(tables, state, now) {
         const monsters = packs.map((_, slot) => {
             const uid = ((3n << 56n) | (BigInt(slot) << 32n) | BigInt(row.id)).toString()
             const definition = enemyDefinition(tables, state, uid)
-            ensure(definition, 'Campaign enemy attributes unavailable', 1007)
+            ensure(definition, 'Campaign enemy attributes unavailable', ErrorCode.GameConfig)
             const entity = (battle.entities[uid] ??= {
                 uuid: uid,
                 ...definition,

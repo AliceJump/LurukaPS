@@ -1,3 +1,4 @@
+import { ErrorCode } from './error-codes.js'
 import { recordPetAcquisition } from './pet-catalog.js'
 import fs from 'node:fs'
 import { randomInt } from 'node:crypto'
@@ -180,13 +181,13 @@ export function repairPetProfiles(tables, state, now) {
 }
 export function ensurePetName(tables, pet, config = tables.find('pet', pet.config_id)) {
     if (pet.pet_name) return false
-    ensure(config && typeof config.name === 'string' && config.name.trim(), 'Missing pet name', 1007)
+    ensure(config && typeof config.name === 'string' && config.name.trim(), 'Missing pet name', ErrorCode.GameConfig)
     pet.pet_name = Buffer.from(config.name, 'utf8').toString('base64')
     return true
 }
 export function petData(tables, configId, guid, box, builderRuleId = 1001) {
     const config = tables.find('pet', configId)
-    ensure(config && tables.find('template_value', configId), 'Missing pet configuration', 1007)
+    ensure(config && tables.find('template_value', configId), 'Missing pet configuration', ErrorCode.GameConfig)
     const pet = {
         guid: String(guid),
         pet_name: Buffer.from(config.name, 'utf8').toString('base64'),
@@ -222,7 +223,7 @@ export function createPets(tables, state, configId, count, builderRuleId = 1001)
     ensure(
         Number.isInteger(boxCount) && boxCount > 0 && Number.isInteger(boxSize) && boxSize > 0 && boxSize < 100,
         'Invalid pet box limits',
-        1007,
+        ErrorCode.GameConfig,
     )
     ensure(
         Number.isInteger(count) && count > 0 && state.pets.length + count <= boxCount * boxSize,
@@ -269,7 +270,7 @@ export function createCustomizedPets(tables, state, customizedId, count) {
             [0, 1].includes(config.talentDnaType) &&
             [0, 1].includes(config.dnaType),
         'Unsupported customized pet configuration',
-        1007,
+        ErrorCode.GameConfig,
     )
     const levels = new Map(
         String(config.petAttr || '')
@@ -281,7 +282,7 @@ export function createCustomizedPets(tables, state, customizedId, count) {
     ensure(
         levels.size === attributes.length && attributes.every((id) => Number.isInteger(levels.get(id))),
         'Invalid customized pet aptitudes',
-        1007,
+        ErrorCode.GameConfig,
     )
     const upgrades = tables.get('pet_talent_upgrade')
     const comprehension = attributes.map((attr_id) => {
@@ -290,7 +291,7 @@ export function createCustomizedPets(tables, state, customizedId, count) {
         ensure(
             row && Number.isInteger(row.InterA) && Number.isInteger(row.InterB) && row.InterA <= row.InterB,
             'Invalid customized pet aptitude value',
-            1007,
+            ErrorCode.GameConfig,
         )
         const value = row.InterA === row.InterB ? row.InterA : randomInt(row.InterA, row.InterB + 1)
         return { attr_id, value, level, init_level: level, cur_exp: 0 }
@@ -310,7 +311,7 @@ export function createCustomizedPets(tables, state, customizedId, count) {
             fixedGenes.length <= maxGenes &&
             fixedGenes.every((id) => Number.isInteger(id) && tables.find('pet_dna', id) && tables.find('skill', id)),
         'Invalid customized pet genes',
-        1007,
+        ErrorCode.GameConfig,
     )
     const pets = createPets(tables, state, config.petId, count, config.builderRule || 1001)
     for (const pet of pets) {

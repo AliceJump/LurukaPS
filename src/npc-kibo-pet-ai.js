@@ -31,9 +31,21 @@ export function arenaPetAIProfile(tables, petId) {
     if (!policy) return null
     const bools = { ...flags(tree.paramBool), ...flags(property.paramBool) }
     const unit = tables.find('unit', pet.unitId)
-    // The arena capsule uses unit.kibocollider: center xyz, radius, height.
+    // KiBoEntity.InitCollider reads the baked four-value arena override:
+    // center x/z, radius, height. It caps radius at half height. The older
+    // five-value unit collider remains an estimate when no override exists;
+    // prefab dimensions and runtime scale are not present in movement reports.
+    const override = String(tables.find('unit_collider_runtime', pet.unitId)?.kiboColliderList || '')
+        .split('|')
+        .filter(Boolean)
+        .map(Number)
     const capsule = unit?.kibocollider || tables.find('unit_collider', unit?.colliderId)?.colliderList
-    const radius = Number(String(capsule || '').split(/[|#]/)[3])
+    const shape = String(capsule || '')
+        .split(/[|#]/)
+        .map(Number)
+    const rawRadius = override.length === 4 ? override[2] : shape[3],
+        height = override.length === 4 ? override[3] : shape[4],
+        radius = override.length === 4 ? Math.min(rawRadius, height / 2) : rawRadius
     const [lockRange, loseRange] = String(pet.aimRange).split('|').map(Number)
     const skills = arenaPetSkills(tables, petId)
         .filter((skill) => policy.ordinary_slots.includes(skill.skill_slot))
@@ -56,6 +68,7 @@ export function arenaPetAIProfile(tables, petId) {
         skills,
         ultimate: arenaSpConfig(tables, petId).ultimate,
         radius,
+        collider_source: override.length === 4 ? 'unit_collider_runtime.kiboColliderList' : 'unit-collider-estimate',
         lockRange,
         loseRange,
         engage: bools.IfEngage === '1',

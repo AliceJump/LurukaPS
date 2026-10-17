@@ -1,3 +1,4 @@
+import { ErrorCode } from '../error-codes.js'
 import { ensure, syncPlayer } from './common.js'
 import { configTime } from '../shops.js'
 const fields = { 1: 'characterStory', 2: 'characterVoice', 3: 'characterPlot' }
@@ -64,7 +65,7 @@ export function registerProfileQueries(on, tables, store) {
                     .map(Number)
         const newer = levels(1),
             permanent = levels(2)
-        ensure(newer.length && permanent.length, 'Missing abyss configuration', 1007)
+        ensure(newer.length && permanent.length, 'Missing abyss configuration', ErrorCode.GameConfig)
         let mode = newer.every((id) => cleared[id]?.completed) ? 2 : 1
         const rotation = tables
             .get('abbys_time')

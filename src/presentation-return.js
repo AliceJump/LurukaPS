@@ -1,3 +1,4 @@
+import { ErrorCode } from './error-codes.js'
 import { ensure } from './handlers/common.js'
 
 // Shared by a presentation's explicit exit and a completed cultivation run.
@@ -15,5 +16,5 @@ export function takePresentationReturn(tables, state) {
         )
         return candidate
     }
-    ensure(false, 'Photo/cultivation return context unavailable', 1007)
+    ensure(false, 'Photo/cultivation return context unavailable', ErrorCode.GameConfig)
 }

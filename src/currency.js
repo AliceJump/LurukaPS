@@ -1,9 +1,10 @@
+import { ErrorCode } from './error-codes.js'
 import { ensure } from './handlers/common.js'
 export function restoreMissingStamina(tables, state) {
     const attrs = state.player.attr_infos.attrs
     if (attrs.some((attr) => attr.attr_id === 3)) return false
     const initial = Number(tables.get('game').find((row) => row.title === 'STAMINA_ACCOUNT_INITAIL')?.value)
-    ensure(Number.isSafeInteger(initial) && initial >= 0, 'Missing initial stamina configuration', 1007)
+    ensure(Number.isSafeInteger(initial) && initial >= 0, 'Missing initial stamina configuration', ErrorCode.GameConfig)
     attrs.push({ attr_id: 3, attr_val: String(initial) })
     return true
 }
@@ -21,7 +22,7 @@ export function syncCurrencyMirrors(player) {
     ]) {
         const value = basic[key]
         if (value === undefined) continue
-        ensure(Number.isSafeInteger(value) && value >= 0, 'Invalid currency balance', 1007)
+        ensure(Number.isSafeInteger(value) && value >= 0, 'Invalid currency balance', ErrorCode.GameConfig)
         const old = attrs.find((a) => a.attr_id === id),
             text = String(value)
         if (!old) {

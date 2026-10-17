@@ -1,3 +1,4 @@
+import { ErrorCode } from './error-codes.js'
 import { ensure } from './handlers/common.js'
 export function trialSoulEssence(tables, interim) {
     const text = String(interim?.soulessence ?? '')
@@ -7,13 +8,13 @@ export function trialSoulEssence(tables, interim) {
     ensure(
         parts.length === 3 && parts.every(Number.isSafeInteger) && id > 0 && grade >= 0 && level > 0,
         'Invalid trial soul essence configuration',
-        1007,
+        ErrorCode.GameConfig,
     )
     const soul = tables.find('soulessence', id)
     ensure(
         soul && tables.find('soulessence_value', soul.attribute * 1000 + level),
         'Trial soul essence attributes unavailable',
-        1007,
+        ErrorCode.GameConfig,
     )
     // Interim triples have no breakthrough rank. Use the first table rank whose
     // level limit permits the configured level; keep this compatibility choice documented.
@@ -24,7 +25,7 @@ export function trialSoulEssence(tables, interim) {
     ensure(
         rank && tables.get('soulessence_grade').some((r) => r.soulessenceId === id && r.grade === grade),
         'Trial soul essence rank or grade unavailable',
-        1007,
+        ErrorCode.GameConfig,
     )
     return { id, lv: level, advance: grade + 1, rank: rank.rank }
 }

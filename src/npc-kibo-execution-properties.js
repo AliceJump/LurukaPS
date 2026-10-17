@@ -1,19 +1,20 @@
+import { ErrorCode } from './error-codes.js'
 import { ensure } from './handlers/common.js'
 import { arenaProperty } from './npc-kibo-properties.js'
 
 const roles = { attacker: 'attacker', source: 'source', target: 'target' }
 
 export function arenaExecutionState(c, input) {
-    ensure(input.status === 'ready', 'Arena execution input is unresolved', 1007)
+    ensure(input.status === 'ready', 'Arena execution input is unresolved', ErrorCode.GameConfig)
     const run = c.state.combat?.npcDuel,
         record = input.record
     ensure(
         run && run.map_id === c.state.world.map_id && !run.result && run.entities_sent !== false,
         'No active arena execution properties',
-        1007,
+        ErrorCode.GameConfig,
     )
     // An old input retained by a caller cannot cross a client entity rebuild.
-    ensure(run.damage_elements?.[record.id] === record, 'Arena execution input is stale', 1007)
+    ensure(run.damage_elements?.[record.id] === record, 'Arena execution input is stale', ErrorCode.GameConfig)
     return run
 }
 
@@ -22,23 +23,24 @@ function selection(c, input, role, mode, phase) {
     // establish that all relevant native triggers have finished reporting.
     const run = arenaExecutionState(c, input),
         record = input.record
-    ensure(Object.hasOwn(roles, role), 'Arena execution property role unavailable', 1007)
-    ensure(['snapshot-aware', 'live'].includes(mode), 'Arena execution property mode unavailable', 1007)
-    ensure(['before', 'after'].includes(phase), 'Arena execution property phase unavailable', 1007)
+    ensure(Object.hasOwn(roles, role), 'Arena execution property role unavailable', ErrorCode.GameConfig)
+    ensure(['snapshot-aware', 'live'].includes(mode), 'Arena execution property mode unavailable', ErrorCode.GameConfig)
+    ensure(['before', 'after'].includes(phase), 'Arena execution property phase unavailable', ErrorCode.GameConfig)
     const uuid = record[roles[role]],
         actor = run.actors[uuid]
-    ensure(actor?.base_properties, 'Arena execution property actor unavailable', 1007)
+    ensure(actor?.base_properties, 'Arena execution property actor unavailable', ErrorCode.GameConfig)
     const native = mode === 'snapshot-aware' && ['own', 'inherited'].includes(record.snapshot_mode)
-    if (native) ensure(record.snapshot_observed === true, 'Arena original snapshot was not observed', 1007)
+    if (native)
+        ensure(record.snapshot_observed === true, 'Arena original snapshot was not observed', ErrorCode.GameConfig)
     ensure(
         mode === 'live' || ['none', 'own', 'inherited'].includes(record.snapshot_mode),
         'Arena inherited snapshot unavailable',
-        1007,
+        ErrorCode.GameConfig,
     )
     const captured = native ? record.snapshots?.[uuid] : phase === 'before' ? record.before_execution?.[uuid] : null
     const missing = native && record.snapshot_registry === true && record.snapshot_missing?.includes(uuid)
     if ((native || phase === 'before') && !missing)
-        ensure(captured, 'Arena execution property capture unavailable', 1007)
+        ensure(captured, 'Arena execution property capture unavailable', ErrorCode.GameConfig)
     return { uuid, actor, captured, native, missing }
 }
 
@@ -67,10 +69,10 @@ export function arenaExecutionProperty(
 }
 
 export function arenaExecutionResource(c, input, role, resource, mode = 'snapshot-aware', phase = 'before') {
-    ensure(['hp', 'sp'].includes(resource), 'Arena execution resource unavailable', 1007)
+    ensure(['hp', 'sp'].includes(resource), 'Arena execution resource unavailable', ErrorCode.GameConfig)
     const selected = selection(c, input, role, mode, phase)
     if (selected.missing) return 0
     const value = (selected.captured ?? c.state.combat.entities[selected.uuid])?.[resource]
-    ensure(Number.isFinite(value), 'Arena execution resource capture unavailable', 1007)
+    ensure(Number.isFinite(value), 'Arena execution resource capture unavailable', ErrorCode.GameConfig)
     return Math.fround(value)
 }

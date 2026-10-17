@@ -1,3 +1,4 @@
+import { ErrorCode } from './error-codes.js'
 import { ensure } from './handlers/common.js'
 
 // SPSystem resets these base values in InitKiboRingConfig. Reports contain
@@ -40,7 +41,7 @@ export function arenaBaseProperties(tables, attrs) {
         if (!id || !catalog.has(id)) continue
         const raw = F(Number(attr.attr_val)),
             value = wireScaled.has(id) ? F(raw / 10000) : raw
-        ensure(Number.isFinite(value), 'Invalid arena base attribute', 1007)
+        ensure(Number.isFinite(value), 'Invalid arena base attribute', ErrorCode.GameConfig)
         const row = properties[id] ?? { base: 0, extra: 0, percent: 0 },
             group = Math.trunc(id / 1000)
         if (group === 0) row.base = F(row.base + value)
@@ -71,14 +72,14 @@ function dynamic(values, type, tags = null) {
 export function arenaProperty(c, uuid, id, base, normalized = true, tags = null, component = 0, snapshot = null) {
     const catalog = propertyCatalog(c.tables)
     const row = catalog.get(id)
-    ensure(row, 'Arena property configuration unavailable', 1007)
+    ensure(row, 'Arena property configuration unavailable', ErrorCode.GameConfig)
     const actor = c.state.combat.npcDuel?.actors?.[uuid]
     const bases = snapshot ? snapshot.base_properties : actor?.base_properties
     let external = bases?.[id]
     if (base !== undefined) external = { base, extra: 0, percent: 0 }
     else if (!external && spProperties.has(id)) external = { base: 0, extra: 0, percent: 0 }
     else if (!external) {
-        ensure(bases, 'Arena base properties unavailable', 1007)
+        ensure(bases, 'Arena base properties unavailable', ErrorCode.GameConfig)
         if (row.attrDefault === -10000) return 0 // This property was not installed by the client.
         external = { base: row.attrDefault, extra: 0, percent: 0 }
     }
@@ -88,7 +89,7 @@ export function arenaProperty(c, uuid, id, base, normalized = true, tags = null,
 
 export function arenaBasePropertyValue(tables, bases, id) {
     const row = propertyCatalog(tables).get(id)
-    ensure(row && bases, 'Arena base property configuration unavailable', 1007)
+    ensure(row && bases, 'Arena base property configuration unavailable', ErrorCode.GameConfig)
     if (!bases[id] && row.attrDefault === -10000) return 0
     return propertyValue(row, bases[id] ?? { base: row.attrDefault, extra: 0, percent: 0 }, {}, false, null, 0)
 }
@@ -133,7 +134,7 @@ function propertyValue(row, external, values, normalized, tags, component, nativ
 
 export function captureArenaProperties(c, uuid) {
     const base = c.state.combat.npcDuel?.actors[uuid]?.base_properties
-    ensure(base, 'Arena base properties unavailable', 1007)
+    ensure(base, 'Arena base properties unavailable', ErrorCode.GameConfig)
     return structuredClone({
         base_properties: base,
         arena_properties: c.state.combat.entities[uuid]?.arena_properties ?? {},

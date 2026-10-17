@@ -1,3 +1,4 @@
+import { ErrorCode } from './error-codes.js'
 import { arenaContext, arenaMillis } from './npc-kibo-time.js'
 import { ensure } from './handlers/common.js'
 import { combatState } from './combat-state.js'
@@ -37,7 +38,7 @@ export function arenaPoint(tables, map, field) {
     ensure(
         tuple.length === 3 && point && xyz.length === 3 && xyz.every(Number.isFinite),
         'Arena spawn point unavailable',
-        1007,
+        ErrorCode.GameConfig,
     )
     return {
         pos: { x: Math.round(xyz[0] * 100), y: Math.round(xyz[1] * 100), z: Math.round(xyz[2] * 100) },
@@ -52,12 +53,12 @@ export function initializeNpcDuelBattle(tables, state, selfAttributes, now) {
         return battle.npcDuel
     const { duel, map, enemyPets } = npcDuelEntry(tables, campaign.duel_id)
     const generation = (state.nextNpcDuelGeneration ?? 0) + 1
-    ensure(generation <= 0x7ffff, 'NPC duel identity space exhausted', 1007)
+    ensure(generation <= 0x7ffff, 'NPC duel identity space exhausted', ErrorCode.GameConfig)
     state.nextNpcDuelGeneration = generation
     const account = state.player.basic_info.id
     // Local NPC identity must fit KiboDuelPVPPlayerInfo.player_id (uint32).
     // It is also the master UUID used by SyncArenaPetInfos/IsNpcSummon.
-    ensure(account < 1000000000, 'NPC duel account identity outside local range', 1007)
+    ensure(account < 1000000000, 'NPC duel account identity outside local range', ErrorCode.GameConfig)
     const npcId = 1000000000 + account
     const guid = (slot) => ((20n << 56n) | (BigInt(generation * 32 + slot) << 32n) | BigInt(account)).toString()
     const positions = {
@@ -75,7 +76,11 @@ export function initializeNpcDuelBattle(tables, state, selfAttributes, now) {
         baseProperties[6] = { base: arenaSpConfig(tables, info.pet_conf_id).max, extra: 0, percent: 0 }
         const skillLevels = arenaSkillLevels(tables, info.skills)
         const maxHp = arenaBasePropertyValue(tables, baseProperties, 5)
-        ensure(Number.isSafeInteger(maxHp) && maxHp > 0 && maxHp <= 0xffffffff, 'Arena actor HP unavailable', 1007)
+        ensure(
+            Number.isSafeInteger(maxHp) && maxHp > 0 && maxHp <= 0xffffffff,
+            'Arena actor HP unavailable',
+            ErrorCode.GameConfig,
+        )
         actors[uuid] = {
             uuid,
             source_guid: info.pet_guid.guid,
@@ -120,7 +125,11 @@ export function initializeNpcDuelBattle(tables, state, selfAttributes, now) {
     const initialScore = Number(
         tables.get('game').find((row) => row.title === 'KIBO_DUEL_ARENA_MODE_SCORE_START')?.value,
     )
-    ensure(Number.isInteger(initialScore) && initialScore > 0, 'Arena score configuration unavailable', 1007)
+    ensure(
+        Number.isInteger(initialScore) && initialScore > 0,
+        'Arena score configuration unavailable',
+        ErrorCode.GameConfig,
+    )
     return (battle.npcDuel = {
         version: 1,
         duel_id: duel.id,
@@ -333,7 +342,7 @@ export function reportNpcArenaLoadFinish(c) {
         const seconds = Number(
             c.tables.get('game').find((row) => row.title === 'KIBO_DUEL_ARENA_MODE_FIRST_KIBO_TIME')?.value,
         )
-        ensure(Number.isFinite(seconds) && seconds > 0, 'Arena first selection time unavailable', 1007)
+        ensure(Number.isFinite(seconds) && seconds > 0, 'Arena first selection time unavailable', ErrorCode.GameConfig)
         info.arena_status = 3
         c.state.combat.npcDuel = { ...c.state.combat.npcDuel, first_until: c.now + seconds }
         c.pushBefore('SCProtoKiboDuelArenaInfoSync', {
@@ -378,7 +387,7 @@ export function finishNpcArenaPresentation(c) {
             (actor) => actor.camp === 1 && actor.source_guid === c.state.kiboDuelFirstGuid,
         ),
         enemyFirst = Object.values(run.actors).find((actor) => actor.camp === 2)
-    ensure(first && enemyFirst, 'Arena first pet configuration unavailable', 1007)
+    ensure(first && enemyFirst, 'Arena first pet configuration unavailable', ErrorCode.GameConfig)
     startArenaClock(c)
     c.state.combat.npcDuel = { ...c.state.combat.npcDuel, intro_completed_at: c.now }
     info.arena_status = 4
@@ -614,7 +623,11 @@ export function recordNpcArenaDeaths(c) {
     )
     if (!died.length) return false
     const penalty = Number(c.tables.get('game').find((row) => row.title === 'KIBO_DUEL_ARENA_MODE_DEAD_SCORE')?.value)
-    ensure(Number.isInteger(penalty) && penalty > 0, 'Arena death score configuration unavailable', 1007)
+    ensure(
+        Number.isInteger(penalty) && penalty > 0,
+        'Arena death score configuration unavailable',
+        ErrorCode.GameConfig,
+    )
     const run = {
         ...previous,
         in_fight: { ...previous.in_fight },

@@ -1,3 +1,4 @@
+import { ErrorCode } from '../error-codes.js'
 import { taskEnemyGroups } from '../task-enemy-groups.js'
 import { ensure } from './common.js'
 import { enemyDefinition } from '../enemy-state.js'
@@ -9,7 +10,7 @@ export function syncAIHeroBeforeCreate(c, uuid) {
     ensure(
         definition && c.tables.find('enemy_pack', definition.pack_id)?.specialCreateType === 1,
         'AI hero attributes unavailable',
-        1007,
+        ErrorCode.GameConfig,
     )
     const battle = combatState(c.state, c.now)
     const entity = (battle.entities[uuid] ??= {

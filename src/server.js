@@ -1,3 +1,4 @@
+import { ErrorCode } from './error-codes.js'
 import { announcementHttpData, announcementBody } from './announcements.js'
 import { ProtocolDiagnostics } from './diagnostics.js'
 import { sourceRevision } from './build-info.js'
@@ -211,7 +212,7 @@ export async function startServer(config, logger = console) {
                             store.log.run(
                                 session.id ?? null,
                                 frame.id,
-                                `error:${Number.isInteger(err.code) ? err.code : 1002}`,
+                                `error:${Number.isInteger(err.code) ? err.code : ErrorCode.Game}`,
                                 Date.now(),
                             )
                         } catch (logError) {
@@ -223,7 +224,7 @@ export async function startServer(config, logger = console) {
                                 id: frame.id,
                                 seq: frame.seq,
                                 pushSeq: frame.pushSeq,
-                                error: err.code && Number.isInteger(err.code) ? err.code : 1002,
+                                error: err.code && Number.isInteger(err.code) ? err.code : ErrorCode.Game,
                             },
                         ]
                     }

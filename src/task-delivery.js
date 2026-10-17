@@ -1,3 +1,4 @@
+import { ErrorCode } from './error-codes.js'
 import { ensure } from './handlers/common.js'
 import { spend } from './inventory.js'
 import { syncCurrencyMirrors } from './currency.js'
@@ -10,28 +11,37 @@ export function deliveryRequirements(condition) {
     if ([2513, 2514].includes(condition.conditionId)) {
         const data =
             condition.conditionId === 2513 ? base.__type_TaskCondSubTypeItemData : base.__type_TaskCondSubChooseItemData
-        ensure(data && Number.isInteger(data.itemCount) && data.itemCount > 0, 'Invalid selection requirement', 1007)
-        ensure(data.itemBigType === 3, 'Unsupported selected task item category', 1021)
+        ensure(
+            data && Number.isInteger(data.itemCount) && data.itemCount > 0,
+            'Invalid selection requirement',
+            ErrorCode.GameConfig,
+        )
+        ensure(data.itemBigType === 3, 'Unsupported selected task item category', ErrorCode.InvalidProtoID)
         const allowedIds = Array.isArray(data.itemIds) ? data.itemIds : data.itemIds ? [data.itemIds] : []
         if (condition.conditionId === 2514)
             ensure(
                 allowedIds.length > 0 && allowedIds.every((id) => Number.isInteger(id) && id > 0),
                 'Invalid selected task item list',
-                1007,
+                ErrorCode.GameConfig,
             )
-        else ensure(Number.isInteger(data.itemType) && data.itemType > 0, 'Invalid task item subtype', 1007)
+        else
+            ensure(
+                Number.isInteger(data.itemType) && data.itemType > 0,
+                'Invalid task item subtype',
+                ErrorCode.GameConfig,
+            )
         return { data, total: data.itemCount, allowedIds, mode: condition.conditionId === 2513 ? 'category' : 'choice' }
     }
     const data = base.__type_TaskCondSubItemData
     ensure(condition.conditionId === 2501 && data, 'Not an item submission condition')
     const rows = Array.isArray(data.itemDatas) ? data.itemDatas : data.itemDatas ? [data.itemDatas] : []
-    ensure(rows.length > 0, 'Empty item requirement', 1007)
+    ensure(rows.length > 0, 'Empty item requirement', ErrorCode.GameConfig)
     const requirements = new Map()
     for (const row of rows) {
         ensure(
             Number.isInteger(row.itemId) && row.itemId > 0 && Number.isInteger(row.count) && row.count > 0,
             'Invalid task item requirement',
-            1007,
+            ErrorCode.GameConfig,
         )
         const key = `${data.itemBigType}:${row.itemId}`
         requirements.set(key, (requirements.get(key) || 0) + row.count)
@@ -48,7 +58,11 @@ export function deliveryComplete(state, condition, context) {
 export function submitTaskItems(c, condition, context, items) {
     const spec = deliveryRequirements(condition),
         { data, requirements } = spec
-    ensure([3, 10, 20].includes(data.itemBigType), 'This task item category is not implemented', 1021)
+    ensure(
+        [3, 10, 20].includes(data.itemBigType),
+        'This task item category is not implemented',
+        ErrorCode.InvalidProtoID,
+    )
     const mapId = data.mapId || condition.__type_TaskConditionBaseData?.mapData?.sceneId
     ensure(!mapId || c.state.world.map_id === mapId, 'Task submission is in a different map')
     ensure(Array.isArray(items) && items.length <= 100, 'Invalid submission list')

@@ -1,3 +1,4 @@
+import { ErrorCode } from './error-codes.js'
 import { ensure } from './handlers/common.js'
 export function gridPosition(anchor) {
     ensure(Number.isInteger(anchor) && anchor >= 0 && anchor <= 0xffffffff, 'Invalid home anchor')
@@ -34,9 +35,13 @@ export function homeCondition(text, state) {
 export function buildingRect(tables, buildId, locate) {
     const config = tables.find('home_building', buildId),
         object = config && tables.find('home_object', config.objId)
-    ensure(object, 'Missing building footprint', 1007)
+    ensure(object, 'Missing building footprint', ErrorCode.GameConfig)
     let size = String(object.homeItemSize).split('|').map(Number)
-    ensure(size.length === 2 && size.every((n) => Number.isInteger(n) && n > 0), 'Invalid building footprint', 1007)
+    ensure(
+        size.length === 2 && size.every((n) => Number.isInteger(n) && n > 0),
+        'Invalid building footprint',
+        ErrorCode.GameConfig,
+    )
     const direction = locate?.direction ?? 0
     ensure(Number.isInteger(direction) && direction >= 0 && direction <= 3, 'Invalid home rotation')
     if (direction & 1) size.reverse()
@@ -55,14 +60,18 @@ export function validatePlacement(tables, state, buildId, locate, ignoreGuid = 0
             )
     const block = tables.find('home_block', locate.block_id)
     ensure(block, 'Unknown home block')
-    ensure(block.blockType === 0 && [1, 2].includes(block.groupType), 'Not a building placement block', 1021)
+    ensure(
+        block.blockType === 0 && [1, 2].includes(block.groupType),
+        'Not a building placement block',
+        ErrorCode.InvalidProtoID,
+    )
     ensure(homeCondition(block.unlockCondi, state), 'Home block is locked')
     const start = String(block.blockStartPos).split('|').map(Number),
         end = String(block.blockEndPos).split('|').map(Number)
     ensure(
         start.length === 2 && end.length === 2 && [...start, ...end].every(Number.isFinite),
         'Missing home block bounds',
-        1007,
+        ErrorCode.GameConfig,
     )
     const rect = buildingRect(tables, buildId, locate)
     ensure(
@@ -82,7 +91,7 @@ export function validatePlacement(tables, state, buildId, locate, ignoreGuid = 0
     }
     const config = tables.find('home_building', buildId),
         group = tables.get('home_building_group').find((g) => g.groupId === config.groupId)
-    ensure(group, 'Missing building group', 1007)
+    ensure(group, 'Missing building group', ErrorCode.GameConfig)
     ensure(homeCondition(group.unlockCondi, state), 'Building group is locked')
     const rows = tables
         .get('home_building_num')
@@ -91,7 +100,7 @@ export function validatePlacement(tables, state, buildId, locate, ignoreGuid = 0
     let limit = 0
     for (const row of rows) {
         if (!homeCondition(row.unlockCondition, state)) break
-        ensure(Number.isInteger(row.addNum) && row.addNum >= 0, 'Invalid building limit', 1007)
+        ensure(Number.isInteger(row.addNum) && row.addNum >= 0, 'Invalid building limit', ErrorCode.GameConfig)
         limit += row.addNum
     }
     const used = state.home.builds.filter(

@@ -1,3 +1,4 @@
+import { ErrorCode } from './error-codes.js'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -25,9 +26,13 @@ export class WorldObjectCatalog {
         const row = this.find('worldmap_' + map, id)
         ensure(row && row.cityId === map, 'Object is not in current map')
         const spawner = this.find('world_spawner', row.spawnerId)
-        ensure(spawner, 'World spawner missing', 1007)
+        ensure(spawner, 'World spawner missing', ErrorCode.GameConfig)
         const position = String(row.position).split('|').map(Number)
-        ensure(position.length === 3 && position.every(Number.isFinite), 'World object position missing', 1007)
+        ensure(
+            position.length === 3 && position.every(Number.isFinite),
+            'World object position missing',
+            ErrorCode.GameConfig,
+        )
         return {
             row,
             spawner,
@@ -39,15 +44,15 @@ export class WorldObjectCatalog {
         }
     }
     drops(id, randomInt, budget = { count: 0 }, stack = []) {
-        ensure(stack.length < 16 && !stack.includes(id), 'Recursive world drop configuration', 1007)
+        ensure(stack.length < 16 && !stack.includes(id), 'Recursive world drop configuration', ErrorCode.GameConfig)
         const rows = this.get('drop').filter((r) => r.dropId === id)
-        ensure(rows.length, 'Unknown world drop', 1007)
+        ensure(rows.length, 'Unknown world drop', ErrorCode.GameConfig)
         const groups = new Map()
         for (const row of rows) {
             ensure(
                 !row.tacticsGroup && !row.tacticsWeight && !row.tacticsValue && !row.allowanceValue,
                 'World drop tactics are not implemented',
-                1007,
+                ErrorCode.GameConfig,
             )
             if (!groups.has(row.dropGroupId)) groups.set(row.dropGroupId, [])
             groups.get(row.dropGroupId).push(row)
@@ -58,13 +63,13 @@ export class WorldObjectCatalog {
             ensure(
                 choices.every((r) => Number.isSafeInteger(r.weight) && r.weight >= 0) && Number.isSafeInteger(total),
                 'Invalid drop weight',
-                1007,
+                ErrorCode.GameConfig,
             )
             if (!total) {
                 ensure(
                     choices.every((r) => r.type === 0),
                     'Empty world drop pool',
-                    1007,
+                    ErrorCode.GameConfig,
                 )
                 continue
             }
@@ -84,16 +89,16 @@ export class WorldObjectCatalog {
                     selected.minValue >= 0 &&
                     selected.maxValue >= selected.minValue,
                 'Invalid drop quantity',
-                1007,
+                ErrorCode.GameConfig,
             )
             const count = selected.minValue + randomInt(selected.maxValue - selected.minValue + 1)
             if (!count) continue
             if (selected.type === 27) {
-                ensure(count <= 512, 'Drop roll limit', 1007)
+                ensure(count <= 512, 'Drop roll limit', ErrorCode.GameConfig)
                 for (let i = 0; i < count; i++)
                     rewards.push(...this.drops(selected.itemId, randomInt, budget, [...stack, id]))
             } else {
-                ensure(++budget.count <= 4096, 'Drop result limit', 1007)
+                ensure(++budget.count <= 4096, 'Drop result limit', ErrorCode.GameConfig)
                 rewards.push({ itemtype: selected.type, itemid: selected.itemId, itemnum: count })
             }
         }

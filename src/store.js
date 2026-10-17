@@ -1,3 +1,4 @@
+import { ErrorCode } from './error-codes.js'
 import { publicProfile } from './public-profile.js'
 import Database from 'better-sqlite3'
 import fs from 'node:fs'
@@ -32,7 +33,7 @@ export class Store {
         )
         this.log = this.db.prepare('INSERT INTO request_log(account_id,message_id,status,created_at) VALUES(?,?,?,?)')
         this.failedRequest = this.db.prepare(
-            "SELECT 1 FROM request_log WHERE account_id=? AND message_id=? AND status='error:1024' AND created_at>=? ORDER BY id DESC LIMIT 1",
+            `SELECT 1 FROM request_log WHERE account_id=? AND message_id=? AND status='error:${ErrorCode.InvalidArgument}' AND created_at>=? ORDER BY id DESC LIMIT 1`,
         )
         this.pending = new Map()
         this.flushTimer = setInterval(() => {

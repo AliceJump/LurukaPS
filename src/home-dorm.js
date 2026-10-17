@@ -1,3 +1,4 @@
+import { ErrorCode } from './error-codes.js'
 import { randomInt } from 'node:crypto'
 import { ensure, hero } from './handlers/common.js'
 
@@ -18,7 +19,11 @@ export function dormCapacity(tables, build) {
     ensure(group?.type === 5, 'Building is not a dormitory')
     // CBT3 PageHomeDormitory.RefreshData reads this field, not the older
     // home_building_dorm.checkInMax (which disagrees with both CBT3 buildings).
-    ensure(Number.isInteger(row.dormCharacterNum) && row.dormCharacterNum > 0, 'Invalid dorm capacity', 1007)
+    ensure(
+        Number.isInteger(row.dormCharacterNum) && row.dormCharacterNum > 0,
+        'Invalid dorm capacity',
+        ErrorCode.GameConfig,
+    )
     return row.dormCharacterNum
 }
 export function ensureHomeDormitories(tables, state) {
@@ -110,7 +115,7 @@ export function dormBackground(tables, state, actor, itemid = 0) {
     ensure(
         [sceneid, night_sceneid].every((id) => Number.isInteger(id) && tables.find('world_city', id)?.type === 21),
         'Missing dorm day/night scenes',
-        1007,
+        ErrorCode.GameConfig,
     )
     return { hero_id: actor.guid, sceneid, night_sceneid, itemid }
 }
@@ -134,7 +139,7 @@ export function dormPayload(tables, state) {
     }
 }
 export function grantDormStyle(tables, state, itemid) {
-    ensure(tables.find('home_dorm_item', itemid), 'Unknown dorm style', 1007)
+    ensure(tables.find('home_dorm_item', itemid), 'Unknown dorm style', ErrorCode.GameConfig)
     ensureHomeDormitories(tables, state)
     const rewards = state.home.dorm.back_ground_scene.rewards
     if (rewards.some((entry) => entry.itemid === itemid)) return
@@ -152,11 +157,11 @@ export function dormPosition(tables, state, background) {
     ensure(
         daytime.length === 2 && daytime.every(Number.isFinite) && Number.isFinite(hour),
         'Invalid dorm time configuration',
-        1007,
+        ErrorCode.GameConfig,
     )
     const map = hour >= daytime[0] && hour < daytime[1] ? background.sceneid : background.night_sceneid
     const point = tables.get('world_borthpos').find((row) => row.cityId === map && row.mainPoint === 1)
-    ensure(point, 'Dorm scene spawn is missing', 1007)
+    ensure(point, 'Dorm scene spawn is missing', ErrorCode.GameConfig)
     return tables.position(point)
 }
 export function activeDormVisit(tables, state) {
@@ -169,7 +174,7 @@ export function activeDormVisit(tables, state) {
 }
 function refreshDay(tables, now) {
     const hour = Number(tables.get('game').find((row) => row.title === 'DAILY_REFRESH_TIME')?.value)
-    ensure(Number.isFinite(hour), 'Missing daily refresh hour', 1007)
+    ensure(Number.isFinite(hour), 'Missing daily refresh hour', ErrorCode.GameConfig)
     return Math.floor((now + (8 - hour) * 3600) / 86400)
 }
 export function dormDayDue(tables, state, now) {
@@ -190,7 +195,7 @@ export function addHeroFavorability(tables, actor, amount) {
     ensure(
         Number.isSafeInteger(amount) && amount >= 0 && amount <= 0xffffffff,
         'Invalid hero favorability reward',
-        1007,
+        ErrorCode.GameConfig,
     )
     const levels = new Map(
         tables.get('hero_favorability_exp').map((row) => [row.favorabilityLevel, row.favorabilityExp]),
@@ -202,7 +207,7 @@ export function addHeroFavorability(tables, actor, amount) {
     exp += reward
     while (level < max) {
         const required = levels.get(level)
-        ensure(Number.isInteger(required) && required > 0, 'Invalid hero favorability curve', 1007)
+        ensure(Number.isInteger(required) && required > 0, 'Invalid hero favorability curve', ErrorCode.GameConfig)
         if (exp < required) break
         exp -= required
         level++
@@ -237,7 +242,7 @@ export function dormTopics(tables, state, now, rng = randomInt) {
         ensure(
             choices.every(([id, reward]) => Number.isInteger(id) && id > 0 && Number.isInteger(reward) && reward >= 0),
             'Invalid dorm daily topic',
-            1007,
+            ErrorCode.GameConfig,
         )
         // TODO: official topic-selection weights are not supplied; use a uniform
         // draw from this hero's configured stories, saved for the whole reset day.
@@ -261,7 +266,7 @@ export function claimDormTopic(tables, state, request, now) {
         .split('|')
         .map((entry) => entry.split('#').map(Number))
         .find(([id]) => id === request.story_id)
-    ensure(choice, 'Daily topic configuration missing', 1007)
+    ensure(choice, 'Daily topic configuration missing', ErrorCode.GameConfig)
     const reward = addHeroFavorability(tables, actor, choice[1])
     selected.complete = true
     return { storys: request, favorability: reward }

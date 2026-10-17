@@ -1,3 +1,4 @@
+import { ErrorCode } from '../error-codes.js'
 import { ensure, syncPlayer } from './common.js'
 import { aggregateCosts, spend, spendCurrency } from '../inventory.js'
 import { grantRewards, parseRewards } from '../rewards.js'
@@ -14,16 +15,16 @@ export function registerItems(on) {
         for (const item of items) ensure(!item.args?.length, 'Unsupported item arguments')
         for (const [id, count] of costs) {
             const config = c.tables.find('common_item', id)
-            ensure(config?.type === 100, 'This consumable type is not implemented', 1021)
+            ensure(config?.type === 100, 'This consumable type is not implemented', ErrorCode.InvalidProtoID)
             const value = Number(String(config.useFunction).split('|')[0])
-            ensure(Number.isSafeInteger(value) && value > 0, 'Invalid stamina item', 1007)
+            ensure(Number.isSafeInteger(value) && value > 0, 'Invalid stamina item', ErrorCode.GameConfig)
             ensure(unit === undefined || unit === value, 'Mixed stamina denominations require separate use')
             unit = value
             gain += safeProduct(value, count)
             ensure(Number.isSafeInteger(gain) && gain <= 0xffffffff, 'Stamina gain overflow')
         }
         const cap = Number(c.tables.get('game').find((x) => x.title === 'STAMINA_LIMIT')?.value)
-        ensure(Number.isSafeInteger(cap) && cap > 0, 'Invalid stamina cap', 1007)
+        ensure(Number.isSafeInteger(cap) && cap > 0, 'Invalid stamina cap', ErrorCode.GameConfig)
         const current = BigInt(c.state.player.attr_infos.attrs.find((a) => a.attr_id === 3)?.attr_val || 0)
         ensure(current < BigInt(cap), 'Stamina is at the use limit')
         ensure(gain <= Math.ceil((cap - Number(current)) / unit) * unit, 'Too many stamina items selected')
@@ -39,21 +40,25 @@ export function registerItems(on) {
     })
     on('ExchangeItem', (c, r) => {
         ensure(Number.isInteger(r.item_num) && r.item_num > 0, 'Invalid exchange quantity')
-        ensure(!r.args?.length, 'Exchange arguments are not yet supported', 1021)
+        ensure(!r.args?.length, 'Exchange arguments are not yet supported', ErrorCode.InvalidProtoID)
         const recipes = c.tables
             .get('common_item_change')
             .filter((x) => x.itemId === r.item_id && x.itemType === r.item_type)
         ensure(recipes.length > 0, 'Unknown exchange recipe')
-        ensure(recipes.length === 1, 'Ambiguous exchange recipe requires verified selection semantics', 1021)
+        ensure(
+            recipes.length === 1,
+            'Ambiguous exchange recipe requires verified selection semantics',
+            ErrorCode.InvalidProtoID,
+        )
         const recipe = recipes[0]
-        ensure(Number.isSafeInteger(recipe.itemNum) && recipe.itemNum > 0, 'Invalid recipe cost', 1007)
+        ensure(Number.isSafeInteger(recipe.itemNum) && recipe.itemNum > 0, 'Invalid recipe cost', ErrorCode.GameConfig)
         const cost = safeProduct(recipe.itemNum, r.item_num)
         const configured = parseRewards(recipe.change)
-        ensure(configured.length > 0, 'Recipe has no output', 1007)
+        ensure(configured.length > 0, 'Recipe has no output', ErrorCode.GameConfig)
         const output = configured.map((x) => ({ ...x, itemnum: safeProduct(x.itemnum, r.item_num) }))
         if (r.item_type === 3) spend(c.state, new Map([[r.item_id, cost]]), 0, c.now)
         else if (r.item_type === 10) spendCurrency(c.state, r.item_id, cost)
-        else ensure(false, 'Exchange source category is not implemented', 1021)
+        else ensure(false, 'Exchange source category is not implemented', ErrorCode.InvalidProtoID)
         const rewards = grantRewards(c.tables, c.state, output)
         syncPlayer(c)
         return { rewards }

@@ -1,3 +1,4 @@
+import { ErrorCode } from '../error-codes.js'
 import { ensureHome } from '../home.js'
 import { spend, addItems } from '../inventory.js'
 import { ensure } from './common.js'
@@ -9,7 +10,7 @@ function foodScore(tables, id) {
     ensure(
         Number.isInteger(food?.satietyScore) && food.satietyScore > 0,
         'Food has no canteen satiety configuration',
-        1021,
+        ErrorCode.InvalidProtoID,
     )
     return food.satietyScore
 }

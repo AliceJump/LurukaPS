@@ -1,3 +1,4 @@
+import { ErrorCode } from './error-codes.js'
 import fs from 'node:fs'
 import { ensure } from './handlers/common.js'
 
@@ -10,11 +11,11 @@ const add = (a, b) => F(F(a) + F(b)),
 const mul = (a, b) => F(F(a) * F(b)),
     div = (a, b) => F(F(a) / F(b))
 const finite = (value, name) => {
-    ensure(Number.isFinite(value), `Arena damage input unavailable: ${name}`, 1007)
+    ensure(Number.isFinite(value), `Arena damage input unavailable: ${name}`, ErrorCode.GameConfig)
     return F(value)
 }
 const boolean = (value, name) => {
-    ensure(typeof value === 'boolean', `Arena damage input unavailable: ${name}`, 1007)
+    ensure(typeof value === 'boolean', `Arena damage input unavailable: ${name}`, ErrorCode.GameConfig)
     return value
 }
 const roundEven = (value) => {
@@ -36,7 +37,7 @@ export function arenaElementRestraint(tables, element, targetElements, inDuel) {
     ensure(
         Array.isArray(targetElements) && typeof inDuel === 'boolean',
         'Arena target elemental state unavailable',
-        1007,
+        ErrorCode.GameConfig,
     )
     const row = tables.find('element_type', element)
     if (!row) return 0 // Native provider returns0 when the element table row is absent.
@@ -64,7 +65,7 @@ export function arenaTrueDamageAmounts(config, input, settings = arenaNumericalC
     ensure(
         [C.DamageType_Real, C.DamageType_Dummy].includes(config.damageType),
         'Not a native real/dummy damage branch',
-        1007,
+        ErrorCode.GameConfig,
     )
     const number = (name) => finite(input[name], name)
     let amount = mul(mul(Math.max(number('formula'), 1), number('worldEventFactor')), number('weaknessRatio'))
@@ -97,7 +98,7 @@ export function arenaTrueDamageAmounts(config, input, settings = arenaNumericalC
     ensure(
         Number.isInteger(rounded) && rounded >= -2147483648 && rounded <= 2147483647,
         'Arena output exceeds int32',
-        1007,
+        ErrorCode.GameConfig,
     )
     amount = F(rounded)
     let request = boolean(input.debugInvincible, 'debug invincibility') ? 0 : amount
@@ -116,8 +117,12 @@ export function arenaTrueDamageAmounts(config, input, settings = arenaNumericalC
 
 export function arenaHealingAmounts(config, input, settings = arenaNumericalConfig) {
     const C = settings.constants
-    ensure(config.damageType === C.DamageType_Heal, 'Not a native healing branch', 1007)
-    ensure(input.elementTags === null || Array.isArray(input.elementTags), 'Arena element tags unavailable', 1007)
+    ensure(config.damageType === C.DamageType_Heal, 'Not a native healing branch', ErrorCode.GameConfig)
+    ensure(
+        input.elementTags === null || Array.isArray(input.elementTags),
+        'Arena element tags unavailable',
+        ErrorCode.GameConfig,
+    )
     let amount = F(Math.max(finite(input.formula, 'formula'), 1))
     if (!input.elementTags?.includes(C.ETag_System)) {
         const source = finite(input.sourceProperty?.(C.SHOOT_HEALUP, true, 'snapshot-aware'), 'source healing property')
@@ -133,7 +138,7 @@ export function arenaHealingAmounts(config, input, settings = arenaNumericalConf
     ensure(
         Number.isInteger(rounded) && rounded >= -2147483648 && rounded <= 2147483647,
         'Arena heal exceeds int32',
-        1007,
+        ErrorCode.GameConfig,
     )
     amount = F(rounded)
     const hp = finite(input.targetHp, 'target HP'),
@@ -169,7 +174,7 @@ export function arenaHealingOverheal(result, actualHeal) {
         ensure(
             Number.isInteger(actualHeal) && actualHeal >= -2147483648 && actualHeal <= 2147483647,
             'Actual healing result unavailable',
-            1007,
+            ErrorCode.GameConfig,
         )
         overflow = add(overflow, sub(result.healDeltaBeforeApplication, finite(actualHeal, 'actual heal')))
     }
@@ -191,7 +196,7 @@ export function arenaDamageAmounts(config, input, settings = arenaNumericalConfi
             C.DamageType_Shield,
         ].includes(type),
         'Arena damage requires another native output branch',
-        1007,
+        ErrorCode.GameConfig,
     )
     const source = (id, normalized = false, phase = 'after-critical') =>
         finite(input.sourceProperty?.(id, normalized, phase), `source property ${id}`)
@@ -219,7 +224,7 @@ export function arenaDamageAmounts(config, input, settings = arenaNumericalConfi
 
     const skill = number('skillId'),
         tags = input.skillTags
-    ensure(skill <= 0 || tags === null || Array.isArray(tags), 'Arena skill tags unavailable', 1007)
+    ensure(skill <= 0 || tags === null || Array.isArray(tags), 'Arena skill tags unavailable', ErrorCode.GameConfig)
     let skillMultiplier = F(1)
     if (skill > 0 && tags) {
         const groups = [
@@ -251,7 +256,7 @@ export function arenaDamageAmounts(config, input, settings = arenaNumericalConfi
     if (type === C.DamageType_StackOverLimit) {
         const mastery = source(C.MASTERY),
             masteryConstant = number('masteryConstant')
-        ensure(masteryConstant > 0, 'Arena mastery denominator unavailable', 1007)
+        ensure(masteryConstant > 0, 'Arena mastery denominator unavailable', ErrorCode.GameConfig)
         isMasteryCritical = random < source(C.MASTERY_INC)
         amount = mul(armored, isMasteryCritical ? 2 : 1)
         amount = mul(mul(amount, elementMultiplier), damageMultiplier)
@@ -271,7 +276,7 @@ export function arenaDamageAmounts(config, input, settings = arenaNumericalConfi
     ensure(
         Number.isInteger(rounded) && rounded >= -2147483648 && rounded <= 2147483647,
         'Arena output exceeds int32',
-        1007,
+        ErrorCode.GameConfig,
     )
     const shield = input.resolveShield?.(rounded)
     ensure(
@@ -281,7 +286,7 @@ export function arenaDamageAmounts(config, input, settings = arenaNumericalConfi
             shield.damage <= 2147483647 &&
             typeof shield.isShield === 'boolean',
         'Arena shield result unavailable',
-        1007,
+        ErrorCode.GameConfig,
     )
     let output = shield.damage
     if (config.damageMinimunValueType === C.DamageMinimun_SpecialMinimunValue) {

@@ -1,3 +1,4 @@
+import { ErrorCode } from './error-codes.js'
 import { npcArenaTickDue, forkNpcArenaRuntime, tickNpcArena } from './npc-kibo-service.js'
 import { secondsToArenaMs } from './npc-kibo-time.js'
 import { arenaFeverInfo } from './npc-kibo-stage-buffs.js'
@@ -526,12 +527,12 @@ export class Game {
         const e = this.protocol.byId.get(frame.id)
         const now = this.clock(),
             arenaNowMs = this.arenaTime(now)
-        if (!e) throw new GameError('Unknown message ID', 1021)
+        if (!e) throw new GameError('Unknown message ID', ErrorCode.InvalidProtoID)
         let r
         try {
             r = this.protocol.decode(e.req, frame.payload)
         } catch {
-            throw new GameError('Malformed request', 1022)
+            throw new GameError('Malformed request', ErrorCode.InvalidPacket)
         }
         const reply = (v) => this.packet(e.id, v, { seq: frame.seq, pushSeq: frame.pushSeq })
         if (e.name === 'CSProtoPing')
@@ -777,7 +778,7 @@ export class Game {
             }
             return packets
         }
-        ensure(session.id, 'Login required', 101)
+        ensure(session.id, 'Login required', ErrorCode.HaveNotEnterGame)
         if (e.name === 'CSProtoCreatePlayer') {
             return this.store.transact(session.id, e.id, (state) => {
                 if (r.name) state.player.basic_info.name = textValue(r.name, 15)
@@ -796,7 +797,7 @@ export class Game {
         }
         if (e.name === 'CSProtoRecycle') return [reply({})]
         const handler = this.handlers.get(e.id)
-        if (!handler) throw new GameError(`Unsupported ${e.name}`, 1021)
+        if (!handler) throw new GameError(`Unsupported ${e.name}`, ErrorCode.InvalidProtoID)
         if (e.name === 'CSProtoWorldObjSearch')
             return this.store.read(session.id, (state) => [reply(handler({ state, tables: this.tables }, r))])
         if (e.name === 'CSProtoWorldMapExtraStatus') {

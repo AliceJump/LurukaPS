@@ -1,3 +1,4 @@
+import { ErrorCode } from './error-codes.js'
 import { ensure } from './handlers/common.js'
 import { arenaTrainer } from './npc-kibo-trainer.js'
 
@@ -22,7 +23,7 @@ export function validateNpcDuelFormation(tables, state, duel, formation) {
         seen.add(key)
         if (pet.is_trial) {
             ensure(duel.levelType !== 0 && allowedTrials.has(Number(id)), 'Trial pet is not allowed in this duel')
-            ensure(tables.find('trial_pet', Number(id)), 'Trial pet configuration unavailable', 1007)
+            ensure(tables.find('trial_pet', Number(id)), 'Trial pet configuration unavailable', ErrorCode.GameConfig)
         } else {
             ensure(duel.levelType !== 2, 'This duel requires trial pets')
             ensure(
@@ -53,7 +54,11 @@ export function npcDuelEntry(tables, duelId) {
     const duel = tables.find('kibo_duel', duelId)
     ensure(duel?.type === 1 && duel.duelMode === 1, 'Not an NPC arena duel')
     const dungeon = tables.find('dungeon', duel.dungeonId)
-    ensure(dungeon?.dungeonType === 400 && dungeon.gameplayID === duel.id, 'NPC duel dungeon mapping unavailable', 1007)
+    ensure(
+        dungeon?.dungeonType === 400 && dungeon.gameplayID === duel.id,
+        'NPC duel dungeon mapping unavailable',
+        ErrorCode.GameConfig,
+    )
     const map = tables.find('kibo_duel_map', duel.mapId)
     const coordinates = list(dungeon.position)
     ensure(
@@ -63,13 +68,13 @@ export function npcDuelEntry(tables, duelId) {
             coordinates.length === 6 &&
             coordinates.every(Number.isFinite),
         'NPC duel scene configuration unavailable',
-        1007,
+        ErrorCode.GameConfig,
     )
     const enemyPets = list(duel.enemy)
     ensure(
         enemyPets.length === 8 && enemyPets.every((id) => tables.find('pet', id)),
         'NPC duel enemy roster unavailable',
-        1007,
+        ErrorCode.GameConfig,
     )
     ensure(
         [0, 1, 2].includes(duel.levelType) &&
@@ -77,7 +82,7 @@ export function npcDuelEntry(tables, duelId) {
             duel.minimumKibo > 0 &&
             duel.minimumKibo <= 8,
         'NPC duel formation rules unavailable',
-        1007,
+        ErrorCode.GameConfig,
     )
     return { duel, dungeon, map, coordinates, enemyPets }
 }

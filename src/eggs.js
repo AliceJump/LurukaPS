@@ -1,3 +1,4 @@
+import { ErrorCode } from './error-codes.js'
 import { randomInt } from 'node:crypto'
 import { ensure } from './handlers/common.js'
 function weights(text) {
@@ -9,14 +10,14 @@ function weights(text) {
             ensure(
                 !rest.length && Number.isInteger(id) && id >= 0 && Number.isInteger(weight) && weight > 0,
                 'Invalid egg weight configuration',
-                1007,
+                ErrorCode.GameConfig,
             )
             return { id, weight }
         })
 }
 function choose(list, rng) {
     const total = list.reduce((n, x) => n + x.weight, 0)
-    ensure(Number.isSafeInteger(total) && total > 0 && total < 2 ** 48, 'Invalid egg weight sum', 1007)
+    ensure(Number.isSafeInteger(total) && total > 0 && total < 2 ** 48, 'Invalid egg weight sum', ErrorCode.GameConfig)
     let draw = rng(total)
     ensure(Number.isInteger(draw) && draw >= 0 && draw < total, 'Random source out of range')
     for (const x of list) {
@@ -27,14 +28,14 @@ function choose(list, rng) {
 }
 export function createEggs(tables, state, id, count, rng = randomInt) {
     const config = tables.find('pet_egg', id)
-    ensure(config, 'Unknown pet egg', 1007)
+    ensure(config, 'Unknown pet egg', ErrorCode.GameConfig)
     const limit = Number(tables.get('game').find((r) => r.title === 'PET_EGG_LIMITS')?.value)
-    ensure(Number.isInteger(limit) && limit > 0, 'Invalid egg capacity', 1007)
+    ensure(Number.isInteger(limit) && limit > 0, 'Invalid egg capacity', ErrorCode.GameConfig)
     state.petEggs ??= []
     ensure(Number.isInteger(count) && count > 0 && state.petEggs.length + count <= limit, 'Pet egg bag is full')
     const quantities = weights(config.affixquantityweight),
         pool = weights(config.affixweight)
-    ensure(quantities.length > 0, 'Missing egg affix count config', 1007)
+    ensure(quantities.length > 0, 'Missing egg affix count config', ErrorCode.GameConfig)
     const existingMax = state.petEggs.reduce((n, e) => Math.max(n, e.guid), 0)
     let next = Math.max(state.nextEggGuid || 1, existingMax + 1)
     ensure(Number.isSafeInteger(next) && next + count - 1 <= 0xffffffff, 'Egg GUID space exhausted')
@@ -47,10 +48,10 @@ export function createEggs(tables, state, id, count, rng = randomInt) {
         for (let j = 0; j < wanted; j++) {
             available = available.filter((x) => {
                 const cfg = tables.find('egg_affix', x.id)
-                ensure(cfg, 'Missing egg affix', 1007)
+                ensure(cfg, 'Missing egg affix', ErrorCode.GameConfig)
                 return !selected.includes(x.id) && (!cfg.mutexgroup || !groups.has(cfg.mutexgroup))
             })
-            ensure(available.length > 0, 'Unsatisfiable egg affix pool', 1007)
+            ensure(available.length > 0, 'Unsatisfiable egg affix pool', ErrorCode.GameConfig)
             const affix = choose(available, rng)
             selected.push(affix)
             const group = tables.find('egg_affix', affix).mutexgroup

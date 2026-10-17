@@ -1,3 +1,4 @@
+import { ErrorCode } from '../error-codes.js'
 import { claimHatch, cancelHatch } from '../hatching.js'
 import { ensure, syncPlayer } from './common.js'
 import { ensureHome } from '../home.js'
@@ -37,23 +38,31 @@ export function registerProduction(on, tables) {
             !tables.get('products_multi_quality').some((row) => row.productId === recipe.id),
             'Quality production requires CookRequest materials',
         )
-        ensure(!recipe.isNeedPet, 'Pet-assisted production is not implemented', 1021)
-        ensure(!recipe.materialSelect && !r.select_material.length, 'Selectable materials are not implemented', 1021)
+        ensure(!recipe.isNeedPet, 'Pet-assisted production is not implemented', ErrorCode.InvalidProtoID)
+        ensure(
+            !recipe.materialSelect && !r.select_material.length,
+            'Selectable materials are not implemented',
+            ErrorCode.InvalidProtoID,
+        )
         ensure(!recipe.notReleased, 'Recipe not released')
         ensure(Number.isInteger(r.count) && r.count > 0 && r.count <= recipe.numberLimit, 'Invalid production count')
-        ensure(Number.isInteger(recipe.time) && recipe.time > 0, 'Unsupported production duration', 1007)
+        ensure(
+            Number.isInteger(recipe.time) && recipe.time > 0,
+            'Unsupported production duration',
+            ErrorCode.GameConfig,
+        )
         const costs = parseRewards(recipe.material),
             rewards = parseRewards(recipe.rewardId)
-        ensure(rewards.length > 0, 'Recipe uses unresolved reward logic', 1021)
+        ensure(rewards.length > 0, 'Recipe uses unresolved reward logic', ErrorCode.InvalidProtoID)
         ensure(
             costs.every((x) => [3, 10].includes(x.itemtype)),
             'Unsupported production material',
-            1021,
+            ErrorCode.InvalidProtoID,
         )
         ensure(
             rewards.every((x) => [3, 10, 13, 14, 25].includes(x.itemtype)),
             'Unsupported production reward',
-            1021,
+            ErrorCode.InvalidProtoID,
         )
         h.productionJobs ??= {}
         const jobs = h.productionJobs[b.guid] || []

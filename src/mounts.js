@@ -1,3 +1,4 @@
+import { ErrorCode } from './error-codes.js'
 import { randomInt } from 'node:crypto'
 import { ensure } from './handlers/common.js'
 
@@ -17,7 +18,7 @@ export function randomMountSpeed(tables, rng = randomInt) {
                     row.min <= row.max,
             ),
         'Invalid mount-speed distribution',
-        1007,
+        ErrorCode.GameConfig,
     )
     let draw = rng(total)
     for (const row of rows) {

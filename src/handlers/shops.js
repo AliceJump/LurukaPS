@@ -1,3 +1,4 @@
+import { ErrorCode } from '../error-codes.js'
 import { ShopCatalog } from '../shops.js'
 import { ensure, syncPlayer } from './common.js'
 import { spend, spendCurrency } from '../inventory.js'
@@ -36,7 +37,7 @@ export function registerShops(on, tables) {
             ensure(item.bought + item.times <= 0xffffffff, 'Purchase counter overflow')
             for (const cost of parseRewards(item.goods.costId, true)) {
                 if (cost.itemnum === 0) continue
-                ensure([3, 10].includes(cost.itemtype), 'Unsupported shop payment', 1021)
+                ensure([3, 10].includes(cost.itemtype), 'Unsupported shop payment', ErrorCode.InvalidProtoID)
                 const key = `${cost.itemtype}:${cost.itemid}`,
                     n = (costs.get(key) || 0) + cost.itemnum * item.times
                 ensure(Number.isSafeInteger(n) && n <= 0xffffffff, 'Purchase cost overflow')
@@ -47,9 +48,9 @@ export function registerShops(on, tables) {
                 rewards.length &&
                     rewards.every((x) => Number.isSafeInteger(x.itemnum) && x.itemnum > 0 && x.itemnum <= 0xffffffff),
                 'Invalid shop reward',
-                1007,
+                ErrorCode.GameConfig,
             )
-            ensure(!item.goods.autoOpen, 'Auto-opening goods require reward-pool support', 1021)
+            ensure(!item.goods.autoOpen, 'Auto-opening goods require reward-pool support', ErrorCode.InvalidProtoID)
             plans.push({ item, rewards })
         }
         const bag = new Map()

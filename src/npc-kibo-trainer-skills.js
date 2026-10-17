@@ -1,3 +1,4 @@
+import { ErrorCode } from './error-codes.js'
 import { arenaContext, arenaMillis, secondsToArenaMs } from './npc-kibo-time.js'
 import fs from 'node:fs'
 import { ensure } from './handlers/common.js'
@@ -26,7 +27,11 @@ export function recordArenaTrainerSkill(c, uuid, request) {
     const index = String(request.verify_info?.battle_index ?? '0')
     if (index !== '0' && run.trainer_casts?.some((cast) => cast.id === id && cast.index === index)) return
     const logic = arenaSkillLogic(c.tables, id)
-    ensure(logic?.coolDownHint === -1 && logic.coolDownCountDefault > 0, 'Arena trainer cooldown unavailable', 1007)
+    ensure(
+        logic?.coolDownHint === -1 && logic.coolDownCountDefault > 0,
+        'Arena trainer cooldown unavailable',
+        ErrorCode.GameConfig,
+    )
     const previous = run.trainer_skills?.[id] ?? {
         charges: Math.min(logic.coolDownCount, logic.coolDownCountDefault),
         ready_at: secondsToArenaMs(run.regular_started_at ?? c.now) + logic.kiBoCoolDownDefault,

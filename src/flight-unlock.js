@@ -1,3 +1,4 @@
+import { ErrorCode } from './error-codes.js'
 import { ensure } from './handlers/common.js'
 // CBT3 WorldExploreStore.GetLockFlyLevel selects systemUnlock=3.
 // User-requested sandbox unlock: raise only to that minimum, never to max.
@@ -14,7 +15,7 @@ export function ensureFlightUnlocked(tables, state, now) {
                 row.exploreLevel > 0 &&
                 tables.find('world_city', row.mapId),
             'Invalid flight exploration gate',
-            1007,
+            ErrorCode.GameConfig,
         )
         let entry = exploration.map_info.find((m) => m.map_id === row.mapId)
         if (!entry) {

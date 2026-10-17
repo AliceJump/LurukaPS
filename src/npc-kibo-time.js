@@ -1,3 +1,4 @@
+import { ErrorCode } from './error-codes.js'
 import { ensure } from './handlers/common.js'
 
 // Client skill timelines use60fps. This is our scheduling resolution, not a
@@ -8,7 +9,7 @@ export const secondsToArenaMs = (seconds) => Math.round(seconds * 1000)
 
 export function arenaMillis(c) {
     const value = c.arena_now_ms ?? secondsToArenaMs(c.now)
-    ensure(Number.isSafeInteger(value) && value >= 0, 'Arena millisecond clock unavailable', 1007)
+    ensure(Number.isSafeInteger(value) && value >= 0, 'Arena millisecond clock unavailable', ErrorCode.GameConfig)
     return value
 }
 

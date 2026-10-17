@@ -1,3 +1,4 @@
+import { ErrorCode } from '../error-codes.js'
 import { ensure } from './common.js'
 import { worldCondition } from './world-objects.js'
 import { WorldObjectCatalog } from '../world-objects.js'
@@ -13,7 +14,7 @@ function visible(row, record, state) {
         )
     } catch (error) {
         // Do not reveal a conditional target whose appearance rule is unsupported.
-        if (error.code !== 1007) throw error
+        if (error.code !== ErrorCode.GameConfig) throw error
         return false
     }
 }
@@ -52,7 +53,7 @@ export function registerWorldSearch(on, tables) {
     const catalog = new WorldObjectCatalog(tables),
         eggs = new Map()
     const maxRange = Number(tables.get('game').find((row) => row.title === 'SKILL_SEARCHSKILL_MAX_RANGE')?.value)
-    ensure(Number.isFinite(maxRange) && maxRange > 0, 'Search range configuration unavailable', 1007)
+    ensure(Number.isFinite(maxRange) && maxRange > 0, 'Search range configuration unavailable', ErrorCode.GameConfig)
     on('WorldObjSearch', ({ state }, request) => {
         const type = request.search_type,
             filter = request.attribute_filter ?? 0,
@@ -65,8 +66,8 @@ export function registerWorldSearch(on, tables) {
         )
         // TODO: verify nonzero attribute_filter semantics against a client caller/capture.
         // CBT3 MapStore.BuildBattleExploreSearchReq never sets it; do not guess a bitmask.
-        ensure(filter === 0, 'World search attribute filter is not implemented', 1007)
-        ensure(positionValid(state.world.pos), 'Search position unavailable', 1007)
+        ensure(filter === 0, 'World search attribute filter is not implemented', ErrorCode.GameConfig)
+        ensure(positionValid(state.world.pos), 'Search position unavailable', ErrorCode.GameConfig)
         // A zero count is used by the client's overload. The local response bound
         // is 64; the 100m range comes from game.json, not a guessed skill radius.
         const limit = Math.min(count || 64, 64),

@@ -1,3 +1,4 @@
+import { ErrorCode } from './error-codes.js'
 import fs from 'node:fs'
 import { ensure } from './handlers/common.js'
 import { arenaContext, arenaMillis, secondsToArenaMs } from './npc-kibo-time.js'
@@ -20,7 +21,7 @@ export function arenaStageBuffSchedule(tables, duelId) {
                 ensure(
                     Number.isFinite(at) && at >= 0 && elements[id],
                     'Arena stage buff configuration unavailable',
-                    1007,
+                    ErrorCode.GameConfig,
                 )
                 return { at, id }
             })
@@ -30,7 +31,7 @@ export function arenaStageBuffSchedule(tables, duelId) {
         ensure(
             schedule.length <= 4 && new Set(schedule.map((row) => row.id)).size === schedule.length,
             'Arena stage buff identity capacity exceeded',
-            1007,
+            ErrorCode.GameConfig,
         )
         cache.set(duelId, schedule)
     }

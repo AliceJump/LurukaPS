@@ -1,3 +1,4 @@
+import { ErrorCode } from './error-codes.js'
 import { randomInt } from 'node:crypto'
 import { ensure } from './handlers/common.js'
 
@@ -10,12 +11,12 @@ function quality(text, rng) {
             ensure(
                 !extra.length && Number.isInteger(id) && id > 0 && Number.isInteger(weight) && weight > 0,
                 'Invalid custom ornament quality',
-                1007,
+                ErrorCode.GameConfig,
             )
             return { id, weight }
         })
     const total = entries.reduce((sum, entry) => sum + entry.weight, 0)
-    ensure(total > 0 && Number.isSafeInteger(total), 'Missing custom ornament quality', 1007)
+    ensure(total > 0 && Number.isSafeInteger(total), 'Missing custom ornament quality', ErrorCode.GameConfig)
     let draw = rng(total)
     for (const entry of entries) {
         draw -= entry.weight
@@ -27,7 +28,7 @@ function quality(text, rng) {
 export function createCustomOrnaments(tables, state, id, count, rng = randomInt) {
     const custom = tables.find('accessory_customed', id),
         accessory = tables.find('accessory', custom?.accessoryId)
-    ensure(custom && accessory, 'Unknown custom ornament', 1007)
+    ensure(custom && accessory, 'Unknown custom ornament', ErrorCode.GameConfig)
     state.ornaments ??= []
     ensure(
         Number.isInteger(count) && count > 0 && count <= 1000 && state.ornaments.length + count <= 10000,

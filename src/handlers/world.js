@@ -1,3 +1,4 @@
+import { ErrorCode } from '../error-codes.js'
 import { recordNpcArenaMovement } from '../npc-kibo-battle.js'
 import { expireArenaTrialTrainer } from '../npc-kibo-trainer.js'
 import { repairSavedPetPuzzleVisibility } from '../pet-puzzles.js'
@@ -102,7 +103,7 @@ function teleportFromTestMark(c, mark) {
         z = Number(mark.pos_z)
     ensure([x, y, z].every(Number.isFinite), 'Invalid test teleport mark position')
     const height = Number(c.tables.get('game').find((row) => row.title === 'MAP_MARK_HEIGHT_DIFFERENCE')?.value ?? 4.5)
-    ensure(Number.isFinite(height) && height > 0, 'Invalid map mark teleport height', 1007)
+    ensure(Number.isFinite(height) && height > 0, 'Invalid map mark teleport height', ErrorCode.GameConfig)
     const guid = transientMarkGuid(c.state, mark.guid ?? 0)
     if (mark.guid) deleteWorldMarks(c.state, [mark.guid])
     c.state.world.pos = {
@@ -277,7 +278,7 @@ export function registerWorld(on) {
         return {}
     })
     on('WorldMapActiveBehavior', (c, r) => {
-        ensure(r.type === 3, 'Active behavior type is not implemented', 1021)
+        ensure(r.type === 3, 'Active behavior type is not implemented', ErrorCode.InvalidProtoID)
         recoverFormationHp(c)
         return {}
     })
@@ -307,7 +308,7 @@ export function registerWorld(on) {
         const homeMapId = Number(c.tables.get('game').find((row) => row.title === 'HOME_ID')?.value)
         if (w.map_id === homeMapId) {
             const area = c.tables.get('world_area').find((row) => row.sceneId === homeMapId)
-            ensure(area, 'Missing home world area', 1007)
+            ensure(area, 'Missing home world area', ErrorCode.GameConfig)
             if (w.area_id !== area.id) delete c.state.combat
             w.area_id = area.id
         }
@@ -319,7 +320,11 @@ export function registerWorld(on) {
         const run = c.state.cultTrial
         if (run?.map_id === c.state.world.map_id && (!r.point_id || r.point_id === run.return_world.point_id)) {
             const destination = c.tables.find('world_borthpos', run.return_world.point_id)
-            ensure(destination?.cityId === run.return_world.map_id, 'Invalid cultivation return point', 1007)
+            ensure(
+                destination?.cityId === run.return_world.map_id,
+                'Invalid cultivation return point',
+                ErrorCode.GameConfig,
+            )
             return exitCultTrial(c)
         }
         if (!r.point_id && c.tables.find('world_city', c.state.world.map_id)?.type === 29) {
@@ -360,7 +365,7 @@ export function registerWorld(on) {
     })
     on('WorldQuitHome', (c) => {
         const homeMapId = Number(c.tables.get('game').find((row) => row.title === 'HOME_ID')?.value)
-        ensure(Number.isInteger(homeMapId) && homeMapId > 0, 'Missing home map id', 1007)
+        ensure(Number.isInteger(homeMapId) && homeMapId > 0, 'Missing home map id', ErrorCode.GameConfig)
         const isHomeScene = (mapId) => mapId === homeMapId || c.tables.find('world_city', mapId)?.playModule === 'Home'
         if (!isHomeScene(c.state.world.map_id)) return {}
 
@@ -380,7 +385,7 @@ export function registerWorld(on) {
             Object.assign(c.state.world, previous)
         } else {
             const fallback = c.tables.find('world_borthpos', 10045)
-            ensure(fallback, 'Missing exploration return point', 1007)
+            ensure(fallback, 'Missing exploration return point', ErrorCode.GameConfig)
             Object.assign(c.state.world, c.tables.position(fallback))
         }
 
