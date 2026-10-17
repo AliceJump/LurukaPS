@@ -1,5 +1,5 @@
 import { ErrorCode } from './error-codes.js'
-import { arenaContext, arenaMillis } from './npc-kibo-time.js'
+import { arenaContext, arenaMillis, arenaActionMillis } from './npc-kibo-time.js'
 import { ensure } from './handlers/common.js'
 import { combatState } from './combat-state.js'
 import { npcDuelEntry } from './npc-kibo-duel.js'
@@ -233,7 +233,12 @@ export function setArenaInFight(c, actor, move, inFight, first = false) {
     delete run.entry_reports[actor.uuid]
     delete run.arena_casts[actor.uuid]
     if (inFight) {
-        run.in_fight[actor.uuid] = { move, first, entered_at: c.now }
+        run.in_fight[actor.uuid] = {
+            move,
+            first,
+            entered_at: arenaActionMillis(c) / 1000,
+            ...(previous.pause ? { entered_report_at: c.now } : {}),
+        }
         run.ever_summoned = { ...run.ever_summoned, [actor.uuid]: true }
     } else delete run.in_fight[actor.uuid]
     battle.npcDuel = run
@@ -360,7 +365,6 @@ export function startNpcArenaRound(c) {
     c = arenaContext(c)
     const info = c.state.multiCampaign,
         run = c.state.combat?.npcDuel
-    ensure(!run?.pause, 'Arena is paused')
     if ([4, 6].includes(info?.arena_status) && c.state.kiboDuelFirstConfirmedAt) return
     ensure(info?.arena_status === 3 && c.state.kiboDuelLoadingCompleteAt, 'Arena first pet is not loaded')
     const first = Object.values(run.actors).find(

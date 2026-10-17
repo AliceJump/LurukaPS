@@ -13,6 +13,13 @@ export function arenaMillis(c) {
     return value
 }
 
+// UI confirmations can arrive while a guide freezes world simulation. New
+// gameplay deadlines use that frozen instant; network evidence keeps wall time.
+export function arenaActionMillis(c) {
+    const pause = c.state.combat?.npcDuel?.pause
+    return pause ? secondsToArenaMs(pause.server_at) : arenaMillis(c)
+}
+
 export function arenaContext(c) {
     if (c.arena_clock_context || c.arena_now_ms === undefined) return c
     return { ...c, now: arenaMillis(c) / 1000, arena_clock_context: true }

@@ -22,9 +22,9 @@ export function updateNpcArenaPause(c, request) {
     c = arenaContext(c)
     let run = c.state.combat?.npcDuel
     const phase = c.state.multiCampaign?.arena_status
-    // First selection and active battle have verified server-pause UI paths.
-    // Entry-movie/exit-stage timers need their own elapse-slot audit.
-    if (!run || run.map_id !== c.state.world.map_id || run.result || ![3, 4].includes(phase)) return false
+    // A guide's explicit first confirmation may change FIRST to presentation
+    // before its resume callback. Retain and release that pause in either phase.
+    if (!run || run.map_id !== c.state.world.map_id || run.result || ![3, 4, 6].includes(phase)) return false
     const clientTime = String(request.game_time ?? '0'),
         previous = c.state.world.pause
     if (
@@ -107,8 +107,15 @@ export function updateNpcArenaPause(c, request) {
     }
     for (const key of phase === 3 ? ['first_until'] : ['regular_started_at', 'end_at', 'score_at'])
         if (run[key] !== undefined) resumed[key] = shifted(run[key], delta)
+    if (phase === 6) {
+        // Presentation may have begun after the selection was already paused.
+        // Only its own paused interval belongs to this stage's deadline.
+        const introDelta = Math.max(0, c.now - Math.max(pause.server_at, run.intro_started_at))
+        resumed.intro_started_at = shifted(run.intro_started_at, introDelta)
+        resumed.intro_until = shifted(run.intro_until, introDelta)
+    }
     c.state.combat.npcDuel = resumed
-    const until = phase === 3 ? resumed.first_until : resumed.end_at
+    const until = phase === 3 ? resumed.first_until : phase === 6 ? resumed.intro_until : resumed.end_at
     const costStage = phase === 4 && arenaCostStage(c)
     c.pushBefore('SCProtoKiboDuelArenaInfoSync', {
         status: phase,
@@ -118,6 +125,8 @@ export function updateNpcArenaPause(c, request) {
         ...arenaFeverInfo(c),
     })
     if (costStage) c.state.combat.npcDuel = { ...resumed, cost_stage_sent: true }
+    if (phase === 6)
+        c.pushBefore('SCProtoKiboDuelArenaStingerInfoSync', { stage: 2, end_time: String(Math.ceil(until)) })
     publishArenaEnergy(c)
     publishArenaSp(c)
     c.pushBefore('SCProtoKiboDuelArenaCardInfoSync', arenaHand(c.state))

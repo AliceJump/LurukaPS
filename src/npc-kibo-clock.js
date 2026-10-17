@@ -1,5 +1,5 @@
 import { ErrorCode } from './error-codes.js'
-import { arenaContext, arenaMillis, secondsToArenaMs } from './npc-kibo-time.js'
+import { arenaContext, arenaMillis, arenaActionMillis, secondsToArenaMs } from './npc-kibo-time.js'
 import { ensure } from './handlers/common.js'
 import { pairs } from './battle.js'
 import { arenaFeverInfo } from './npc-kibo-stage-buffs.js'
@@ -247,12 +247,19 @@ export function consumeArenaPoint(c, camp) {
     const battle = c.state.combat,
         run = battle.npcDuel,
         timing = arenaTiming(c.tables, run.duel_id)
-    ensure(!run.pause, 'Arena is paused')
-    ensure(run.energy?.[camp].points >= 100 - 1e-7, 'Not enough arena action points')
-    ensure(arenaMillis(c) >= (run.gcd_until?.[camp] ?? 0), 'Arena summon is cooling down')
+    // A guide pauses the world while waiting for the player's deployment ACK.
+    // It does not make that input invalid or allow NPC simulation to advance.
+    ensure(!run.pause || camp === 1, 'Arena is paused', ErrorCode.PlayerInPause)
+    const now = arenaActionMillis(c)
+    ensure(
+        run.energy?.[camp].points >= 100 - 1e-7,
+        'Not enough arena action points',
+        ErrorCode.KiboDuelArenaPointNotEnough,
+    )
+    ensure(now >= (run.gcd_until?.[camp] ?? 0), 'Arena summon is cooling down', ErrorCode.KiboDuelArenaGlobalCd)
     battle.npcDuel = {
         ...run,
         energy: { ...run.energy, [camp]: { ...run.energy[camp], points: Math.max(0, run.energy[camp].points - 100) } },
-        gcd_until: { ...run.gcd_until, [camp]: arenaMillis(c) + timing.gcd },
+        gcd_until: { ...run.gcd_until, [camp]: now + timing.gcd },
     }
 }

@@ -7,6 +7,8 @@ import { Store } from '../src/store.js'
 import { Game } from '../src/game.js'
 import { arenaSpConfig } from '../src/npc-kibo-sp.js'
 import { npcArenaOutcome } from '../src/npc-kibo-result.js'
+import { arenaTiming } from '../src/npc-kibo-clock.js'
+import { ErrorCode } from '../src/error-codes.js'
 const cfg = configuration(),
     tables = new Tables(cfg.tables),
     p = new Protocol(cfg.base)
@@ -165,15 +167,12 @@ test('server pause freezes battle timeout, scores, action/SP energy, paths and d
     }
 })
 
-test('first-pick pause cannot auto-confirm and resume moves only its own deadline; early cast confirmation is rejected atomically', () => {
+test('first-pick pause cannot auto-confirm and resume moves only its own deadline', () => {
     const f = fixture(true)
     try {
         const start = f.now(),
             until = f.run().first_until
         f.call('GamePause', { operate: true, game_time: String(start * 1000) })
-        const before = f.state()
-        assert.throws(() => f.call('KiboDuelArenaFirstConfirmReq'), /Arena is paused/)
-        assert.deepEqual(f.state(), before)
         f.set(start + 100)
         assert.deepEqual(f.tick(), [])
         assert.equal(f.state().multiCampaign.arena_status, 3)
@@ -186,6 +185,140 @@ test('first-pick pause cannot auto-confirm and resume moves only its own deadlin
         f.set(until + 100)
         f.tick()
         assert.equal(f.state().multiCampaign.arena_status, 6)
+    } finally {
+        f.close()
+    }
+})
+
+test('explicit first confirmation works under guide pause and presentation resumes without inheriting selection wait time', () => {
+    const f = fixture(true)
+    try {
+        const start = f.now()
+        f.call('GamePause', { operate: true })
+        f.set(start + 100)
+        const packets = f.call('KiboDuelArenaFirstConfirmReq')
+        assert.ok(packets.some((packet) => packet.id === 11803))
+        assert.equal(f.state().multiCampaign.arena_status, 6)
+        const intro = f.run().intro_until
+        assert.ok(f.run().pause)
+        f.set(start + 200)
+        assert.deepEqual(f.tick(), [])
+        f.call('KiboDuelArenaFirstConfirmReq')
+        assert.equal(f.run().intro_until, intro, 'retry does not restart the movie')
+        const resumed = f.call('GamePause', { operate: false })
+        assert.equal(f.run().pause, undefined)
+        assert.equal(f.run().intro_until, intro + 100)
+        assert.equal(resumed.find((packet) => packet.id === 11800).data.status, 6)
+        f.set(intro + 99)
+        f.tick()
+        assert.equal(f.state().multiCampaign.arena_status, 6)
+        f.set(intro + 100)
+        f.tick()
+        assert.equal(f.state().multiCampaign.arena_status, 4)
+        assert.equal(f.run().pause, undefined)
+        assert.equal(f.run().energy[1].points, arenaTiming(tables, 501).initial)
+    } finally {
+        f.close()
+    }
+})
+
+test('guide deployment spends once while simulation stays frozen and starts cooldown at the frozen gameplay instant', () => {
+    const f = fixture()
+    try {
+        const start = f.now(),
+            timing = arenaTiming(tables, 501)
+        f.store.transact(f.session.id, 0, (state) => {
+            state.combat.npcDuel.energy[1].points = 300
+        })
+        f.call('GamePause', { operate: true })
+        const frozen = f.run(),
+            [pet, next] = Object.values(frozen.actors).filter(
+                (actor) => actor.camp === 1 && !frozen.in_fight[actor.uuid],
+            ),
+            request = (actor) => ({
+                pet_guid: actor.uuid,
+                source_pet_guid: actor.source_guid,
+                ...frozen.positions.selfSummon,
+            })
+        f.set(start + 600)
+        const packets = f.call('KiboDuelArenaSummonReq', request(pet))
+        assert.ok(packets.some((packet) => packet.id === 11811))
+        assert.equal(f.run().pause.server_at, start)
+        assert.equal(f.run().energy[1].points, 200)
+        assert.deepEqual(f.run().energy[2], frozen.energy[2])
+        assert.deepEqual(f.run().pet_sp, frozen.pet_sp)
+        assert.deepEqual(f.run().scores, frozen.scores)
+        assert.equal(f.run().end_at, frozen.end_at)
+        assert.equal(f.run().gcd_until[1], start * 1000 + timing.gcd)
+        assert.equal(f.run().in_fight[pet.uuid].entered_at, start)
+        assert.equal(f.run().in_fight[pet.uuid].entered_report_at, start + 600)
+        f.call('KiboDuelArenaSummonReq', request(pet))
+        assert.equal(f.run().energy[1].points, 200, 'repeat ACK does not debit twice')
+        const before = f.state()
+        assert.throws(() => f.call('KiboDuelArenaSummonReq', request(next)), { code: ErrorCode.KiboDuelArenaGlobalCd })
+        assert.deepEqual(f.state(), before)
+        assert.deepEqual(f.tick(), [])
+        f.set(start + 900)
+        f.call('GamePause', { operate: false })
+        assert.equal(f.run().gcd_until[1], (start + 900) * 1000 + timing.gcd)
+        assert.equal(f.run().in_fight[pet.uuid].entered_at, start + 900)
+        assert.equal(f.run().in_fight[pet.uuid].entered_report_at, start + 600)
+        assert.equal(f.run().energy[1].points, 200)
+        assert.throws(() => f.call('KiboDuelArenaSummonReq', request(next)), { code: ErrorCode.KiboDuelArenaGlobalCd })
+        f.set(start + 900 + timing.gcd / 1000)
+        f.call('KiboDuelArenaSummonReq', request(next))
+        assert.ok(f.run().in_fight[next.uuid])
+    } finally {
+        f.close()
+    }
+})
+
+test('guide pause does not waive action points, ownership or deployment bounds', () => {
+    const f = fixture()
+    try {
+        f.call('GamePause', { operate: true })
+        const run = f.run(),
+            pet = Object.values(run.actors).find((actor) => actor.camp === 1 && !run.in_fight[actor.uuid]),
+            request = { pet_guid: pet.uuid, source_pet_guid: pet.source_guid, ...run.positions.selfSummon }
+        const before = f.state()
+        assert.throws(() => f.call('KiboDuelArenaSummonReq', { ...request, source_pet_guid: '0' }), /source mismatch/)
+        assert.throws(
+            () => f.call('KiboDuelArenaSummonReq', { ...request, pos: { x: 0, y: 0, z: 0 } }),
+            /deployment area/,
+        )
+        assert.deepEqual(f.state(), before)
+        f.store.transact(f.session.id, 0, (state) => {
+            state.combat.npcDuel.energy[1].points = 99
+        })
+        f.set(f.now() + 600)
+        const empty = f.state()
+        assert.throws(() => f.call('KiboDuelArenaSummonReq', request), { code: ErrorCode.KiboDuelArenaPointNotEnough })
+        assert.deepEqual(f.state(), empty, 'paused wall time cannot supply missing action points')
+    } finally {
+        f.close()
+    }
+})
+
+test('a failed guide deployment packet rolls back cost and membership and can be retried while paused', () => {
+    const f = fixture()
+    try {
+        f.call('GamePause', { operate: true })
+        const run = f.run(),
+            pet = Object.values(run.actors).find((actor) => actor.camp === 1 && !run.in_fight[actor.uuid]),
+            request = { pet_guid: pet.uuid, source_pet_guid: pet.source_guid, ...run.positions.selfSummon },
+            before = f.state(),
+            original = f.game.packet
+        f.game.packet = function (name, ...args) {
+            if (name === 'SCProtoKiboInFightChange') throw Error('guide deployment packet fault')
+            return original.call(this, name, ...args)
+        }
+        assert.throws(() => f.call('KiboDuelArenaSummonReq', request), /guide deployment packet fault/)
+        f.game.packet = original
+        assert.deepEqual(f.state(), before)
+        f.call('KiboDuelArenaSummonReq', request)
+        assert.ok(f.run().in_fight[pet.uuid])
+        assert.equal(f.run().energy[1].points, run.energy[1].points - 100)
+        assert.deepEqual(f.run().pause, run.pause)
     } finally {
         f.close()
     }
@@ -349,21 +482,24 @@ test('a loading-screen pause is adopted by FIRST and cannot silently consume its
     }
 })
 
-test('an entry UI pause still present at REGULAR is adopted without backfilling combat time', () => {
+test('an entry UI pause freezes presentation and resumes its remaining time before starting the battle clock', () => {
     const f = fixture(true)
     try {
         f.call('KiboDuelArenaFirstConfirmReq')
         f.call('GamePause', { operate: true, game_time: String(f.now() * 1000) })
-        assert.equal(f.run().pause, undefined, 'this change does not invent the entry-movie pause timeline')
-        f.set(f.run().intro_until)
-        f.tick()
-        assert.equal(f.state().multiCampaign.arena_status, 4)
+        const intro = f.run().intro_until
         assert.ok(f.run().pause)
-        const until = f.run().end_at
+        assert.equal(f.run().regular_started_at, undefined)
         f.set(f.now() + 30)
         assert.deepEqual(f.tick(), [])
         f.call('GamePause', { operate: false, game_time: String(f.now() * 1000) })
-        assert.equal(f.run().end_at, until + 30)
+        assert.equal(f.run().pause, undefined)
+        assert.equal(f.run().intro_until, intro + 30)
+        f.set(intro + 30)
+        f.tick()
+        assert.equal(f.state().multiCampaign.arena_status, 4)
+        assert.equal(f.run().regular_started_at, intro + 30)
+        assert.equal(f.run().energy[1].points, arenaTiming(tables, 501).initial)
     } finally {
         f.close()
     }
